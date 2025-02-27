@@ -206,6 +206,13 @@ TEST_F(ExpressionTest, SimplifyRemovesCancelingTermsForProduct) {
   EXPECT_EQ(expr.simplify().toString(), "1");
 }
 
+TEST_F(ExpressionTest, SimplifyInvertedProduct) {
+  // Test cancellation
+  auto expr =
+      ExprFactory::invert(ExprFactory::product({x, ExprFactory::invert(y)}));
+  EXPECT_EQ(expr.simplify().toString(), "(y * x^{-1})");
+}
+
 TEST_F(ExpressionTest, SimplifyMultiplicationWithZero) {
   // Test multiplication with zero
   auto prodWithZero = ExprFactory::product({x, zero});

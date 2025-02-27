@@ -24,6 +24,7 @@ class Expr {
   Expr differentiate(const Expr& var) const;
   Expr simplify(bool distribute = true) const;
   std::string toString() const;
+  std::string toExpressionString() const;
   ExprType getType() const;
   std::set<Expr> getVariables() const;
   bool containsSubexpression(const Expr& expr) const;

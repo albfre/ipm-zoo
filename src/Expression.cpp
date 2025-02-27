@@ -166,6 +166,49 @@ std::string Expr::toString() const {
   }
 }
 
+std::string Expr::toExpressionString() const {
+  switch (type_) {
+    case ExprType::Number: {
+      std::stringstream ss;
+      ss << "number(" << value_ << ")";
+      return ss.str();
+    }
+    case ExprType::NamedConstant:
+      return "namedConstant(" + name_ + ")";
+    case ExprType::Variable:
+      return "variable(" + name_ + ")";
+    case ExprType::Negate:
+      return "negate(" + getSingleChild_().toExpressionString() + ")";
+    case ExprType::Invert:
+      return "invert(" + getSingleChild_().toExpressionString() + ")";
+    case ExprType::Log:
+      return "log(" + getSingleChild_().toExpressionString() + ")";
+    case ExprType::Sum: {
+      std::stringstream ss;
+      ss << "sum(";
+      ss << terms_.front().toExpressionString();
+      for (const auto& t : terms_ | std::views::drop(1)) {
+        ss << ", " << t.toExpressionString();
+      }
+      ss << ")";
+      return ss.str();
+    }
+    case ExprType::Product: {
+      std::stringstream ss;
+      ss << "product(";
+      ss << terms_.front().toExpressionString();
+      for (const auto& t : terms_ | std::views::drop(1)) {
+        ss << ", " << t.toExpressionString();
+      }
+      ss << ")";
+      return ss.str();
+    }
+    default:
+      assert(false);
+      throw std::runtime_error("Unhandled enum");
+  }
+}
+
 ExprType Expr::getType() const { return type_; }
 
 std::set<Expr> Expr::getVariables() const {
@@ -267,6 +310,10 @@ Expr Expr::simplify_(const bool distribute) const {
       if (child.type_ == ExprType::Invert) {
         // invert(invert(x)) = x
         return child.getSingleChild_().simplify_();
+      } else if (child.type_ == ExprType::Negate) {
+        // invert(negate(x)) = negate(invert(x))
+        return ExprFactory::negate(
+            ExprFactory::invert(child.getSingleChild_().simplify_()));
       } else if (child.type_ == ExprType::Product) {
         // invert(x * y * z) = invert(z) * invert(y) * invert(x)
         auto terms = transform(child.terms_, [](const auto& t) {
@@ -418,8 +465,8 @@ Expr Expr::simplify_(const bool distribute) const {
         }
       }
 
-      // Canceling transformation (power transformation for the special case of
-      // inverse) (x * inv(x) = 1)
+      // Canceling transformation (power transformation for the special case
+      // of inverse) (x * inv(x) = 1)
       eraseCanceling(ExprType::Invert, terms, unity);
 
       // Numerical transformation (2 * x * 3 = 6 * x)
@@ -441,8 +488,8 @@ Expr Expr::simplify_(const bool distribute) const {
 
       const auto simplified = ExprFactory::product(terms);
 
-      // Check whether distributing factor leads to a shorter expression (x(y +
-      // z + w) = xy + xz + xw)
+      // Check whether distributing factor leads to a shorter expression (x(y
+      // + z + w) = xy + xz + xw)
       if (distribute && terms.size() > 1) {
         for (size_t i = 0; i < terms.size(); ++i) {
           if (terms[i].type_ == ExprType::Sum) {

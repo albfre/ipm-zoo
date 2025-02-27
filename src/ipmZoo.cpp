@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <memory>
 
@@ -68,8 +69,8 @@ Expression::Expr getLagrangian(std::vector<Expression::Expr>& variables) {
   auto u_A = namedConstant("u_A");
   auto l_x = namedConstant("l_x");
   auto u_x = namedConstant("u_x");
-  variables = {x, lambda_A, lambda_g, lambda_t, lambda_y, lambda_z,
-               s, g,        t,        y,        z};
+  variables = {x,        lambda_A, s, lambda_g, lambda_t, lambda_y,
+               lambda_z, g,        t, y,        z};
 
   auto xHx = product({number(0.5), x, H, x});
   auto cx = product({c, x});
@@ -90,6 +91,77 @@ Expression::Expr getLagrangian(std::vector<Expression::Expr>& variables) {
                          minusMuLogZ, lambda_A_term, lambda_g_term,
                          lambda_t_term, lambda_y_term, lambda_z_term});
   return lagrangian;
+}
+
+void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
+  for (const auto& row : lhs) {
+    for (size_t i = 0; i < row.size(); ++i) {
+      std::cout << row[i].toString();
+      if (i < row.size() - 1) std::cout << " & ";
+    }
+    std::cout << " \\\\" << std::endl;
+  }
+}
+
+void printRhs(const std::vector<Expression::Expr>& rhs) {
+  for (const auto& c : rhs) {
+    std::cout << c.toString() << " \\\\" << std::endl;
+  }
+}
+
+void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
+                         std::vector<Expression::Expr>& rhs,
+                         const size_t sourceRow, const bool print = false) {
+  using namespace Expression;
+  const auto zero = ExprFactory::number(0.0);
+  size_t targetRow = 0;
+  for (; targetRow < lhs.size(); ++targetRow) {
+    if (targetRow != sourceRow && lhs.at(targetRow).at(sourceRow) != zero) {
+      break;
+    }
+  }
+  assert(targetRow < lhs.size());
+  const auto targetExpr = lhs.at(targetRow).at(sourceRow);
+  const auto sourceExpr = lhs.at(sourceRow).at(sourceRow);
+  const auto factor =
+      ExprFactory::negate(
+          ExprFactory::product({ExprFactory::invert(sourceExpr), targetExpr}))
+          .simplify();
+  const auto addRowTimesFactorToRow = [&factor](const Expr& sourceTerm,
+                                                const Expr& targetTerm) {
+    const auto sourceTermTimesFactor =
+        ExprFactory::product({factor, sourceTerm}).simplify();
+    return ExprFactory::sum({targetTerm, sourceTermTimesFactor}).simplify();
+  };
+  if (print) {
+    std::cout << "source: " << sourceRow << ", target: " << targetRow
+              << std::endl;
+    std::cout << "factor: " << factor.toString() << std::endl;
+  }
+
+  for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
+    if (print) {
+      std::cout << i << "add "
+                << ExprFactory::product({factor, lhs.at(sourceRow).at(i)})
+                       .simplify()
+                       .toString()
+                << " to row " << targetRow << " with result "
+                << addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
+                                          lhs.at(targetRow).at(i))
+                       .toString()
+                << std::endl;
+    }
+    lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
+                                                     lhs.at(targetRow).at(i));
+  }
+  rhs.at(targetRow) =
+      addRowTimesFactorToRow(rhs.at(sourceRow), rhs.at(targetRow));
+
+  lhs.erase(lhs.begin() + sourceRow);
+  for (auto& lhsRow : lhs) {
+    lhsRow.erase(lhsRow.begin() + sourceRow);
+  }
+  rhs.erase(rhs.begin() + sourceRow);
 }
 
 void runLagrangianTest() {
@@ -121,16 +193,41 @@ void runLagrangianTest() {
   }
 
   std::cout << "Lhs matrix:" << std::endl;
-  for (const auto& row : lhs) {
-    for (const auto& c : row) {
-      std::cout << c.toString() << "  &  ";
-    }
-    std::cout << std::endl;
-  }
+  printLhs(lhs);
+
   std::cout << "Rhs: " << std::endl;
-  for (const auto& c : rhs) {
-    std::cout << c.toString() << std::endl;
-  }
+  printRhs(rhs);
+  const auto createRhs = [](const std::vector<Expr>& variables) {
+    std::vector<Expr> rhs;
+    for (const auto& var : variables) {
+      rhs.push_back(ExprFactory::negate(
+          ExprFactory::namedConstant("r_{" + var.toString() + "}")));
+    }
+    return rhs;
+  };
+
+  rhs = createRhs(variables);
+
+  std::cout << "\n\n";
+
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+
+  std::cout << "Lhs matrix:" << std::endl;
+  printLhs(lhs);
+
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  std::cout << "Lhs matrix:" << std::endl;
+  printLhs(lhs);
+
+  std::cout << "Rhs: " << std::endl;
+  printRhs(rhs);
 }
 
 int main(int argc, char* argv[]) {
