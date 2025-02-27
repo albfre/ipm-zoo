@@ -2,6 +2,10 @@
 add_library(Expression
     Expression.cpp
     Expression.h
+    Lagrangian.cpp
+    Lagrangian.h
+    GaussianElimination.cpp
+    GaussianElimination.h
 )
 
 # Make include directories visible to other targets

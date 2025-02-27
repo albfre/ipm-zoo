@@ -3,6 +3,8 @@
 #include <memory>
 
 #include "Expression.h"
+#include "GaussianElimination.h"
+#include "Lagrangian.h"
 
 void initialTest() {
   using namespace Expression;
@@ -47,52 +49,6 @@ void initialTest() {
             << "\n";
 }
 
-Expression::Expr getLagrangian(std::vector<Expression::Expr>& variables) {
-  using namespace Expression::ExprFactory;
-  auto x = variable("x");
-  auto H = namedConstant("H");
-  auto c = namedConstant("c");
-  auto A = namedConstant("A");
-  auto mu = namedConstant("\\mu");
-  auto e = namedConstant("e");
-  auto g = variable("g");
-  auto t = variable("t");
-  auto y = variable("y");
-  auto z = variable("z");
-  auto s = variable("s");
-  auto lambda_A = variable("\\lambda_A");
-  auto lambda_g = variable("\\lambda_g");
-  auto lambda_t = variable("\\lambda_t");
-  auto lambda_y = variable("\\lambda_y");
-  auto lambda_z = variable("\\lambda_z");
-  auto l_A = namedConstant("l_A");
-  auto u_A = namedConstant("u_A");
-  auto l_x = namedConstant("l_x");
-  auto u_x = namedConstant("u_x");
-  variables = {x,        lambda_A, s, lambda_g, lambda_t, lambda_y,
-               lambda_z, g,        t, y,        z};
-
-  auto xHx = product({number(0.5), x, H, x});
-  auto cx = product({c, x});
-  auto Ax = product({A, x});
-  auto minusMuLogG = negate(product({mu, e, log({g})}));
-  auto minusMuLogT = negate(product({mu, e, log({t})}));
-  auto minusMuLogY = negate(product({mu, e, log({y})}));
-  auto minusMuLogZ = negate(product({mu, e, log({z})}));
-  auto lambda_A_term = product({lambda_A, sum({Ax, negate(s)})});
-  auto lambda_g_term =
-      negate(product({lambda_g, sum({s, negate(g), negate(l_A)})}));
-  auto lambda_t_term = product({lambda_t, sum({s, t, negate(u_A)})});
-  auto lambda_y_term =
-      negate(product({lambda_y, sum({x, negate(y), negate(l_x)})}));
-  auto lambda_z_term = product({lambda_z, sum({x, z, negate(u_x)})});
-
-  auto lagrangian = sum({xHx, cx, minusMuLogG, minusMuLogT, minusMuLogY,
-                         minusMuLogZ, lambda_A_term, lambda_g_term,
-                         lambda_t_term, lambda_y_term, lambda_z_term});
-  return lagrangian;
-}
-
 void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
   for (const auto& row : lhs) {
     for (size_t i = 0; i < row.size(); ++i) {
@@ -109,66 +65,11 @@ void printRhs(const std::vector<Expression::Expr>& rhs) {
   }
 }
 
-void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
-                         std::vector<Expression::Expr>& rhs,
-                         const size_t sourceRow, const bool print = false) {
-  using namespace Expression;
-  const auto zero = ExprFactory::number(0.0);
-  size_t targetRow = 0;
-  for (; targetRow < lhs.size(); ++targetRow) {
-    if (targetRow != sourceRow && lhs.at(targetRow).at(sourceRow) != zero) {
-      break;
-    }
-  }
-  assert(targetRow < lhs.size());
-  const auto targetExpr = lhs.at(targetRow).at(sourceRow);
-  const auto sourceExpr = lhs.at(sourceRow).at(sourceRow);
-  const auto factor =
-      ExprFactory::negate(
-          ExprFactory::product({ExprFactory::invert(sourceExpr), targetExpr}))
-          .simplify();
-  const auto addRowTimesFactorToRow = [&factor](const Expr& sourceTerm,
-                                                const Expr& targetTerm) {
-    const auto sourceTermTimesFactor =
-        ExprFactory::product({factor, sourceTerm}).simplify();
-    return ExprFactory::sum({targetTerm, sourceTermTimesFactor}).simplify();
-  };
-  if (print) {
-    std::cout << "source: " << sourceRow << ", target: " << targetRow
-              << std::endl;
-    std::cout << "factor: " << factor.toString() << std::endl;
-  }
-
-  for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
-    if (print) {
-      std::cout << i << "add "
-                << ExprFactory::product({factor, lhs.at(sourceRow).at(i)})
-                       .simplify()
-                       .toString()
-                << " to row " << targetRow << " with result "
-                << addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
-                                          lhs.at(targetRow).at(i))
-                       .toString()
-                << std::endl;
-    }
-    lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
-                                                     lhs.at(targetRow).at(i));
-  }
-  rhs.at(targetRow) =
-      addRowTimesFactorToRow(rhs.at(sourceRow), rhs.at(targetRow));
-
-  lhs.erase(lhs.begin() + sourceRow);
-  for (auto& lhsRow : lhs) {
-    lhsRow.erase(lhsRow.begin() + sourceRow);
-  }
-  rhs.erase(rhs.begin() + sourceRow);
-}
-
 void runLagrangianTest() {
   using namespace Expression;
 
-  std::vector<Expr> variables;
-  auto lagrangian = getLagrangian(variables);
+  const auto [lagrangian, variables] = Lagrangian::getLagrangian(
+      Lagrangian::VariableNames(), Lagrangian::Settings());
   std::cout << "\nLagrangian: " << lagrangian.toString() << "\n";
 
   auto lhs = std::vector<std::vector<Expr>>();
@@ -210,19 +111,19 @@ void runLagrangianTest() {
 
   std::cout << "\n\n";
 
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
 
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
 
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
-  gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
 
