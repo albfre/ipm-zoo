@@ -23,8 +23,8 @@
     <div class="section">
       <h3>Inequalities</h3>
       <label><input type="radio" name="inequalities" value="none"> None</label>
-      <label><input type="radio" name="inequalities" value="below"> Inequalities from below</label>
-      <label><input type="radio" name="inequalities" value="above"> Inequalities from above</label>
+      <label><input type="radio" name="inequalities" value="lower"> Inequalities from below</label>
+      <label><input type="radio" name="inequalities" value="upper"> Inequalities from above</label>
       <label><input type="radio" name="inequalities" value="both" checked> Inequalities from below and above</label>
       <br>
       <h3>Equalities</h3>
@@ -39,7 +39,7 @@
       <h3>Handling of Inequalities</h3>
       <label><input type="radio" name="handling_inequalities" value="slacks" checked> Slacks</label>
       <br>
-      <h3>Handling of Equalities</h3>
+      <h3>Handling of Equalities (not yet working)</h3>
       <label><input type="radio" name="handling_equalities" value="indefinite" checked> Indefinite
         factorization</label>
       <label><input type="radio" name="handling_equalities" value="slacks"> Slacks</label>
@@ -54,31 +54,37 @@
   </div>
 
   <script>
-    const Aineq = "A";
-    const lAineq = "l_{A}";
-    const uAineq = "u_{A}";
-    const Aeq = "A_{\\text{eq}}";
-    const beq = "b";
-    const lx = "l_x";
-    const ux = "u_x";
-    const x = "x";
+    const x = "x"; // Primary variable
+    const Aineq = "A"; // Inequality constraint matrix
+    const lAineq = "l_{A}"; // Inequality constraint lower bound
+    const uAineq = "u_{A}"; // Inequality constraint upper bound
+    const Aeq = "A_{\\text{eq}}"; // Equality constraint matrix
+    const beq = "b"; // Equality constraint right-hand side
+    const lx = "l_x"; // Primary variable lower bound
+    const ux = "u_x"; // Primary variable upper bound
+    const sA = "s"; // Slack variable for inequality constraint
+    const slA = "g"; // Slack variable for inequality constraint lower bound
+    const suA = "t"; // Slack variable for inequality constraint upper bound
+    const slx = "y"; // Slack variable for x lower bound
+    const sux = "z"; // Slack variable for x upper bound
+    const getObjective = (logBarrierVariables = []) => {
+      let output = "\\underset{" + x + "}{\\text{minimize}} \\quad & \\frac{1}{2} " + x + "^T Q " + x + " + c^T" + x;
+      for (const v of logBarrierVariables) {
+        output += "- \\mu e^T \\log(" + v + ")";
+      }
+      output += " \\\\";
+      return output;
+    }
 
-    function updateProblem() {
-      let inequalities = document.querySelector('input[name="inequalities"]:checked').value;
-      let handlingInequalities = "Slacks"; // Only one option
-      let equalities = document.getElementById("equalities").checked;
-      let handlingEqualities = document.querySelector('input[name="handling_equalities"]:checked').value;
-      let variableBounds = document.querySelector('input[name="variable_bounds"]:checked').value;
+    function getOriginalProblem(inequalities, equalities, variableBounds) {
       const hasInequalities = inequalities !== "none";
       const hasEqualities = equalities;
-      const hasBounds = variableBounds !== "none";
-
-      let outputText = "<h3>Generated Quadratic Programming Problem</h3>";
-
-      outputText += "<p>";
+      const hasVariableBounds = variableBounds !== "none";
+      let outputText = "";
       outputText += "\\[ \\begin{align*}\n";
-      outputText += "\\underset{x}{\\text{minimize}} \\quad & \\frac{1}{2} x^T Q x + c^T x\\\\";
-      if (hasInequalities || hasEqualities || hasBounds) {
+      outputText += getObjective();
+
+      if (hasInequalities || hasEqualities || hasVariableBounds) {
         outputText += "\\text{subject to} \\quad";
       }
 
@@ -87,8 +93,8 @@
       }
 
       if (hasInequalities) {
-        if (inequalities === "below") outputText += "& " + Aineq + x + " \\leq " + uAineq + " \\\\\n";
-        if (inequalities === "above") outputText += "& " + Aineq + x + " \\geq " + lAineq + " \\\\\n";
+        if (inequalities === "lower") outputText += "& " + Aineq + x + " \\geq " + lAineq + " \\\\\n";
+        if (inequalities === "upper") outputText += "& " + Aineq + x + " \\leq " + uAineq + " \\\\\n";
         if (inequalities === "both") outputText += "& " + lAineq + " \\leq " + Aineq + x + " \\leq " + uAineq + " \\\\\n";
       }
 
@@ -98,7 +104,85 @@
         if (variableBounds === "both") outputText += "& " + lx + " \\leq " + x + " \\leq " + ux + " \\\\\n";
       }
 
-      outputText += "\\end{align*} \\]"
+      outputText += "\\end{align*} \\]\n"
+      return outputText;
+    }
+
+    function getNonnegativeSlacks(inequalities, equalities, variableBounds) {
+      let nonnegativeSlacks = [];
+      if (inequalities === "lower" || inequalities == "both") {
+        nonnegativeSlacks.push(slA);
+      }
+      if (inequalities === "upper" || inequalities == "both") {
+        nonnegativeSlacks.push(suA);
+      }
+      if (variableBounds === "lower" || variableBounds == "both") {
+        nonnegativeSlacks.push(slx);
+      }
+      if (variableBounds === "upper" || variableBounds == "both") {
+        nonnegativeSlacks.push(sux);
+      }
+      return nonnegativeSlacks;
+    }
+
+    function getSlackProblem(inequalities, equalities, variableBounds, logBarriers) {
+      const hasInequalities = inequalities !== "none";
+      const hasEqualities = equalities;
+      const hasVariableBounds = variableBounds !== "none";
+      let outputText = "";
+      outputText += "\\[ \\begin{align*}\n";
+      const nonnegativeSlacks = getNonnegativeSlacks(inequalities, equalities, variableBounds);
+      outputText += getObjective(logBarriers ? nonnegativeSlacks : []);
+
+      if (hasInequalities || hasEqualities || hasVariableBounds) {
+        outputText += "\\text{subject to} \\quad";
+      }
+
+      if (hasEqualities) {
+        outputText += "& " + Aeq + x + " = " + beq + "\\\\\n"
+      }
+
+      if (hasInequalities) {
+        outputText += "& " + Aineq + x + " - " + sA + " = 0 \\\\\n";
+        if (inequalities === "lower" || inequalities == "both") outputText += "& " + sA + " - " + slA + " = " + lAineq + " \\\\\n";
+        if (inequalities === "upper" || inequalities == "both") outputText += "& " + sA + " + " + suA + " = " + uAineq + " \\\\\n";
+      }
+
+      if (variableBounds !== "none") {
+        if (variableBounds === "lower" || variableBounds == "both") outputText += "& " + x + " - " + slx + " = " + lx + " \\\\\n";
+        if (variableBounds === "upper" || variableBounds == "both") outputText += "& " + x + " + " + sux + " = " + ux + " \\\\\n";
+      }
+
+      if (!logBarriers && nonnegativeSlacks) {
+        outputText += "& " + nonnegativeSlacks.join(", ") + " \\geq 0 \\\\\n"
+      }
+
+      outputText += "\\end{align*} \\]\n"
+      return outputText;
+    }
+
+    function updateProblem() {
+      let inequalities = document.querySelector('input[name="inequalities"]:checked').value;
+      let handlingInequalities = "Slacks"; // Only one option
+      let equalities = document.getElementById("equalities").checked;
+      let handlingEqualities = document.querySelector('input[name="handling_equalities"]:checked').value;
+      let variableBounds = document.querySelector('input[name="variable_bounds"]:checked').value;
+
+      const hasInequalities = inequalities !== "none";
+      const hasEqualities = equalities;
+      const hasVariableBounds = variableBounds !== "none";
+
+      let outputText = ""; //<h3>Quadratic Programming Problem</h3>";
+      outputText += "<p><strong>Original optimization problem:</strong></p>";
+      outputText += getOriginalProblem(inequalities, equalities, variableBounds);
+
+      if (hasInequalities || hasVariableBounds) {
+        outputText += "<p><strong>Slacked optimization problem:</strong></p>";
+        outputText += getSlackProblem(inequalities, equalities, variableBounds, false);
+
+        outputText += "<p><strong>Slacked optimization problem with log-barriers:</strong></p>";
+        outputText += getSlackProblem(inequalities, equalities, variableBounds, true);
+      }
 
       outputText += "<h3>Interior-Point Method Derivation</h3>";
       outputText += "<p>1. Optimization problem with slacks</p>";
