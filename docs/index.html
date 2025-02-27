@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interior-point methods Zoo</title>
+  <title>Interior-Point Methods Zoo</title>
   <link rel="stylesheet" href="styles.css">
   <script>
     MathJax = {
@@ -22,28 +22,28 @@
     <!-- Input Section (Left) -->
     <div class="section">
       <h3>Inequalities</h3>
-      <label><input type="radio" name="inequalities" value="none" checked> None</label>
+      <label><input type="radio" name="inequalities" value="none"> None</label>
       <label><input type="radio" name="inequalities" value="below"> Inequalities from below</label>
       <label><input type="radio" name="inequalities" value="above"> Inequalities from above</label>
-      <label><input type="radio" name="inequalities" value="both"> Inequalities from below and above</label>
+      <label><input type="radio" name="inequalities" value="both" checked> Inequalities from below and above</label>
       <br>
       <h3>Equalities</h3>
       <label><input type="checkbox" id="equalities"> Include Equalities</label>
       <br>
       <h3>Variable Bounds</h3>
-      <label><input type="radio" name="variable_bounds" value="none" checked> None</label>
+      <label><input type="radio" name="variable_bounds" value="none"> None</label>
       <label><input type="radio" name="variable_bounds" value="lower"> Lower</label>
       <label><input type="radio" name="variable_bounds" value="upper"> Upper</label>
-      <label><input type="radio" name="variable_bounds" value="both"> Lower and Upper</label>
+      <label><input type="radio" name="variable_bounds" value="both" checked> Lower and upper</label>
       <br>
       <h3>Handling of Inequalities</h3>
       <label><input type="radio" name="handling_inequalities" value="slacks" checked> Slacks</label>
       <br>
       <h3>Handling of Equalities</h3>
       <label><input type="radio" name="handling_equalities" value="indefinite" checked> Indefinite
-        Factorization</label>
+        factorization</label>
       <label><input type="radio" name="handling_equalities" value="slacks"> Slacks</label>
-      <label><input type="radio" name="handling_equalities" value="penalty"> Penalty Function</label>
+      <label><input type="radio" name="handling_equalities" value="penalty"> Penalty function</label>
     </div>
 
     <!-- Output Section (Right) -->
@@ -54,6 +54,15 @@
   </div>
 
   <script>
+    const Aineq = "A";
+    const lAineq = "l_{A}";
+    const uAineq = "u_{A}";
+    const Aeq = "A_{\\text{eq}}";
+    const beq = "b";
+    const lx = "l_x";
+    const ux = "u_x";
+    const x = "x";
+
     function updateProblem() {
       let inequalities = document.querySelector('input[name="inequalities"]:checked').value;
       let handlingInequalities = "Slacks"; // Only one option
@@ -66,28 +75,30 @@
 
       let outputText = "<h3>Generated Quadratic Programming Problem</h3>";
 
-      outputText += "<p><strong>Original Optimization Problem:</strong></p>";
-      outputText += "<p>\\[ \\min \\frac{1}{2} x^T Q x + c^T x \\]</p>";
-
+      outputText += "<p>";
+      outputText += "\\[ \\begin{align*}\n";
+      outputText += "\\underset{x}{\\text{minimize}} \\quad & \\frac{1}{2} x^T Q x + c^T x\\\\";
       if (hasInequalities || hasEqualities || hasBounds) {
-        outputText += "<p>subject to:</p>";
+        outputText += "\\text{subject to} \\quad";
       }
 
       if (hasEqualities) {
-        outputText += "<p>\\[ A_{eq} x = b_{eq} \\]</p>";
+        outputText += "& " + Aeq + x + " = " + beq + "\\\\\n"
       }
 
       if (hasInequalities) {
-        if (inequalities === "below") outputText += "<p>\\[ A_{ineq} x \\leq u_{ineq} \\]</p>";
-        if (inequalities === "above") outputText += "<p>\\[ A_{ineq} x \\geq l_{ineq} \\]</p>";
-        if (inequalities === "both") outputText += "<p>\\[ l_{ineq} \\leq A_{ineq} x \\leq u_{ineq} \\]</p>";
+        if (inequalities === "below") outputText += "& " + Aineq + x + " \\leq " + uAineq + " \\\\\n";
+        if (inequalities === "above") outputText += "& " + Aineq + x + " \\geq " + lAineq + " \\\\\n";
+        if (inequalities === "both") outputText += "& " + lAineq + " \\leq " + Aineq + x + " \\leq " + uAineq + " \\\\\n";
       }
 
       if (variableBounds !== "none") {
-        if (variableBounds === "lower") outputText += "<p>\\[ x \\geq l \\]</p>";
-        if (variableBounds === "upper") outputText += "<p>\\[ x \\leq u \\]</p>";
-        if (variableBounds === "both") outputText += "<p>\\[ l \\leq x \\leq u \\]</p>";
+        if (variableBounds === "lower") outputText += "& " + x + " \\geq " + lx + " \\\\\n";
+        if (variableBounds === "upper") outputText += "& " + x + " \\leq " + ux + " \\\\\n";
+        if (variableBounds === "both") outputText += "& " + lx + " \\leq " + x + " \\leq " + ux + " \\\\\n";
       }
+
+      outputText += "\\end{align*} \\]"
 
       outputText += "<h3>Interior-Point Method Derivation</h3>";
       outputText += "<p>1. Optimization problem with slacks</p>";
@@ -101,7 +112,9 @@
       outputText += "<p>9. Reduction to normal equations if possible</p>";
 
       document.getElementById("output").innerHTML = outputText;
-      MathJax.typeset();
+      MathJax.typesetPromise().catch((err) => {
+        console.error("MathJax error:", err);
+      });
     }
 
     document.querySelectorAll('input').forEach(input => {
