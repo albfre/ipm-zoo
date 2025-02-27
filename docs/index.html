@@ -1,138 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quadratic Programming Formulation</title>
   <link rel="stylesheet" href="styles.css">
+  <script>
+    MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
-<body>
 
-<div class="container">
+<body>
   <h2>Quadratic Programming Problem</h2>
 
-  <!-- Inequalities Selection -->
-  <div class="section">
-    <h3>Inequalities</h3>
-    <label><input type="radio" name="inequalities" value="none" checked> None</label><br>
-    <label><input type="radio" name="inequalities" value="below"> Inequalities from below</label><br>
-    <label><input type="radio" name="inequalities" value="above"> Inequalities from above</label><br>
-    <label><input type="radio" name="inequalities" value="both"> Inequalities from below and above</label>
+  <div class="container">
+    <!-- Input Section (Left) -->
+    <div class="section">
+      <h3>Inequalities</h3>
+      <label><input type="radio" name="inequalities" value="none" checked> None</label>
+      <label><input type="radio" name="inequalities" value="below"> Inequalities from below</label>
+      <label><input type="radio" name="inequalities" value="above"> Inequalities from above</label>
+      <label><input type="radio" name="inequalities" value="both"> Inequalities from below and above</label>
+      <br>
+      <h3>Equalities</h3>
+      <label><input type="checkbox" id="equalities"> Include Equalities</label>
+      <br>
+      <h3>Variable Bounds</h3>
+      <label><input type="radio" name="variable_bounds" value="none" checked> None</label>
+      <label><input type="radio" name="variable_bounds" value="lower"> Lower</label>
+      <label><input type="radio" name="variable_bounds" value="upper"> Upper</label>
+      <label><input type="radio" name="variable_bounds" value="both"> Lower and Upper</label>
+      <br>
+      <h3>Handling of Inequalities</h3>
+      <label><input type="radio" name="handling_inequalities" value="slacks" checked> Slacks</label>
+      <br>
+      <h3>Handling of Equalities</h3>
+      <label><input type="radio" name="handling_equalities" value="indefinite" checked> Indefinite
+        Factorization</label>
+      <label><input type="radio" name="handling_equalities" value="slacks"> Slacks</label>
+      <label><input type="radio" name="handling_equalities" value="penalty"> Penalty Function</label>
+    </div>
+
+    <!-- Output Section (Right) -->
+    <div class="output" id="output">
+      <h3>Problem Formulation</h3>
+      <p>Select options to see the formulation here.</p>
+    </div>
   </div>
 
-  <!-- Equalities -->
-  <div class="section">
-    <h3>Equalities</h3>
-    <label><input type="checkbox" id="equalities"> Include Equalities</label>
-  </div>
+  <script>
+    function updateProblem() {
+      let inequalities = document.querySelector('input[name="inequalities"]:checked').value;
+      let handlingInequalities = "Slacks"; // Only one option
+      let equalities = document.getElementById("equalities").checked;
+      let handlingEqualities = document.querySelector('input[name="handling_equalities"]:checked').value;
+      let variableBounds = document.querySelector('input[name="variable_bounds"]:checked').value;
+      const hasInequalities = inequalities !== "none";
+      const hasEqualities = equalities;
+      const hasBounds = variableBounds !== "none";
 
-  <!-- Variable Bounds -->
-  <div class="section">
-    <h3>Variable Bounds</h3>
-    <label><input type="radio" name="variable_bounds" value="none" checked> None</label><br>
-    <label><input type="radio" name="variable_bounds" value="lower"> Lower</label><br>
-    <label><input type="radio" name="variable_bounds" value="upper"> Upper</label><br>
-    <label><input type="radio" name="variable_bounds" value="both"> Lower and Upper</label>
-  </div>
+      let outputText = "<h3>Generated Quadratic Programming Problem</h3>";
 
-  <!-- Handling of Inequalities -->
-  <div class="section">
-    <h3>Handling of Inequalities</h3>
-    <label><input type="radio" name="handling_inequalities" value="slacks" checked> Slacks</label>
-  </div>
+      outputText += "<p><strong>Original Optimization Problem:</strong></p>";
+      outputText += "<p>\\[ \\min \\frac{1}{2} x^T Q x + c^T x \\]</p>";
 
+      if (hasInequalities || hasEqualities || hasBounds) {
+        outputText += "<p>subject to:</p>";
+      }
 
-  <!-- Handling of Equalities -->
-  <div class="section">
-    <h3>Handling of Equalities</h3>
-    <label><input type="radio" name="handling_equalities" value="indefinite" checked> Indefinite Factorization</label><br>
-    <label><input type="radio" name="handling_equalities" value="slacks"> Slacks</label><br>
-    <label><input type="radio" name="handling_equalities" value="penalty"> Penalty Function</label>
-  </div>
-
-
-  <!-- Output Section -->
-  <div class="output" id="output">
-    <h3>Problem Formulation</h3>
-    <p>Select options to see the formulation here.</p>
-  </div>
-</div>
-
-<script>
-  // Function to generate the optimization problem dynamically
-  function updateProblem() {
-    // Get selected options
-    let inequalities = document.querySelector('input[name="inequalities"]:checked').value;
-    let handlingInequalities = "Slacks"; // Only one option
-    let equalities = document.getElementById("equalities").checked;
-    let handlingEqualities = document.querySelector('input[name="handling_equalities"]:checked').value;
-    let variableBounds = document.querySelector('input[name="variable_bounds"]:checked').value;
-    const hasInequalities = inequalities !== "none";
-    const hasEqualities = equalities;
-    const hasBounds = variableBounds !== "none";
-
-    // Generate problem formulation
-    let outputText = "<h3>Generated Quadratic Programming Problem</h3>";
-
-    outputText += "<p><strong>Original Optimization Problem:</strong></p>";
-    outputText += "<table>";
-    outputText += "<tr><td>minimize </td><td>1/2 x<sup>T</sup>Qx + c<sup>T</sup>x</td>";
-    if (hasInequalities || hasEqualities || hasBounds) {
-      outputText += "<tr>";
-      outputText += "<td>subject to:</td>";
-    }
-
-    if (hasEqualities) {
-      outputText += "<td>A<sub>eq</sub> x = b<sub>eq</sub></td>";
-      outputText += "</tr>";
-    }
-
-    if (hasInequalities) {
       if (hasEqualities) {
-        outputText += "<tr><td></td>";
+        outputText += "<p>\\[ A_{eq} x = b_{eq} \\]</p>";
       }
-      if (inequalities === "below") outputText += "<td>A<sub>ineq</sub> x â‰¤ u<sub>ineq</sub></td>";
-      if (inequalities === "above") outputText += "<td>A<sub>ineq</sub> x â‰¥ l<sub>ineq</sub></td>";
-      if (inequalities === "both") outputText += "<td>l<sub>ineq</sub> â‰¤ A<sub>ineq</sub> x â‰¤ u<sub>ineq</sub></td>";
-      outputText += "</tr>";
+
+      if (hasInequalities) {
+        if (inequalities === "below") outputText += "<p>\\[ A_{ineq} x \\leq u_{ineq} \\]</p>";
+        if (inequalities === "above") outputText += "<p>\\[ A_{ineq} x \\geq l_{ineq} \\]</p>";
+        if (inequalities === "both") outputText += "<p>\\[ l_{ineq} \\leq A_{ineq} x \\leq u_{ineq} \\]</p>";
+      }
+
+      if (variableBounds !== "none") {
+        if (variableBounds === "lower") outputText += "<p>\\[ x \\geq l \\]</p>";
+        if (variableBounds === "upper") outputText += "<p>\\[ x \\leq u \\]</p>";
+        if (variableBounds === "both") outputText += "<p>\\[ l \\leq x \\leq u \\]</p>";
+      }
+
+      outputText += "<h3>Interior-Point Method Derivation</h3>";
+      outputText += "<p>1. Optimization problem with slacks</p>";
+      outputText += "<p>2. Optimization problem with barriers</p>";
+      outputText += "<p>3. Lagrangian formulation</p>";
+      outputText += "<p>4. First-order optimality conditions</p>";
+      outputText += "<p>5. Newton system</p>";
+      outputText += "<p>6. Reduction of rows for log-barriers</p>";
+      outputText += "<p>7. Reduction of rows for Lagrange multipliers</p>";
+      outputText += "<p>8. Augmented system and LU/LDLT solution methods</p>";
+      outputText += "<p>9. Reduction to normal equations if possible</p>";
+
+      document.getElementById("output").innerHTML = outputText;
+      MathJax.typeset();
     }
 
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('change', updateProblem);
+    });
 
-    if (variableBounds !== "none") {
-      if (hasInequalities || hasEqualities) {
-        outputText += "<tr><td></td>";
-      }
-      if (variableBounds === "lower") outputText += "<td>x â‰¥ l</td>";
-      if (variableBounds === "upper") outputText += "<td>x â‰¤ u</td>";
-      if (variableBounds === "both") outputText += "<td>l â‰¤ x â‰¤ u</td>";
-      outputText += "</tr>";
-    }
-    outputText += "</table>";
-
-    // Interior-point derivation steps
-    outputText += "<h3>Interior-Point Method Derivation</h3>";
-    outputText += "<p>1. Optimization problem with slacks</p>";
-    outputText += "<p>2. Optimization problem with barriers</p>";
-    outputText += "<p>3. Lagrangian formulation</p>";
-    outputText += "<p>4. First-order optimality conditions</p>";
-    outputText += "<p>5. Newton system</p>";
-    outputText += "<p>6. Reduction of rows for log-barriers</p>";
-    outputText += "<p>7. Reduction of rows for Lagrange multipliers</p>";
-    outputText += "<p>8. Augmented system and LU/LDLT solution methods</p>";
-    outputText += "<p>9. Reduction to normal equations if possible</p>";
-
-    // Display output
-    document.getElementById("output").innerHTML = outputText;
-  }
-
-  // Attach event listeners to all inputs
-  document.querySelectorAll('input').forEach(input => {
-    input.addEventListener('change', updateProblem);
-  });
-
-  // Initial run to generate default output
-  updateProblem();
-</script>
+    updateProblem();
+  </script>
 
 </body>
+
 </html>
