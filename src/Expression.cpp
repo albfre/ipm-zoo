@@ -25,7 +25,7 @@ bool operator==(const Expr& left, const Expr& right) {
   return left.toString() == right.toString();
 }
 
-std::set<Expr> intersectMultiple(const std::vector<std::set<Expr>>& sets) {
+std::set<Expr> intersectMultiple_(const std::vector<std::set<Expr>>& sets) {
   if (sets.empty()) return {};
 
   auto result = sets.front();
@@ -125,7 +125,7 @@ std::string Expr::toString() const {
     case ExprType::Variable:
       return name_;
     case ExprType::Negate:
-      return "n-" + getSingleChild_().toString();
+      return "-" + getSingleChild_().toString();
     case ExprType::Invert:
       return getSingleChild_().toString() + "^{-1}";
     case ExprType::Log:
@@ -137,7 +137,7 @@ std::string Expr::toString() const {
       for (const auto& t : terms_ | std::views::drop(1)) {
         const auto negate = t.type_ == ExprType::Negate;
         if (negate) {
-          ss << " n- " << t.getSingleChild_().toString();
+          ss << " - " << t.getSingleChild_().toString();
         } else {
           ss << " + " << t.toString();
         }
@@ -242,8 +242,7 @@ Expr Expr::simplify_(const bool distribute) const {
             [](const auto& t) { return t.type_ == ExprType::Negate; });
         if (count > child.terms_.size() / 2) {
           auto terms = child.terms_;
-          for (size_t i = 0; i < terms.size(); ++i) {
-            auto& t = terms[i];
+          for (auto& t : terms) {
             if (t.type_ == ExprType::Negate) {
               t = t.getSingleChild_();
             } else {
@@ -404,17 +403,10 @@ Expr Expr::simplify_(const bool distribute) const {
       std::erase_if(terms, [](const auto& t) { return t == unity; });
 
       // x * (-1) * y = -x * y
-      if (std::ranges::any_of(terms, [](const auto& t) {
-            return t.type_ == ExprType::Negate;
-          })) {
-        auto newTerms = terms;
-        for (size_t i = 0; i < terms.size(); ++i) {
-          const auto& t = terms[i];
-          if (t.type_ == ExprType::Negate) {
-            newTerms[i] = t.getSingleChild_();
-            return ExprFactory::negate(
-                ExprFactory::product(std::move(newTerms)));
-          }
+      for (auto& t : terms) {
+        if (t.type_ == ExprType::Negate) {
+          t = t.getSingleChild_();
+          return ExprFactory::negate(ExprFactory::product(std::move(terms)));
         }
       }
 
@@ -496,7 +488,7 @@ std::set<Expr> Expr::getUniqueFactors_() const {
       std::ranges::transform(terms_, factorsPerTerm.begin(), [](const auto& t) {
         return t.getUniqueFactors_();
       });
-      const auto factors = intersectMultiple(factorsPerTerm);
+      const auto factors = intersectMultiple_(factorsPerTerm);
       return factors.empty() ? std::set<Expr>{*this} : factors;
     }
     case ExprType::Product: {
