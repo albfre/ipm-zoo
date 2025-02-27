@@ -129,7 +129,7 @@ std::string Expr::toString() const {
     case ExprType::Invert:
       return getSingleChild_().toString() + "^{-1}";
     case ExprType::Log:
-      return "log(" + getSingleChild_().toString() + ")";
+      return "\\log(" + getSingleChild_().toString() + ")";
     case ExprType::Sum: {
       std::stringstream ss;
       ss << "(";
@@ -429,7 +429,7 @@ Expr Expr::simplify_(const bool distribute) const {
       }
 
       // Commutative transformation
-      std::ranges::sort(terms);
+      // std::ranges::sort(terms); // Removed to facilitate matrix algebra
 
       const auto simplified = ExprFactory::product(terms);
 

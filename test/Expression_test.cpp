@@ -56,7 +56,7 @@ TEST_F(ExpressionTest, BasicArithmetic) {
 
   // Test logarithm
   auto log = ExprFactory::log(x);
-  EXPECT_EQ(log.toString(), "log(x)");
+  EXPECT_EQ(log.toString(), "\\log(x)");
 }
 
 // Test expression comparison
