@@ -181,6 +181,14 @@ std::set<Expr> Expr::getVariables() const {
   return variables;
 }
 
+bool Expr::containsSubexpression(const Expr& expr) const {
+  if (*this == expr) {
+    return true;
+  }
+  return std::ranges::any_of(
+      terms_, [&expr](const auto& t) { return t.containsSubexpression(expr); });
+}
+
 Expr Expr::simplify_(const bool distribute) const {
   // Canceling transformation lambda
   const auto eraseCanceling = [](const ExprType type, auto& terms,
@@ -448,7 +456,7 @@ Expr Expr::simplify_(const bool distribute) const {
                   return term;
                 });
             auto distributedExpr =
-                ExprFactory::sum(std::move(sumTerms)).simplify_(false);
+                ExprFactory::sum(std::move(sumTerms)).simplify(false);
             if (distributedExpr.complexity_() < simplified.complexity_()) {
               return distributedExpr;
             }

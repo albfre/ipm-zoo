@@ -46,7 +46,7 @@ void initialTest() {
             << "\n";
 }
 
-Expression::Expr getLagrangian() {
+Expression::Expr getLagrangian(std::vector<Expression::Expr>& variables) {
   using namespace Expression::ExprFactory;
   auto x = variable("x");
   auto H = namedConstant("H");
@@ -68,6 +68,8 @@ Expression::Expr getLagrangian() {
   auto u_A = namedConstant("u_A");
   auto l_x = namedConstant("l_x");
   auto u_x = namedConstant("u_x");
+  variables = {x, lambda_A, lambda_g, lambda_t, lambda_y, lambda_z,
+               s, g,        t,        y,        z};
 
   auto xHx = product({number(0.5), x, H, x});
   auto cx = product({c, x});
@@ -91,22 +93,43 @@ Expression::Expr getLagrangian() {
 }
 
 void runLagrangianTest() {
-  auto lagrangian = getLagrangian();
-  std::cout << "\nLagrangian: " << lagrangian.toString() << "\n";
-  // std::cout << "Simp Lagrangian: " << lagrangian.simplify().toString() <<
-  // "\n";
-  auto variables = lagrangian.getVariables();
+  using namespace Expression;
 
-  std::cout << "simplified:\n";
+  std::vector<Expr> variables;
+  auto lagrangian = getLagrangian(variables);
+  std::cout << "\nLagrangian: " << lagrangian.toString() << "\n";
+
+  auto lhs = std::vector<std::vector<Expr>>();
+  auto rhs = std::vector<Expr>();
+
   for (auto& v : variables) {
-    if (v.toString() == "g" || true) {
-      auto diff = lagrangian.differentiate(v);
-      std::cout << "diff " << v.toString() << ": " << diff.simplify().toString()
-                << std::endl;
-      auto k = Expression::ExprFactory::product({v, diff});
-      std::cout << "diff * v (" << v.toString()
-                << "): " << k.simplify().toString() << std::endl;
+    const auto invV = ExprFactory::invert(v);
+    lhs.emplace_back();
+    auto& row = lhs.back();
+    auto diff = lagrangian.differentiate(v).simplify();
+    std::cout << v.toString() << ": " << diff.toString() << std::endl;
+
+    if (diff.containsSubexpression(invV)) {
+      std::cout << "contains invV" << std::endl;
+      diff = ExprFactory::product({v, diff}).simplify();
+      std::cout << "diff * v: " << diff.toString() << std::endl;
     }
+    rhs.push_back(ExprFactory::negate(diff).simplify());
+    for (auto& v2 : variables) {
+      row.push_back(diff.differentiate(v2).simplify());
+    }
+  }
+
+  std::cout << "Lhs matrix:" << std::endl;
+  for (const auto& row : lhs) {
+    for (const auto& c : row) {
+      std::cout << c.toString() << "  &  ";
+    }
+    std::cout << std::endl;
+  }
+  std::cout << "Rhs: " << std::endl;
+  for (const auto& c : rhs) {
+    std::cout << c.toString() << std::endl;
   }
 }
 

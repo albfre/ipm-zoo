@@ -9,11 +9,11 @@ enum class ExprType {
   Number,
   NamedConstant,
   Variable,
-  Negate,
   Invert,
   Log,
   Sum,
-  Product
+  Product,
+  Negate,
 };
 
 class Expr {
@@ -26,6 +26,7 @@ class Expr {
   std::string toString() const;
   ExprType getType() const;
   std::set<Expr> getVariables() const;
+  bool containsSubexpression(const Expr& expr) const;
 
  private:
   Expr simplify_(bool distribute = true) const;
