@@ -45,4 +45,11 @@ struct Settings {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     VariableNames names, Settings settings);
 
+std::pair<std::vector<std::vector<Expression::Expr>>,
+          std::vector<Expression::Expr>>
+getNewtonSystem(const Expression::Expr& lagrangian,
+                const std::vector<Expression::Expr>& variables);
+
+std::vector<Expression::Expr> getShorthandRhs(
+    const std::vector<Expression::Expr>& variables);
 }  // namespace Lagrangian

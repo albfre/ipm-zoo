@@ -75,4 +75,38 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   return {lagrangian, variables};
 }
 
+std::pair<std::vector<std::vector<Expression::Expr>>,
+          std::vector<Expression::Expr>>
+getNewtonSystem(const Expression::Expr& lagrangian,
+                const std::vector<Expression::Expr>& variables) {
+  using namespace Expression;
+  auto lhs = std::vector<std::vector<Expr>>();
+  auto rhs = std::vector<Expr>();
+  for (auto& v : variables) {
+    const auto invV = ExprFactory::invert(v);
+    lhs.emplace_back();
+    auto& row = lhs.back();
+    auto diff = lagrangian.differentiate(v).simplify();
+
+    if (diff.containsSubexpression(invV)) {
+      diff = ExprFactory::product({v, diff}).simplify();
+    }
+    rhs.push_back(ExprFactory::negate(diff));
+    for (auto& v2 : variables) {
+      row.push_back(diff.differentiate(v2).simplify());
+    }
+  }
+  return {lhs, rhs};
+}
+
+std::vector<Expression::Expr> getShorthandRhs(
+    const std::vector<Expression::Expr>& variables) {
+  std::vector<Expression::Expr> rhs;
+  for (const auto& var : variables) {
+    rhs.push_back(Expression::ExprFactory::negate(
+        Expression::ExprFactory::namedConstant("r_{" + var.toString() + "}")));
+  }
+  return rhs;
+}
+
 }  // namespace Lagrangian

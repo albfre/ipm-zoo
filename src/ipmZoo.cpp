@@ -72,42 +72,14 @@ void runLagrangianTest() {
       Lagrangian::VariableNames(), Lagrangian::Settings());
   std::cout << "\nLagrangian: " << lagrangian.toString() << "\n";
 
-  auto lhs = std::vector<std::vector<Expr>>();
-  auto rhs = std::vector<Expr>();
-
-  for (auto& v : variables) {
-    const auto invV = ExprFactory::invert(v);
-    lhs.emplace_back();
-    auto& row = lhs.back();
-    auto diff = lagrangian.differentiate(v).simplify();
-    std::cout << v.toString() << ": " << diff.toString() << std::endl;
-
-    if (diff.containsSubexpression(invV)) {
-      std::cout << "contains invV" << std::endl;
-      diff = ExprFactory::product({v, diff}).simplify();
-      std::cout << "diff * v: " << diff.toString() << std::endl;
-    }
-    rhs.push_back(ExprFactory::negate(diff).simplify());
-    for (auto& v2 : variables) {
-      row.push_back(diff.differentiate(v2).simplify());
-    }
-  }
+  auto [lhs, rhs] = Lagrangian::getNewtonSystem(lagrangian, variables);
 
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
 
   std::cout << "Rhs: " << std::endl;
   printRhs(rhs);
-  const auto createRhs = [](const std::vector<Expr>& variables) {
-    std::vector<Expr> rhs;
-    for (const auto& var : variables) {
-      rhs.push_back(ExprFactory::negate(
-          ExprFactory::namedConstant("r_{" + var.toString() + "}")));
-    }
-    return rhs;
-  };
-
-  rhs = createRhs(variables);
+  rhs = Lagrangian::getShorthandRhs(variables);
 
   std::cout << "\n\n";
 
