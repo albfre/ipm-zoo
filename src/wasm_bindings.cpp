@@ -29,11 +29,15 @@ std::string getLagrangian(const Optimization::Settings& settings) {
       Optimization::getLagrangian(variableNames, settings);
 
   const auto condensed = true;
-  auto str = lagrangian.toString(condensed);
+  auto str = "& " + lagrangian.toString(condensed);
   str = replaceAll_(str, "0.5", "\\frac{1}{2}");
-  auto it = str.find("- \\mu");
+  auto it = str.find("+ \\lambda");
   if (it != std::string::npos) {
-    str.insert(it, "\\\\");
+    str.insert(it, "\\\\\n & ");
+  }
+  it = str.find("- \\mu");
+  if (it != std::string::npos) {
+    str.insert(it, "\\\\\n & ");
   }
   return str;
 }
@@ -57,6 +61,7 @@ struct NewtonSystem {
   std::string lhs;
   std::string rhs;
   std::string rhsShorthand;
+  std::string variables;
 };
 
 NewtonSystem getNewtonSystem(const Optimization::Settings& settings) {
@@ -67,8 +72,8 @@ NewtonSystem getNewtonSystem(const Optimization::Settings& settings) {
   std::string lhsStr = "";
   const auto condensed = true;
   for (const auto& row : lhs) {
-    for (const auto& col : row) {
-      lhsStr += col.toString(condensed) + " & ";
+    for (size_t i = 0; i < row.size(); ++i) {
+      lhsStr += row[i].toString(condensed) + (i + 1 == row.size() ? "" : " & ");
     }
     lhsStr += "\\\\";
   }
@@ -84,7 +89,13 @@ NewtonSystem getNewtonSystem(const Optimization::Settings& settings) {
     rhsShorthandStr += row.toString(condensed) + "\\\\";
   }
 
-  return {lhsStr, rhsStr, rhsShorthandStr};
+  std::string variablesStr = "";
+  for (size_t i = 0; i < variables.size(); ++i) {
+    variablesStr += "\\Delta " + variables[i].toString(condensed) +
+                    (i + 1 == variables.size() ? "" : " \\\\ ");
+  }
+
+  return {lhsStr, rhsStr, rhsShorthandStr, variablesStr};
 }
 
 // Alternatively, use embind for more direct JS-to-C++ bindings
@@ -135,6 +146,7 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
   value_object<NewtonSystem>("NewtonSystem")
       .field("lhs", &NewtonSystem::lhs)
       .field("rhs", &NewtonSystem::rhs)
-      .field("rhsShorthand", &NewtonSystem::rhsShorthand);
+      .field("rhsShorthand", &NewtonSystem::rhsShorthand)
+      .field("variables", &NewtonSystem::variables);
   function("getNewtonSystem", &getNewtonSystem);
 }

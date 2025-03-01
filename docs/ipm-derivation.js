@@ -173,10 +173,16 @@ function updateProblem() {
 
       const newtonSystem = wasmModule.getNewtonSystem(settings);
       outputText += "<p><strong>Newton system:</strong></p>";
-      outputText += "\\[ \\begin{align*} \\nabla^2 L p = -\\nabla L \\end{align*} \\]";
-      outputText += "\\[ \\nabla^2 L = \\left( \\begin{array}{ccccccccccc} " + newtonSystem.lhs + "\\end{array} \\right) \\]";
+      outputText += "\\[ \\begin{align*} \\nabla^2 L p = -\\nabla L \\end{align*}, \\]";
+      outputText += "where"
+      //outputText += "\\[ \\nabla^2 L = \\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.lhs + "\\end{array} \\right) \\]";
+      //outputText += "\\[ -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
+      //outputText += "= \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
+      //outputText += "\\[ p = \\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.variables + "\\end{array} \\right)^T \\]";
+      outputText += "\\[ \\nabla^2 L p = \\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.lhs + "\\end{array} \\right) "
+      outputText += "\\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.variables + "\\end{array} \\right) \\]";
       outputText += "\\[ -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
-      outputText += "= \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
+      outputText += "=: \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
     } catch (error) {
       console.error("Error calling Lagrangian function:", error);
       outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
