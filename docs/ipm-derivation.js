@@ -182,13 +182,15 @@ function updateProblem() {
   outputText += "<h3>TODO list</h3>";
   outputText += "<p><s>1. Optimization problem with slacks</s></p>";
   outputText += "<p><s>2. Optimization problem with barriers</s></p>";
-  outputText += "<p>3. Lagrangian function</p>";
+  outputText += "<p><s>3. Lagrangian function</s></p>";
   outputText += "<p>4. First-order optimality conditions</p>";
   outputText += "<p>5. Newton system</p>";
   outputText += "<p>6. Reduction of rows for log-barriers</p>";
   outputText += "<p>7. Reduction of rows for Lagrange multipliers</p>";
   outputText += "<p>8. Augmented system and LU/LDLT solution methods</p>";
   outputText += "<p>9. Reduction to normal equations if possible</p>";
+  outputText += "<p>10. Support for equality conditions</p>";
+  outputText += "<p>11. Support for direct slacks for inequalities</p>";
 
   document.getElementById("output").innerHTML = outputText;
   MathJax.typesetPromise().catch((err) => {
