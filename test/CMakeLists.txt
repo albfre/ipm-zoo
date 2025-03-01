@@ -12,17 +12,21 @@ if(NOT GTEST_FOUND)
     FetchContent_MakeAvailable(googletest)
 endif()
 
-# Add test executable
-add_executable(Expression_test
-    Expression_test.cpp
+# Define test sources
+set(TEST_SOURCES 
+    Expression_test.cpp 
+    Optimization_test.cpp
 )
 
-# Link test executable with Google Test and Expression library
-target_link_libraries(Expression_test PRIVATE 
-    SymbolicOptimization 
-    GTest::gtest_main
-)
+# Create test executables in a loop
+foreach(TEST_SOURCE ${TEST_SOURCES})
+    get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
+    add_executable(${TEST_NAME} ${TEST_SOURCE})
 
-# Register tests
-include(GoogleTest)
-gtest_discover_tests(Expression_test)
+    target_link_libraries(${TEST_NAME} PRIVATE 
+        SymbolicOptimization 
+        GTest::gtest_main
+    )
+
+    gtest_discover_tests(${TEST_NAME})
+endforeach()

@@ -26,53 +26,79 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   auto l_x = namedConstant(names.l_x);
   auto u_x = namedConstant(names.u_x);
 
-  auto xQx = product({number(0.5), x, Q, x});
+  auto xQx = product({number(0.5), transpose(x), Q, x});
   auto cx = product({c, x});
   auto Ax = product({A_ineq, x});
 
   auto terms = std::vector{xQx, cx};
   auto variables = std::vector{x};
-  auto suffixVariables = std::vector<Expression::Expr>();
+  const auto addLowerInequalities = settings.inequalities == Bounds::Lower ||
+                                    settings.inequalities == Bounds::Both;
+  const auto addUpperInequalities = settings.inequalities == Bounds::Upper ||
+                                    settings.inequalities == Bounds::Both;
+  const auto addLowerVariableBounds =
+      settings.variableBounds == Bounds::Lower ||
+      settings.variableBounds == Bounds::Both;
+  const auto addUpperVariableBounds =
+      settings.variableBounds == Bounds::Upper ||
+      settings.variableBounds == Bounds::Both;
 
   if (settings.inequalities != Bounds::None) {
     variables.push_back(lambda_A);
     variables.push_back(s_A);
-    terms.push_back(product({lambda_A, sum({Ax, negate(s_A)})}));
+    terms.push_back(product({transpose(lambda_A), sum({Ax, negate(s_A)})}));
   }
-  if (settings.inequalities == Bounds::Lower ||
-      settings.inequalities == Bounds::Both) {
+  if (addLowerInequalities) {
     variables.push_back(lambda_sAl);
-    suffixVariables.push_back(s_Al);
-    terms.push_back(
-        negate(product({lambda_sAl, sum({s_A, negate(s_Al), negate(l_A)})})));
-    terms.push_back(negate(product({mu, e, log({s_Al})})));
+    terms.push_back(negate(product(
+        {transpose(lambda_sAl), sum({s_A, negate(s_Al), negate(l_A)})})));
   }
-  if (settings.inequalities == Bounds::Upper ||
-      settings.inequalities == Bounds::Both) {
+  if (addUpperInequalities) {
     variables.push_back(lambda_sAu);
-    suffixVariables.push_back(s_Au);
-    terms.push_back(product({lambda_sAu, sum({s_A, s_Au, negate(u_A)})}));
-    terms.push_back(negate(product({mu, e, log({s_Au})})));
-  }
-  if (settings.variableBounds == Bounds::Lower ||
-      settings.variableBounds == Bounds::Both) {
-    variables.push_back(lambda_sxl);
-    suffixVariables.push_back(s_xl);
     terms.push_back(
-        negate(product({lambda_sxl, sum({x, negate(s_xl), negate(l_x)})})));
-    terms.push_back(negate(product({mu, e, log({s_xl})})));
+        product({transpose(lambda_sAu), sum({s_A, s_Au, negate(u_A)})}));
   }
-  if (settings.variableBounds == Bounds::Upper ||
-      settings.variableBounds == Bounds::Both) {
+  if (addLowerVariableBounds) {
+    variables.push_back(lambda_sxl);
+    terms.push_back(negate(
+        product({transpose(lambda_sxl), sum({x, negate(s_xl), negate(l_x)})})));
+  }
+  if (addUpperVariableBounds) {
     variables.push_back(lambda_sxu);
-    suffixVariables.push_back(s_xu);
-    terms.push_back(product({lambda_sxu, sum({x, s_xu, negate(u_x)})}));
-    terms.push_back(negate(product({mu, e, log({s_xu})})));
+    terms.push_back(
+        product({transpose(lambda_sxu), sum({x, s_xu, negate(u_x)})}));
   }
-  variables.insert(variables.end(), suffixVariables.begin(),
-                   suffixVariables.end());
+
+  // Add log barriers
+  if (addLowerInequalities) {
+    variables.push_back(s_Al);
+    terms.push_back(negate(product({mu, transpose(e), log({s_Al})})));
+  }
+  if (addUpperInequalities) {
+    variables.push_back(s_Au);
+    terms.push_back(negate(product({mu, transpose(e), log({s_Au})})));
+  }
+  if (addLowerVariableBounds) {
+    variables.push_back(s_xl);
+    terms.push_back(negate(product({mu, transpose(e), log({s_xl})})));
+  }
+  if (addUpperVariableBounds) {
+    variables.push_back(s_xu);
+    terms.push_back(negate(product({mu, transpose(e), log({s_xu})})));
+  }
   auto lagrangian = sum(terms);
   return {lagrangian, variables};
+}
+
+std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
+    const Expression::Expr& lagrangian,
+    const std::vector<Expression::Expr>& variables) {
+  std::vector<Expression::Expr> firstOrder;
+  firstOrder.reserve(variables.size());
+  for (const auto& v : variables) {
+    firstOrder.push_back(lagrangian.differentiate(v).simplify());
+  }
+  return firstOrder;
 }
 
 std::pair<std::vector<std::vector<Expression::Expr>>,

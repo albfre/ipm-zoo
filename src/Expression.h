@@ -9,6 +9,7 @@ enum class ExprType {
   Number,
   NamedConstant,
   Variable,
+  Transpose,
   Invert,
   Log,
   Sum,
@@ -48,6 +49,7 @@ namespace ExprFactory {
 Expr number(const double value);
 Expr namedConstant(const std::string& name);
 Expr variable(const std::string& name);
+Expr transpose(Expr expr);
 Expr negate(Expr expr);
 Expr invert(Expr expr);
 Expr log(Expr expr);

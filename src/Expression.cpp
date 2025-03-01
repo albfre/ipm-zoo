@@ -54,11 +54,15 @@ std::vector<Expr> transform(const std::vector<Expr>& terms,
 
 Expr::Expr(ExprType type, std::vector<Expr> terms)
     : type_(type), terms_(std::move(terms)) {
-  if (std::set{ExprType::Negate, ExprType::Invert, ExprType::Log,
-               ExprType::Product, ExprType::Sum}
+  assert((std::set{ExprType::Transpose, ExprType::Negate, ExprType::Invert,
+                   ExprType::Log, ExprType::Product, ExprType::Sum}
+              .contains(type_)));
+  if (std::set{ExprType::Transpose, ExprType::Negate, ExprType::Invert,
+               ExprType::Log}
           .contains(type_)) {
-    assert(!terms_.empty());
+    assert(terms_.size() == 1);
   }
+  assert(!terms_.empty());
 }
 
 Expr::Expr(ExprType type, const std::string& name) : type_(type), name_(name) {
@@ -75,6 +79,8 @@ Expr Expr::differentiate(const Expr& var) const {
       return zero;
     case ExprType::Variable:
       return *this == var ? unity : zero;
+    case ExprType::Transpose:
+      return getSingleChild_().differentiate(var);
     case ExprType::Negate:
       return ExprFactory::negate(getSingleChild_().differentiate(var));
     case ExprType::Invert:
@@ -124,6 +130,8 @@ std::string Expr::toString(const bool condensed) const {
     case ExprType::NamedConstant:
     case ExprType::Variable:
       return name_;
+    case ExprType::Transpose:
+      return (getSingleChild_().toString(condensed)) + "^T";
     case ExprType::Negate:
       return "-" + getSingleChild_().toString(condensed);
     case ExprType::Invert:
@@ -179,6 +187,8 @@ std::string Expr::toExpressionString() const {
       return "namedConstant(" + name_ + ")";
     case ExprType::Variable:
       return "variable(" + name_ + ")";
+    case ExprType::Transpose:
+      return "transpose(" + getSingleChild_().toExpressionString() + ")";
     case ExprType::Negate:
       return "negate(" + getSingleChild_().toExpressionString() + ")";
     case ExprType::Invert:
@@ -273,6 +283,28 @@ Expr Expr::simplify_(const bool distribute) const {
     case ExprType::NamedConstant:
     case ExprType::Variable:
       return *this;
+    case ExprType::Transpose: {
+      const auto& child = getSingleChild_();
+      if (child.type_ == ExprType::Transpose) {
+        // transpose(transpose(x)) = x;
+        return child.getSingleChild_().simplify_();
+      } else if (child == zero) {
+        // 0^T = 0
+        return zero;
+      } else if (child.type_ == ExprType::Negate) {
+        // (-x)^T  = -x^T
+        return ExprFactory::negate(
+            ExprFactory::transpose(child.getSingleChild_().simplify_()));
+      } else if (child.type_ == ExprType::Product) {
+        // (xyz)^T = z^T y^T x^T
+        auto terms = transform(child.terms_, [](const auto& t) {
+          return ExprFactory::transpose(t.simplify_());
+        });
+        std::ranges::reverse(terms);
+        return ExprFactory::product(std::move(terms));
+      }
+      return ExprFactory::transpose(child.simplify_());
+    }
     case ExprType::Negate: {
       const auto& child = getSingleChild_();
       if (child.type_ == ExprType::Negate) {
@@ -535,6 +567,7 @@ std::set<Expr> Expr::getUniqueFactors_() const {
     case ExprType::Number:
     case ExprType::NamedConstant:
     case ExprType::Variable:
+    case ExprType::Transpose:
     case ExprType::Invert:
     case ExprType::Log:
       return std::set<Expr>{*this};
@@ -569,6 +602,7 @@ Expr Expr::factorOut(const Expr& factor) const {
     case ExprType::Number:
     case ExprType::NamedConstant:
     case ExprType::Variable:
+    case ExprType::Transpose:
     case ExprType::Invert:
     case ExprType::Log:
       assert(factor == *this);
@@ -622,6 +656,7 @@ double Expr::complexity_() const {
     case ExprType::NamedConstant:
     case ExprType::Variable:
       return 1.0;
+    case ExprType::Transpose:
     case ExprType::Negate:
     case ExprType::Invert:
       return 0.5 + getSingleChild_().complexity_();
@@ -644,6 +679,9 @@ Expr ExprFactory::namedConstant(const std::string& name) {
 }
 Expr ExprFactory::variable(const std::string& name) {
   return Expr(ExprType::Variable, name);
+}
+Expr ExprFactory::transpose(Expr expr) {
+  return Expr(ExprType::Transpose, {std::move(expr)});
 }
 Expr ExprFactory::negate(Expr expr) {
   return Expr(ExprType::Negate, {std::move(expr)});

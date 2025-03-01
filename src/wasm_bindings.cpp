@@ -23,15 +23,33 @@ std::string replaceAll_(std::string str, const std::string& from,
 }
 }  // namespace
 
-std::string getLagrangian() {
+std::string getLagrangian(const Optimization::Settings& settings) {
   const auto variableNames = Optimization::VariableNames();
-  const auto settings = Optimization::Settings();
   const auto [lagrangian, variables] =
       Optimization::getLagrangian(variableNames, settings);
 
   const auto condensed = true;
   auto str = lagrangian.toString(condensed);
   str = replaceAll_(str, "0.5", "\\frac{1}{2}");
+  auto it = str.find("- \\mu");
+  if (it != std::string::npos) {
+    str.insert(it, "\\\\");
+  }
+  return str;
+}
+
+std::string getFirstOrderOptimalityConditions(
+    const Optimization::Settings& settings) {
+  const auto variableNames = Optimization::VariableNames();
+  const auto [lagrangian, variables] =
+      Optimization::getLagrangian(variableNames, settings);
+  const auto firstOrder =
+      Optimization::getFirstOrderOptimalityConditions(lagrangian, variables);
+  const auto condensed = true;
+  std::string str = "";
+  for (const auto& c : firstOrder) {
+    str += c.toString(condensed) + " &= 0 \\\\";
+  }
   return str;
 }
 
@@ -77,8 +95,7 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .property("equalityHandling", &Optimization::Settings::equalityHandling);
 
   // Register free functions
-  // function("getLagrangian", &Optimization::getLagrangian);
-  // function("getNewtonSystem", &Optimization::getNewtonSystem);
-  // function("getShorthandRhs", &Optimization::getShorthandRhs);
   function("getLagrangian", &getLagrangian);
+  function("getFirstOrderOptimalityConditions",
+           &getFirstOrderOptimalityConditions);
 }

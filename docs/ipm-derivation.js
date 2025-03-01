@@ -151,20 +151,35 @@ function updateProblem() {
     outputText += getSlackProblem(inequalities, equalities, variableBounds, true);
   }
 
+
   if (wasmModule) {
-  try {
-      const lagrangian = wasmModule.getLagrangian();
+    const boundsMap = {
+      both: wasmModule.Bounds.Both,
+      lower: wasmModule.Bounds.Lower,
+      upper: wasmModule.Bounds.Upper,
+      none: wasmModule.Bounds.None,
+    };
+    try {
+      const settings = new wasmModule.Settings();
+      settings.inequalities = boundsMap[inequalities] ?? wasmModule.Bounds.None;
+      settings.variableBounds = boundsMap[variableBounds] ?? wasmModule.Bounds.None;
+      const lagrangian = wasmModule.getLagrangian(settings);
       outputText += "<p><strong>Lagrangian function:</strong></p>";
-      outputText += "\\[ " + lagrangian + " \\]";
-  } catch (error) {
-      console.error("Error calling Lagrangian function:", error);
-      outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
-  }
+      outputText += "\\[ \\begin{align*}" + lagrangian + "\\end{align*} \\]";
+
+      const firstOrder = wasmModule.getFirstOrderOptimalityConditions(settings);
+      outputText += "<p><strong>First-order optimality conditions:</strong></p>";
+      outputText += "\\[ \\begin{align*}" + firstOrder + "\\end{align*} \\]";
+
+    } catch (error) {
+        console.error("Error calling Lagrangian function:", error);
+        outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
+    }
   } else {
-  outputText += "<p>WASM module not yet initialized. Lagrangian will appear here when ready.</p>";
+    outputText += "<p>WASM module not yet initialized. Lagrangian will appear here when ready.</p>";
   }
 
-  outputText += "<h3>Interior-Point Method Derivation</h3>";
+  outputText += "<h3>TODO list</h3>";
   outputText += "<p><s>1. Optimization problem with slacks</s></p>";
   outputText += "<p><s>2. Optimization problem with barriers</s></p>";
   outputText += "<p>3. Lagrangian function</p>";
