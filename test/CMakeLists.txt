@@ -19,7 +19,7 @@ add_executable(Expression_test
 
 # Link test executable with Google Test and Expression library
 target_link_libraries(Expression_test PRIVATE 
-    Expression
+    SymbolicOptimization 
     GTest::gtest_main
 )
 

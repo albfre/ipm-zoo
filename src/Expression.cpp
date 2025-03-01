@@ -114,7 +114,7 @@ Expr Expr::simplify(const bool distribute) const {
   return simplified;
 }
 
-std::string Expr::toString() const {
+std::string Expr::toString(const bool condensed) const {
   switch (type_) {
     case ExprType::Number: {
       std::stringstream ss;
@@ -125,39 +125,41 @@ std::string Expr::toString() const {
     case ExprType::Variable:
       return name_;
     case ExprType::Negate:
-      return "-" + getSingleChild_().toString();
+      return "-" + getSingleChild_().toString(condensed);
     case ExprType::Invert:
-      return getSingleChild_().toString() + "^{-1}";
+      return getSingleChild_().toString(condensed) + "^{-1}";
     case ExprType::Log:
-      return "\\log(" + getSingleChild_().toString() + ")";
+      return "\\log(" + getSingleChild_().toString(condensed) + ")";
     case ExprType::Sum: {
       std::stringstream ss;
-      ss << "(";
-      ss << terms_.front().toString();
+      ss << (condensed ? "" : "(");
+      ss << terms_.front().toString(condensed);
       for (const auto& t : terms_ | std::views::drop(1)) {
         const auto negate = t.type_ == ExprType::Negate;
         if (negate) {
-          ss << " - " << t.getSingleChild_().toString();
+          ss << " - " << t.getSingleChild_().toString(condensed);
         } else {
-          ss << " + " << t.toString();
+          ss << " + " << t.toString(condensed);
         }
       }
-      ss << ")";
+      ss << (condensed ? "" : ")");
       return ss.str();
     }
     case ExprType::Product: {
       std::stringstream ss;
-      ss << "(";
-      ss << terms_.front().toString();
+      ss << (condensed ? "" : "(");
+      ss << terms_.front().toString(condensed);
+      const auto symbol = condensed ? " " : " * ";
       for (const auto& t : terms_ | std::views::drop(1)) {
         const auto negate = t.type_ == ExprType::Negate;
-        if (negate) {
-          ss << " * (" << t.toString() << ")";
+        const auto sum = t.type_ == ExprType::Sum;
+        if (negate || (condensed && sum)) {
+          ss << symbol << "(" << t.toString(condensed) << ")";
         } else {
-          ss << " * " << t.toString();
+          ss << symbol << t.toString(condensed);
         }
       }
-      ss << ")";
+      ss << (condensed ? "" : ")");
       return ss.str();
     }
     default:

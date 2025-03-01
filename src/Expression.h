@@ -23,7 +23,7 @@ class Expr {
   explicit Expr(const double value);
   Expr differentiate(const Expr& var) const;
   Expr simplify(bool distribute = true) const;
-  std::string toString() const;
+  std::string toString(bool condensed = false) const;
   std::string toExpressionString() const;
   ExprType getType() const;
   std::set<Expr> getVariables() const;

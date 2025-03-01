@@ -1,7 +1,7 @@
 #pragma once
 #include "Expression.h"
 
-namespace Lagrangian {
+namespace Optimization {
 struct VariableNames {
   std::string x = "x";
   std::string A_eq = "A_eq";
@@ -52,4 +52,4 @@ getNewtonSystem(const Expression::Expr& lagrangian,
 
 std::vector<Expression::Expr> getShorthandRhs(
     const std::vector<Expression::Expr>& variables);
-}  // namespace Lagrangian
+}  // namespace Optimization

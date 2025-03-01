@@ -1,6 +1,6 @@
-#include "Lagrangian.h"
+#include "Optimization.h"
 
-namespace Lagrangian {
+namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     VariableNames names, Settings settings) {
   using namespace Expression::ExprFactory;
@@ -109,4 +109,4 @@ std::vector<Expression::Expr> getShorthandRhs(
   return rhs;
 }
 
-}  // namespace Lagrangian
+}  // namespace Optimization

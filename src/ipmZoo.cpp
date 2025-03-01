@@ -4,7 +4,7 @@
 
 #include "Expression.h"
 #include "GaussianElimination.h"
-#include "Lagrangian.h"
+#include "Optimization.h"
 
 void initialTest() {
   using namespace Expression;
@@ -68,18 +68,18 @@ void printRhs(const std::vector<Expression::Expr>& rhs) {
 void runLagrangianTest() {
   using namespace Expression;
 
-  const auto [lagrangian, variables] = Lagrangian::getLagrangian(
-      Lagrangian::VariableNames(), Lagrangian::Settings());
+  const auto [lagrangian, variables] = Optimization::getLagrangian(
+      Optimization::VariableNames(), Optimization::Settings());
   std::cout << "\nLagrangian: " << lagrangian.toString() << "\n";
 
-  auto [lhs, rhs] = Lagrangian::getNewtonSystem(lagrangian, variables);
+  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
 
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
 
   std::cout << "Rhs: " << std::endl;
   printRhs(rhs);
-  rhs = Lagrangian::getShorthandRhs(variables);
+  rhs = Optimization::getShorthandRhs(variables);
 
   std::cout << "\n\n";
 
