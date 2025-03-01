@@ -165,12 +165,18 @@ function updateProblem() {
       settings.variableBounds = boundsMap[variableBounds] ?? wasmModule.Bounds.None;
       const lagrangian = wasmModule.getLagrangian(settings);
       outputText += "<p><strong>Lagrangian function:</strong></p>";
-      outputText += "\\[ \\begin{align*}" + lagrangian + "\\end{align*} \\]";
+      outputText += "\\[ \\begin{align*} L =" + lagrangian + "\\end{align*} \\]";
 
       const firstOrder = wasmModule.getFirstOrderOptimalityConditions(settings);
       outputText += "<p><strong>First-order optimality conditions:</strong></p>";
       outputText += "\\[ \\begin{align*}" + firstOrder + "\\end{align*} \\]";
 
+      const newtonSystem = wasmModule.getNewtonSystem(settings);
+      outputText += "<p><strong>Newton system:</strong></p>";
+      outputText += "\\[ \\begin{align*} \\nabla^2 L p = -\\nabla L \\end{align*} \\]";
+      outputText += "\\[ \\nabla^2 L = \\left( \\begin{array}{ccccccccccc} " + newtonSystem.lhs + "\\end{array} \\right) \\]";
+      outputText += "\\[ -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
+      outputText += "= \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
     } catch (error) {
       console.error("Error calling Lagrangian function:", error);
       outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";

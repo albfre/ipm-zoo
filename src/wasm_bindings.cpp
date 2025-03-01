@@ -53,6 +53,40 @@ std::string getFirstOrderOptimalityConditions(
   return str;
 }
 
+struct NewtonSystem {
+  std::string lhs;
+  std::string rhs;
+  std::string rhsShorthand;
+};
+
+NewtonSystem getNewtonSystem(const Optimization::Settings& settings) {
+  const auto variableNames = Optimization::VariableNames();
+  const auto [lagrangian, variables] =
+      Optimization::getLagrangian(variableNames, settings);
+  const auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+  std::string lhsStr = "";
+  const auto condensed = true;
+  for (const auto& row : lhs) {
+    for (const auto& col : row) {
+      lhsStr += col.toString(condensed) + " & ";
+    }
+    lhsStr += "\\\\";
+  }
+
+  std::string rhsStr = "";
+  for (const auto& row : rhs) {
+    rhsStr += row.toString(condensed) + "\\\\";
+  }
+
+  const auto rhsShorthand = Optimization::getShorthandRhs(variables);
+  std::string rhsShorthandStr = "";
+  for (const auto& row : rhsShorthand) {
+    rhsShorthandStr += row.toString(condensed) + "\\\\";
+  }
+
+  return {lhsStr, rhsStr, rhsShorthandStr};
+}
+
 // Alternatively, use embind for more direct JS-to-C++ bindings
 EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
   class_<Optimization::VariableNames>("VariableNames")
@@ -98,4 +132,9 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
   function("getLagrangian", &getLagrangian);
   function("getFirstOrderOptimalityConditions",
            &getFirstOrderOptimalityConditions);
+  value_object<NewtonSystem>("NewtonSystem")
+      .field("lhs", &NewtonSystem::lhs)
+      .field("rhs", &NewtonSystem::rhs)
+      .field("rhsShorthand", &NewtonSystem::rhsShorthand);
+  function("getNewtonSystem", &getNewtonSystem);
 }

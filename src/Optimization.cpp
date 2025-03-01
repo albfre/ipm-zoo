@@ -96,7 +96,6 @@ std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
     const Expression::Expr& lagrangian,
     const std::vector<Expression::Expr>& variables) {
   using namespace Expression;
-  std::cout << "### first order " << std::endl;
   std::vector<Expression::Expr> firstOrder;
   firstOrder.reserve(variables.size());
   for (const auto& v : variables) {
@@ -117,18 +116,13 @@ getNewtonSystem(const Expression::Expr& lagrangian,
   using namespace Expression;
   auto lhs = std::vector<std::vector<Expr>>();
   auto rhs = std::vector<Expr>();
-  for (auto& v : variables) {
-    const auto invV = ExprFactory::invert(v);
+  auto firstOrder = getFirstOrderOptimalityConditions(lagrangian, variables);
+  for (auto& c : firstOrder) {
     lhs.emplace_back();
     auto& row = lhs.back();
-    auto diff = lagrangian.differentiate(v).simplify();
-
-    if (diff.containsSubexpression(invV)) {
-      diff = ExprFactory::product({v, diff}).simplify();
-    }
-    rhs.push_back(ExprFactory::negate(diff));
-    for (auto& v2 : variables) {
-      row.push_back(diff.differentiate(v2).simplify());
+    rhs.push_back(ExprFactory::negate(c));
+    for (auto& v : variables) {
+      row.push_back(c.differentiate(v).simplify());
     }
   }
   return {lhs, rhs};
