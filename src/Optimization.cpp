@@ -1,5 +1,7 @@
 #include "Optimization.h"
 
+#include <iostream>
+
 namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     VariableNames names, Settings settings) {
@@ -93,10 +95,17 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
 std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
     const Expression::Expr& lagrangian,
     const std::vector<Expression::Expr>& variables) {
+  using namespace Expression;
+  std::cout << "### first order " << std::endl;
   std::vector<Expression::Expr> firstOrder;
   firstOrder.reserve(variables.size());
   for (const auto& v : variables) {
-    firstOrder.push_back(lagrangian.differentiate(v).simplify());
+    const auto invV = ExprFactory::invert(v);
+    auto diff = lagrangian.differentiate(v).simplify();
+    if (diff.containsSubexpression(invV)) {
+      diff = ExprFactory::product({v, diff}).simplify();
+    }
+    firstOrder.push_back(diff);
   }
   return firstOrder;
 }

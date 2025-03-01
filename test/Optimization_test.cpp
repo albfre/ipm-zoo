@@ -70,6 +70,25 @@ TEST_F(OptimizationTest, GetLagrangianNoBounds) {
   EXPECT_EQ(str.find(names.s_xu), std::string::npos);
 }
 
+TEST_F(OptimizationTest, getFirstOrderOptimalityConditions) {
+  auto settings = Settings();
+  auto names = VariableNames();
+  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto firstOrder = getFirstOrderOptimalityConditions(lagrangian, variables);
+}
+
+TEST_F(OptimizationTest, test) {
+  using namespace Expression;
+  auto t = ExprFactory::transpose(ExprFactory::variable("\\lambda_t"));
+  auto m = ExprFactory::product(
+      {ExprFactory::namedConstant("\\mu"),
+       ExprFactory::transpose(ExprFactory::namedConstant("e")),
+       ExprFactory::invert(ExprFactory::variable("g"))});
+  auto s = ExprFactory::sum({t, ExprFactory::negate(m)});
+  auto v = ExprFactory::variable("g");
+  auto diff = ExprFactory::product({v, s}).simplify();
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

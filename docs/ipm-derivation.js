@@ -172,8 +172,8 @@ function updateProblem() {
       outputText += "\\[ \\begin{align*}" + firstOrder + "\\end{align*} \\]";
 
     } catch (error) {
-        console.error("Error calling Lagrangian function:", error);
-        outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
+      console.error("Error calling Lagrangian function:", error);
+      outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
     }
   } else {
     outputText += "<p>WASM module not yet initialized. Lagrangian will appear here when ready.</p>";

@@ -18,7 +18,7 @@ std::strong_ordering operator<=>(const Expr& left, const Expr& right) {
   if (left.getType() != right.getType()) {
     return left.getType() <=> right.getType();
   }
-  return left.toString() <=> right.toString();
+  return left.toExpressionString() <=> right.toExpressionString();
 }
 
 bool operator==(const Expr& left, const Expr& right) {
@@ -131,7 +131,7 @@ std::string Expr::toString(const bool condensed) const {
     case ExprType::Variable:
       return name_;
     case ExprType::Transpose:
-      return (getSingleChild_().toString(condensed)) + "^T";
+      return getSingleChild_().toString(condensed) + "^T";
     case ExprType::Negate:
       return "-" + getSingleChild_().toString(condensed);
     case ExprType::Invert:
@@ -277,7 +277,6 @@ Expr Expr::simplify_(const bool distribute) const {
     }
     terms = std::move(newTerms);
   };
-
   switch (type_) {
     case ExprType::Number:
     case ExprType::NamedConstant:
@@ -492,10 +491,15 @@ Expr Expr::simplify_(const bool distribute) const {
       std::erase_if(terms, [](const auto& t) { return t == unity; });
 
       // x * (-1) * y = -x * y
-      for (auto& t : terms) {
-        if (t.type_ == ExprType::Negate) {
-          t = t.getSingleChild_();
-          return ExprFactory::negate(ExprFactory::product(std::move(terms)));
+      if (std::ranges::any_of(terms, [](const auto& t) {
+            return t.type_ == ExprType::Negate;
+          })) {
+        auto newTerms = terms;
+        for (size_t i = 0; i < terms.size(); ++i) {
+          if (terms[i].type_ == ExprType::Negate) {
+            newTerms[i] = terms[i].getSingleChild_();
+          }
+          return ExprFactory::negate(ExprFactory::product(std::move(newTerms)));
         }
       }
 
