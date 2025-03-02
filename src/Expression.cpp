@@ -66,8 +66,9 @@ Expr::Expr(ExprType type, std::vector<Expr> terms)
 }
 
 Expr::Expr(ExprType type, const std::string& name) : type_(type), name_(name) {
-  assert(
-      (std::set{ExprType::NamedConstant, ExprType::Variable}.contains(type_)));
+  assert((std::set{ExprType::NamedConstant, ExprType::Variable,
+                   ExprType::SymmetricMatrix}
+              .contains(type_)));
 }
 
 Expr::Expr(const double value) : type_(ExprType::Number), value_(value) {}
@@ -76,6 +77,7 @@ Expr Expr::differentiate(const Expr& var) const {
   switch (type_) {
     case ExprType::Number:
     case ExprType::NamedConstant:
+    case ExprType::SymmetricMatrix:
       return zero;
     case ExprType::Variable:
       return *this == var ? unity : zero;
@@ -96,9 +98,23 @@ Expr Expr::differentiate(const Expr& var) const {
     case ExprType::Product: {
       std::vector<Expr> sumTerms;
       sumTerms.reserve(terms_.size());
+      const auto varTranspose = ExprFactory::transpose(var);
       for (size_t i = 0; i < terms_.size(); ++i) {
         auto terms = terms_;
         terms[i] = terms_[i].differentiate(var);
+
+        // Special handling for quadratic forms: x^T Q x
+        if (terms_.size() == i + 3 && terms_[i] == varTranspose &&
+            terms_[i + 2] == var) {
+          // Assume terms_[1] is Q in x^T Q x
+          auto Q = terms_[i + 1];
+          terms[i] = ExprFactory::sum({Q, ExprFactory::transpose(Q)});
+          terms[i + 1] = var;
+          terms.pop_back();
+          sumTerms.push_back(ExprFactory::product(std::move(terms)));
+          break;  // No need for the standard product rule in this case
+        }
+
         sumTerms.push_back(ExprFactory::product(std::move(terms)));
       }
       return ExprFactory::sum(std::move(sumTerms));
@@ -127,6 +143,7 @@ std::string Expr::toString(const bool condensed) const {
       return ss.str();
     }
     case ExprType::NamedConstant:
+    case ExprType::SymmetricMatrix:
     case ExprType::Variable:
       return name_;
     case ExprType::Transpose:
@@ -184,6 +201,8 @@ std::string Expr::toExpressionString() const {
     }
     case ExprType::NamedConstant:
       return "namedConstant(" + name_ + ")";
+    case ExprType::SymmetricMatrix:
+      return "symmetricMatrix(" + name_ + ")";
     case ExprType::Variable:
       return "variable(" + name_ + ")";
     case ExprType::Transpose:
@@ -279,6 +298,7 @@ Expr Expr::simplify_(const bool distribute) const {
   switch (type_) {
     case ExprType::Number:
     case ExprType::NamedConstant:
+    case ExprType::SymmetricMatrix:
     case ExprType::Variable:
       return *this;
     case ExprType::Transpose: {
@@ -291,6 +311,8 @@ Expr Expr::simplify_(const bool distribute) const {
         return zero;
       } else if (child == unity) {
         return unity;
+      } else if (child.type_ == ExprType::SymmetricMatrix) {
+        return child;
       } else if (child.type_ == ExprType::Negate) {
         // (-x)^T  = -x^T
         return ExprFactory::negate(
@@ -322,10 +344,9 @@ Expr Expr::simplify_(const bool distribute) const {
           }
         }
       } else if (child.type_ == ExprType::Sum) {
-        const size_t count = std::ranges::count_if(
-            child.terms_,
-            [](const auto& t) { return t.type_ == ExprType::Negate; });
-        if (count > child.terms_.size() / 2) {
+        if (std::ranges::count_if(child.terms_, [](const auto& t) {
+              return t.type_ == ExprType::Negate;
+            }) > child.terms_.size() / 2) {
           auto terms = child.terms_;
           for (auto& t : terms) {
             if (t.type_ == ExprType::Negate) {
@@ -392,7 +413,7 @@ Expr Expr::simplify_(const bool distribute) const {
         }
       }
 
-      // Associative transformation (z + y + x = x + y + z)
+      // Associative transformation ((x + y) + z = x + y + z)
       associativeTransformation(ExprType::Sum, terms);
 
       // Identity transformations (x + 0 = x)
@@ -419,7 +440,7 @@ Expr Expr::simplify_(const bool distribute) const {
         terms.push_back(ExprFactory::number(value));
       }
 
-      // Commutative transformation
+      // Commutative transformation (z + y + x = x + y + z)
       std::ranges::sort(terms);
 
       const auto simplified = ExprFactory::sum(terms);
@@ -478,7 +499,7 @@ Expr Expr::simplify_(const bool distribute) const {
       auto terms =
           transform(terms_, [](const auto& t) { return t.simplify_(); });
 
-      // Associative transformation (zyx = xyz)
+      // Associative transformation (x(yz) = xyz)
       associativeTransformation(ExprType::Product, terms);
 
       // Identity transformations (x * 0 = 0, x * 1 = x)
@@ -510,6 +531,10 @@ Expr Expr::simplify_(const bool distribute) const {
       // of inverse) (x * inv(x) = 1)
       eraseCanceling(ExprType::Invert, terms, unity);
 
+      // Commutative transformation (2x3y = 6xy)
+      std::partition(terms.begin(), terms.end(),
+                     [](const auto& t) { return t.type_ == ExprType::Number; });
+
       // Numerical transformation (2 * x * 3 = 6 * x)
       if (std::ranges::count_if(terms, [](const auto& t) {
             return t.type_ == ExprType::Number;
@@ -523,9 +548,6 @@ Expr Expr::simplify_(const bool distribute) const {
             terms, [](const auto& t) { return t.type_ == ExprType::Number; });
         terms.push_back(ExprFactory::number(value));
       }
-
-      // Commutative transformation
-      // std::ranges::sort(terms); // Removed to facilitate matrix algebra
 
       const auto simplified = ExprFactory::product(terms);
 
@@ -573,6 +595,7 @@ std::set<Expr> Expr::getUniqueFactors_() const {
   switch (type_) {
     case ExprType::Number:
     case ExprType::NamedConstant:
+    case ExprType::SymmetricMatrix:
     case ExprType::Variable:
     case ExprType::Transpose:
     case ExprType::Invert:
@@ -608,6 +631,7 @@ Expr Expr::factorOut(const Expr& factor) const {
   switch (type_) {
     case ExprType::Number:
     case ExprType::NamedConstant:
+    case ExprType::SymmetricMatrix:
     case ExprType::Variable:
     case ExprType::Transpose:
     case ExprType::Invert:
@@ -661,6 +685,7 @@ double Expr::complexity_() const {
     case ExprType::Number:
       return 0.5;
     case ExprType::NamedConstant:
+    case ExprType::SymmetricMatrix:
     case ExprType::Variable:
       return 1.0;
     case ExprType::Transpose:
@@ -683,6 +708,9 @@ double Expr::complexity_() const {
 Expr ExprFactory::number(const double value) { return Expr(value); }
 Expr ExprFactory::namedConstant(const std::string& name) {
   return Expr(ExprType::NamedConstant, name);
+}
+Expr ExprFactory::symmetricMatrix(const std::string& name) {
+  return Expr(ExprType::SymmetricMatrix, name);
 }
 Expr ExprFactory::variable(const std::string& name) {
   return Expr(ExprType::Variable, name);

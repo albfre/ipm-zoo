@@ -8,6 +8,7 @@ namespace Expression {
 enum class ExprType {
   Number,
   NamedConstant,
+  SymmetricMatrix,
   Variable,
   Transpose,
   Invert,
@@ -48,6 +49,7 @@ bool operator==(const Expr& left, const Expr& right);
 namespace ExprFactory {
 Expr number(const double value);
 Expr namedConstant(const std::string& name);
+Expr symmetricMatrix(const std::string& name);
 Expr variable(const std::string& name);
 Expr transpose(Expr expr);
 Expr negate(Expr expr);

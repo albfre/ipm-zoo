@@ -6,7 +6,7 @@ namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     VariableNames names, Settings settings) {
   using namespace Expression::ExprFactory;
-  auto Q = namedConstant("Q");
+  auto Q = symmetricMatrix("Q");
   auto c = namedConstant("c");
   auto A_ineq = namedConstant(names.A_ineq);
   auto A_eq = namedConstant(names.A_eq);

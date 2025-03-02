@@ -108,7 +108,7 @@ TEST_F(ExpressionTest, DifferentiateNegation) {
 TEST_F(ExpressionTest, DifferentiateTranspose) {
   // Test transpose differentiation
   auto t1 = ExprFactory::product({ExprFactory::transpose(x), a});
-  auto t2 = ExprFactory::product({ExprFactory::transpose(x), a});
+  auto t2 = ExprFactory::product({ExprFactory::transpose(a), x});
   EXPECT_EQ(t1.differentiate(x).simplify().toString(), "a");
   EXPECT_EQ(t2.differentiate(x).simplify().toString(), "a");
 }
@@ -117,6 +117,20 @@ TEST_F(ExpressionTest, DifferentiateXSquared) {
   // Test more complex expressions
   auto expr = ExprFactory::product({x, x});  // x^2
   EXPECT_EQ(expr.differentiate(x).simplify().toString(), "(2 * x)");
+}
+
+TEST_F(ExpressionTest, DifferentiateQuadraticForm) {
+  // Test quadratic form differentiation
+  auto t1 = ExprFactory::product(
+      {a, ExprFactory::transpose(x), ExprFactory::variable("Q"), x});
+  auto t2 = ExprFactory::product(
+      {a, ExprFactory::transpose(x), ExprFactory::symmetricMatrix("Q"), x});
+  auto t3 =
+      ExprFactory::product({ExprFactory::number(0.5), ExprFactory::transpose(x),
+                            ExprFactory::symmetricMatrix("Q"), x});
+  EXPECT_EQ(t1.differentiate(x).simplify().toString(), "(a * (Q + Q^T) * x)");
+  EXPECT_EQ(t2.differentiate(x).simplify().toString(), "(2 * a * Q * x)");
+  EXPECT_EQ(t3.differentiate(x).simplify().toString(), "(Q * x)");
 }
 
 // Test simplification
