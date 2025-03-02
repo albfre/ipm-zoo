@@ -14,7 +14,7 @@ const auto unity = ExprFactory::number(1.0);
 const auto zero = ExprFactory::number(0.0);
 
 std::strong_ordering operator<=>(const Expr& left, const Expr& right) {
-  // Order lexicographically, first by type, then by length of the string
+  // Order lexicographically, first by type, then by the expression string
   if (left.getType() != right.getType()) {
     return left.getType() <=> right.getType();
   }
