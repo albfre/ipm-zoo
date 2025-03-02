@@ -201,7 +201,7 @@ function updateProblem() {
   outputText += "<p><s>5. Newton system</s></p>";
   outputText += "<p><s>6. Reduction of rows for log-barriers</s></p>";
   outputText += "<p><s>7. Reduction of rows for Lagrange multipliers</s></p>";
-  outputText += "<p>8. Expressions for search direction variables</p>";
+  outputText += "<p>8. Expressions for search direction variables in reduced system</p>";
   outputText += "<p>9. Augmented system and LU/LDLT solution methods</p>";
   outputText += "<p>10. Reduction to normal equations if possible</p>";
   outputText += "<p>11. Support for equalities </p>";
