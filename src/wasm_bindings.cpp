@@ -30,7 +30,6 @@ std::string getLagrangian(const Optimization::Settings& settings) {
 
   const auto condensed = true;
   auto str = "& " + lagrangian.toString(condensed);
-  str = replaceAll_(str, "0.5", "\\frac{1}{2}");
   auto it = str.find("+ \\lambda");
   if (it != std::string::npos) {
     str.insert(it, "\\\\\n & ");

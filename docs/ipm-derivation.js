@@ -35,7 +35,7 @@ const s_uA = "t"; // Slack variable for inequality constraint upper bound
 const s_lx = "y"; // Slack variable for x lower bound
 const s_ux = "z"; // Slack variable for x upper bound
 const getObjective = (logBarrierVariables = []) => {
-  let output = "\\underset{" + x + "}{\\text{minimize}} \\quad & \\frac{1}{2} " + x + "^T Q " + x + " + c^T" + x;
+  let output = "\\underset{" + x + "}{\\text{minimize}} \\quad & 0.5 " + x + "^T Q " + x + " + c^T" + x;
   for (const v of logBarrierVariables) {
     output += "- \\mu e^T \\log(" + v + ")";
   }

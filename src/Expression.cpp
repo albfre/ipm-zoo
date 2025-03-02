@@ -80,7 +80,7 @@ Expr Expr::differentiate(const Expr& var) const {
     case ExprType::Variable:
       return *this == var ? unity : zero;
     case ExprType::Transpose:
-      return getSingleChild_().differentiate(var);
+      return ExprFactory::transpose(getSingleChild_().differentiate(var));
     case ExprType::Negate:
       return ExprFactory::negate(getSingleChild_().differentiate(var));
     case ExprType::Invert:
@@ -96,11 +96,10 @@ Expr Expr::differentiate(const Expr& var) const {
     case ExprType::Product: {
       std::vector<Expr> sumTerms;
       sumTerms.reserve(terms_.size());
-      auto terms = terms_;
-      for (size_t i = 0; i < terms.size(); ++i) {
+      for (size_t i = 0; i < terms_.size(); ++i) {
+        auto terms = terms_;
         terms[i] = terms_[i].differentiate(var);
-        sumTerms.push_back(ExprFactory::product(terms));
-        terms[i] = terms_[i];
+        sumTerms.push_back(ExprFactory::product(std::move(terms)));
       }
       return ExprFactory::sum(std::move(sumTerms));
     }
@@ -290,6 +289,8 @@ Expr Expr::simplify_(const bool distribute) const {
       } else if (child == zero) {
         // 0^T = 0
         return zero;
+      } else if (child == unity) {
+        return unity;
       } else if (child.type_ == ExprType::Negate) {
         // (-x)^T  = -x^T
         return ExprFactory::negate(
@@ -494,12 +495,14 @@ Expr Expr::simplify_(const bool distribute) const {
       if (std::ranges::any_of(terms, [](const auto& t) {
             return t.type_ == ExprType::Negate;
           })) {
-        auto newTerms = terms;
+        auto newTerms = terms;  // Seems to be necessary to make a new copy for
+                                // this to work in WebAssembly
         for (size_t i = 0; i < terms.size(); ++i) {
           if (terms[i].type_ == ExprType::Negate) {
             newTerms[i] = terms[i].getSingleChild_();
+            return ExprFactory::negate(
+                ExprFactory::product(std::move(newTerms)));
           }
-          return ExprFactory::negate(ExprFactory::product(std::move(newTerms)));
         }
       }
 

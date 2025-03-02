@@ -105,6 +105,14 @@ TEST_F(ExpressionTest, DifferentiateNegation) {
   EXPECT_EQ(neg.differentiate(x).toString(), "-1");
 }
 
+TEST_F(ExpressionTest, DifferentiateTranspose) {
+  // Test transpose differentiation
+  auto t1 = ExprFactory::product({ExprFactory::transpose(x), a});
+  auto t2 = ExprFactory::product({ExprFactory::transpose(x), a});
+  EXPECT_EQ(t1.differentiate(x).simplify().toString(), "a");
+  EXPECT_EQ(t2.differentiate(x).simplify().toString(), "a");
+}
+
 TEST_F(ExpressionTest, DifferentiateXSquared) {
   // Test more complex expressions
   auto expr = ExprFactory::product({x, x});  // x^2
@@ -177,6 +185,8 @@ TEST_F(ExpressionTest, SimplifyNegationOfSumWithNegations) {
 TEST_F(ExpressionTest, SimplifyProductWithNegation) {
   // Test product with negation
   auto prod = ExprFactory::product({x, y, ExprFactory::negate(z)});
+  std::cout << prod.toExpressionString() << std::endl;
+  std::cout << "simp: " << prod.simplify().toExpressionString() << std::endl;
   EXPECT_EQ(prod.simplify().toString(), "-(x * y * z)");
 }
 

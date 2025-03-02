@@ -99,9 +99,9 @@ std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
   std::vector<Expression::Expr> firstOrder;
   firstOrder.reserve(variables.size());
   for (const auto& v : variables) {
-    const auto invV = ExprFactory::invert(v);
     auto diff = lagrangian.differentiate(v).simplify();
-    if (diff.containsSubexpression(invV)) {
+    if (const auto invV = ExprFactory::invert(v);
+        diff.containsSubexpression(invV)) {
       diff = ExprFactory::product({v, diff}).simplify();
     }
     firstOrder.push_back(diff);
