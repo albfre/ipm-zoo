@@ -6,7 +6,7 @@
 namespace GaussianElimination {
 void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
                          std::vector<Expression::Expr>& rhs,
-                         const size_t sourceRow, const bool print) {
+                         const size_t sourceRow) {
   using namespace Expression;
   const auto zero = ExprFactory::number(0.0);
   size_t targetRow = 0;
@@ -28,24 +28,8 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
         ExprFactory::product({factor, sourceTerm}).simplify();
     return ExprFactory::sum({targetTerm, sourceTermTimesFactor}).simplify();
   };
-  if (print) {
-    std::cout << "source: " << sourceRow << ", target: " << targetRow
-              << std::endl;
-    std::cout << "factor: " << factor.toString() << std::endl;
-  }
 
   for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
-    if (print) {
-      std::cout << i << "add "
-                << ExprFactory::product({factor, lhs.at(sourceRow).at(i)})
-                       .simplify()
-                       .toString()
-                << " to row " << targetRow << " with result "
-                << addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
-                                          lhs.at(targetRow).at(i))
-                       .toString()
-                << std::endl;
-    }
     lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
                                                      lhs.at(targetRow).at(i));
   }

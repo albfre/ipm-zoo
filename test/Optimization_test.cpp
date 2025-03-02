@@ -70,14 +70,38 @@ TEST_F(OptimizationTest, GetLagrangianNoBounds) {
   EXPECT_EQ(str.find(names.s_xu), std::string::npos);
 }
 
-TEST_F(OptimizationTest, getFirstOrderOptimalityConditions) {
+TEST_F(OptimizationTest, GetFirstOrderOptimalityConditions) {
   auto settings = Settings();
   auto names = VariableNames();
   auto [lagrangian, variables] = getLagrangian(names, settings);
   auto firstOrder = getFirstOrderOptimalityConditions(lagrangian, variables);
+  EXPECT_EQ(firstOrder.size(), variables.size());
 }
 
-int main(int argc, char **argv) {
+TEST_F(OptimizationTest, GetNewtonSystem) {
+  auto settings = Settings();
+  auto names = VariableNames();
+  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto [lhs, rhs] = getNewtonSystem(lagrangian, variables);
+  EXPECT_EQ(lhs.size(), rhs.size());
+  EXPECT_EQ(lhs.size(), variables.size());
+  for (const auto& row : lhs) {
+    EXPECT_EQ(row.size(), variables.size());
+  }
+}
+
+TEST_F(OptimizationTest, GetShorthandRhs) {
+  auto settings = Settings();
+  auto names = VariableNames();
+  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto rhs = getShorthandRhs(variables);
+  EXPECT_EQ(variables.size(), rhs.size());
+  for (size_t i = 0; i < variables.size(); ++i) {
+    EXPECT_EQ("-r_{" + variables[i].toString() + "}", rhs[i].toString());
+  }
+}
+
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
