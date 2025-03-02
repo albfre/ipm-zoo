@@ -146,12 +146,26 @@ std::string Expr::toString(const bool condensed) const {
     case ExprType::SymmetricMatrix:
     case ExprType::Variable:
       return name_;
-    case ExprType::Transpose:
-      return getSingleChild_().toString(condensed) + "^T";
+    case ExprType::Transpose: {
+      const auto& child = getSingleChild_();
+      if (condensed &&
+          std::set{ExprType::Sum, ExprType::Product, ExprType::Invert}.contains(
+              child.type_)) {
+        return "(" + child.toString(condensed) + ")^T";
+      }
+      return child.toString(condensed) + "^T";
+    }
     case ExprType::Negate:
       return "-" + getSingleChild_().toString(condensed);
-    case ExprType::Invert:
-      return getSingleChild_().toString(condensed) + "^{-1}";
+    case ExprType::Invert: {
+      const auto& child = getSingleChild_();
+      if (condensed &&
+          std::set{ExprType::Sum, ExprType::Product, ExprType::Transpose}
+              .contains(child.type_)) {
+        return "(" + child.toString(condensed) + ")^{-1}";
+      }
+      return child.toString(condensed) + "^{-1}";
+    }
     case ExprType::Log:
       return "\\log(" + getSingleChild_().toString(condensed) + ")";
     case ExprType::Sum: {
@@ -516,8 +530,8 @@ Expr Expr::simplify_(const bool distribute) const {
       if (std::ranges::any_of(terms, [](const auto& t) {
             return t.type_ == ExprType::Negate;
           })) {
-        auto newTerms = terms;  // Seems to be necessary to make a new copy for
-                                // this to work in WebAssembly
+        auto newTerms = terms;  // Seems to be necessary to make a new copy
+                                // for this to work in WebAssembly
         for (size_t i = 0; i < terms.size(); ++i) {
           if (terms[i].type_ == ExprType::Negate) {
             newTerms[i] = terms[i].getSingleChild_();

@@ -175,14 +175,16 @@ function updateProblem() {
       outputText += "<p><strong>Newton system:</strong></p>";
       outputText += "\\[ \\begin{align*} \\nabla^2 L p = -\\nabla L \\end{align*}, \\]";
       outputText += "where"
-      //outputText += "\\[ \\nabla^2 L = \\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.lhs + "\\end{array} \\right) \\]";
-      //outputText += "\\[ -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
-      //outputText += "= \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
-      //outputText += "\\[ p = \\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.variables + "\\end{array} \\right)^T \\]";
       outputText += "\\[ \\nabla^2 L p = \\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.lhs + "\\end{array} \\right) "
       outputText += "\\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.variables + "\\end{array} \\right) \\]";
-      outputText += "\\[ -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
+      outputText += "\\[ = -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
       outputText += "=: \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
+
+      const reducedNewtonSystem = wasmModule.getReducedNewtonSystem(settings);
+      outputText += "<p><strong>Reduced system:</strong></p>";
+      outputText += "\\[ \\left( \\begin{array}{ccccccccccccccc} " + reducedNewtonSystem.lhs + "\\end{array} \\right) "
+      outputText += "\\left( \\begin{array}{ccccccccccccccc} " + reducedNewtonSystem.variables + "\\end{array} \\right) \\]";
+      outputText += "\\[ = \\left( \\begin{array}{c} " + reducedNewtonSystem.rhs + "\\end{array} \\right) \\]"
     } catch (error) {
       console.error("Error calling Lagrangian function:", error);
       outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
@@ -195,14 +197,16 @@ function updateProblem() {
   outputText += "<p><s>1. Optimization problem with slacks</s></p>";
   outputText += "<p><s>2. Optimization problem with barriers</s></p>";
   outputText += "<p><s>3. Lagrangian function</s></p>";
-  outputText += "<p>4. First-order optimality conditions</p>";
-  outputText += "<p>5. Newton system</p>";
-  outputText += "<p>6. Reduction of rows for log-barriers</p>";
-  outputText += "<p>7. Reduction of rows for Lagrange multipliers</p>";
-  outputText += "<p>8. Augmented system and LU/LDLT solution methods</p>";
-  outputText += "<p>9. Reduction to normal equations if possible</p>";
-  outputText += "<p>10. Support for equality conditions</p>";
-  outputText += "<p>11. Support for direct slacks for inequalities</p>";
+  outputText += "<p><s>4. First-order optimality conditions</s></p>";
+  outputText += "<p><s>5. Newton system</s></p>";
+  outputText += "<p><s>6. Reduction of rows for log-barriers</s></p>";
+  outputText += "<p><s>7. Reduction of rows for Lagrange multipliers</s></p>";
+  outputText += "<p>8. Expressions for search direction variables</p>";
+  outputText += "<p>9. Augmented system and LU/LDLT solution methods</p>";
+  outputText += "<p>10. Reduction to normal equations if possible</p>";
+  outputText += "<p>11. Support for equalities </p>";
+  outputText += "<p>12. Support for direct slacks for inequalities</p>";
+  outputText += "<p>13. Correct vector differentiation</p>";
 
   document.getElementById("output").innerHTML = outputText;
   MathJax.typesetPromise().catch((err) => {

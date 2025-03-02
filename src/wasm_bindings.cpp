@@ -10,6 +10,14 @@
 #include "Optimization.h"
 
 using namespace emscripten;
+
+struct NewtonSystem {
+  std::string lhs;
+  std::string rhs;
+  std::string rhsShorthand;
+  std::string variables;
+};
+
 namespace {
 std::string replaceAll_(std::string str, const std::string& from,
                         const std::string& to) {
@@ -20,6 +28,37 @@ std::string replaceAll_(std::string str, const std::string& from,
         to.length();  // Handles case where 'to' is a substring of 'from'
   }
   return str;
+}
+
+NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
+                                        const auto& variables) {
+  std::string lhsStr = "";
+  const auto condensed = true;
+  for (const auto& row : lhs) {
+    for (size_t i = 0; i < row.size(); ++i) {
+      lhsStr += row[i].toString(condensed) + (i + 1 == row.size() ? "" : " & ");
+    }
+    lhsStr += "\\\\";
+  }
+
+  std::string rhsStr = "";
+  for (const auto& row : rhs) {
+    rhsStr += row.toString(condensed) + "\\\\";
+  }
+
+  const auto rhsShorthand = Optimization::getShorthandRhs(variables);
+  std::string rhsShorthandStr = "";
+  for (const auto& row : rhsShorthand) {
+    rhsShorthandStr += row.toString(condensed) + "\\\\";
+  }
+
+  std::string variablesStr = "";
+  for (size_t i = 0; i < variables.size(); ++i) {
+    variablesStr += "\\Delta " + variables[i].toString(condensed) +
+                    (i + 1 == variables.size() ? "" : " \\\\ ");
+  }
+
+  return {lhsStr, rhsStr, rhsShorthandStr, variablesStr};
 }
 }  // namespace
 
@@ -56,45 +95,25 @@ std::string getFirstOrderOptimalityConditions(
   return str;
 }
 
-struct NewtonSystem {
-  std::string lhs;
-  std::string rhs;
-  std::string rhsShorthand;
-  std::string variables;
-};
-
 NewtonSystem getNewtonSystem(const Optimization::Settings& settings) {
   const auto variableNames = Optimization::VariableNames();
   const auto [lagrangian, variables] =
       Optimization::getLagrangian(variableNames, settings);
   const auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
-  std::string lhsStr = "";
-  const auto condensed = true;
-  for (const auto& row : lhs) {
-    for (size_t i = 0; i < row.size(); ++i) {
-      lhsStr += row[i].toString(condensed) + (i + 1 == row.size() ? "" : " & ");
-    }
-    lhsStr += "\\\\";
-  }
+  return formatNewtonSystemStrings_(lhs, rhs, variables);
+}
 
-  std::string rhsStr = "";
-  for (const auto& row : rhs) {
-    rhsStr += row.toString(condensed) + "\\\\";
+NewtonSystem getReducedNewtonSystem(const Optimization::Settings& settings) {
+  const auto variableNames = Optimization::VariableNames();
+  auto [lagrangian, variables] =
+      Optimization::getLagrangian(variableNames, settings);
+  auto [lhs, _] = Optimization::getNewtonSystem(lagrangian, variables);
+  auto rhs = Optimization::getShorthandRhs(variables);
+  while (lhs.size() > 2) {
+    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    variables.pop_back();
   }
-
-  const auto rhsShorthand = Optimization::getShorthandRhs(variables);
-  std::string rhsShorthandStr = "";
-  for (const auto& row : rhsShorthand) {
-    rhsShorthandStr += row.toString(condensed) + "\\\\";
-  }
-
-  std::string variablesStr = "";
-  for (size_t i = 0; i < variables.size(); ++i) {
-    variablesStr += "\\Delta " + variables[i].toString(condensed) +
-                    (i + 1 == variables.size() ? "" : " \\\\ ");
-  }
-
-  return {lhsStr, rhsStr, rhsShorthandStr, variablesStr};
+  return formatNewtonSystemStrings_(lhs, rhs, variables);
 }
 
 // Alternatively, use embind for more direct JS-to-C++ bindings
@@ -148,4 +167,5 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .field("rhsShorthand", &NewtonSystem::rhsShorthand)
       .field("variables", &NewtonSystem::variables);
   function("getNewtonSystem", &getNewtonSystem);
+  function("getReducedNewtonSystem", &getReducedNewtonSystem);
 }
