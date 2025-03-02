@@ -80,3 +80,19 @@ input[type="checkbox"] {
     flex-direction: column;
   }
 }
+
+.logo {
+  float: left;
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* On mobile screens, center the logo on top */
+@media (max-width: 768px) {
+  .logo {
+    float: none;
+    display: block;
+    margin: 0 auto 10px;
+    text-align: center;
+  }
+}
