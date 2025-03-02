@@ -16,9 +16,11 @@ body {
 /* Layout */
 .container {
   display: flex;
+  flex-wrap: nowrap;
   gap: 40px;
   max-width: 1200px;
   margin: auto;
+  overflow-x: auto;
 }
 
 /* Input Section */
@@ -61,23 +63,39 @@ input[type="checkbox"] {
 
 /* Output Section */
 .output {
-  flex: 1;
+  flex-grow: 1;
+  min-width: 0;
+  width: 100%;
   background: #fafafa;
   padding: 25px;
   border-radius: 12px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05);
   border: 1px solid #e0e0e0;
+  overflow-x: auto;
+  /* Allow scrolling for long LaTeX expressions */
+  white-space: nowrap;
+  /* Prevent breaking LaTeX equations */
 }
 
 .output p {
   font-size: 18px;
   color: #222;
+  overflow-x: auto;
+  white-space: nowrap;
+  max-width: 100%;
 }
+
 
 /* Responsiveness */
 @media (max-width: 900px) {
   .container {
     flex-direction: column;
+  }
+
+  .output {
+    white-space: normal;
+    /* Allow normal wrapping on smaller screens */
+    overflow-x: visible;
   }
 }
 
