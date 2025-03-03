@@ -8,6 +8,7 @@ namespace Expression {
 enum class ExprType {
   Number,
   NamedConstant,
+  Matrix,
   SymmetricMatrix,
   Variable,
   Transpose,
@@ -30,12 +31,13 @@ class Expr {
   ExprType getType() const;
   std::set<Expr> getVariables() const;
   bool containsSubexpression(const Expr& expr) const;
+  Expr replaceSubexpression(const Expr& expr, const Expr& replacement) const;
 
  private:
   Expr simplify_(bool distribute = true) const;
   const Expr& getSingleChild_() const;
-  std::set<Expr> getUniqueFactors_() const;
-  Expr factorOut(const Expr& factor) const;
+  Expr getLeadingOrEndingFactor_(bool leading) const;
+  Expr factorOut(const Expr& factor, bool leading) const;
   double complexity_() const;
   ExprType type_;
   std::string name_ = "";
@@ -49,6 +51,7 @@ bool operator==(const Expr& left, const Expr& right);
 namespace ExprFactory {
 Expr number(const double value);
 Expr namedConstant(const std::string& name);
+Expr matrix(const std::string& name);
 Expr symmetricMatrix(const std::string& name);
 Expr variable(const std::string& name);
 Expr transpose(Expr expr);

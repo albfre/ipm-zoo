@@ -20,7 +20,7 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
   const auto sourceExpr = lhs.at(sourceRow).at(sourceRow);
   const auto factor =
       ExprFactory::negate(
-          ExprFactory::product({ExprFactory::invert(sourceExpr), targetExpr}))
+          ExprFactory::product({targetExpr, ExprFactory::invert(sourceExpr)}))
           .simplify();
   const auto addRowTimesFactorToRow = [&factor](const Expr& sourceTerm,
                                                 const Expr& targetTerm) {
@@ -33,6 +33,7 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
     lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
                                                      lhs.at(targetRow).at(i));
   }
+
   rhs.at(targetRow) =
       addRowTimesFactorToRow(rhs.at(sourceRow), rhs.at(targetRow));
 

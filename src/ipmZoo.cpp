@@ -1,5 +1,5 @@
-
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include <memory>
 
@@ -17,10 +17,28 @@ void initialTest() {
   auto x = ExprFactory::variable("x");
   auto y = ExprFactory::variable("y");
   auto z = ExprFactory::variable("z");
+  auto a = ExprFactory::variable("a");
 
-  auto prod = ExprFactory::product({x, ExprFactory::negate(z)});
-  std::cout << prod.toExpressionString() << std::endl;
-  std::cout << "simp: " << prod.simplify().toExpressionString() << std::endl;
+  {
+    std::cout << "x^T a and a^T x" << std::endl;
+    auto t1 = ExprFactory::product({ExprFactory::transpose(x), a});
+    auto t2 = ExprFactory::product({ExprFactory::transpose(a), x});
+    std::cout << t1.differentiate(x).simplify().toString() << std::endl;
+    std::cout << t2.differentiate(x).simplify().toString() << std::endl;
+  }
+  {
+    std::cout << "a x^T Q x and a x^T Qsym x and 0.5 x^T Qsym x" << std::endl;
+    auto t1 = ExprFactory::product(
+        {a, ExprFactory::transpose(x), ExprFactory::variable("Q"), x});
+    auto t2 = ExprFactory::product(
+        {a, ExprFactory::transpose(x), ExprFactory::symmetricMatrix("Q"), x});
+    auto t3 = ExprFactory::product({ExprFactory::number(0.5),
+                                    ExprFactory::transpose(x),
+                                    ExprFactory::symmetricMatrix("Q"), x});
+    std::cout << t1.differentiate(x).simplify().toString() << std::endl;
+    std::cout << t2.differentiate(x).simplify().toString() << std::endl;
+    std::cout << t3.differentiate(x).simplify().toString() << std::endl;
+  }
 
   if (false) {
     auto expr1 = ExprFactory::sum(
@@ -63,7 +81,8 @@ void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
   for (const auto& row : lhs) {
     for (size_t i = 0; i < row.size(); ++i) {
       std::cout << row[i].toString();
-      if (i < row.size() - 1) std::cout << " & ";
+      if (i < row.size() - 1)
+        std::cout << " & ";
     }
     std::cout << " \\\\" << std::endl;
   }
@@ -77,12 +96,21 @@ void printRhs(const std::vector<Expression::Expr>& rhs) {
 
 void runLagrangianTest() {
   using namespace Expression;
+  auto settings = Optimization::Settings();
+  settings.inequalityHandling = Optimization::InequalityHandling::SimpleSlacks;
 
-  const auto [lagrangian, variables] = Optimization::getLagrangian(
-      Optimization::VariableNames(), Optimization::Settings());
+  const auto [lagrangian, variables] =
+      Optimization::getLagrangian(Optimization::VariableNames(), settings);
   std::cout << "\nLagrangian: " << lagrangian.toString() << "\n";
 
+  // Add timing around getNewtonSystem
+  auto start = std::chrono::high_resolution_clock::now();
+
   auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> duration = end - start;
+  std::cout << "Newton system computation took " << duration.count() << " ms\n";
 
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
@@ -97,15 +125,24 @@ void runLagrangianTest() {
   GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
   GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
   GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  if (settings.inequalityHandling == Optimization::InequalityHandling::Slacks) {
+    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  }
 
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
 
   GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
   GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  if (settings.inequalityHandling == Optimization::InequalityHandling::Slacks) {
+    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  }
+
+  while (lhs.size() > 1) {
+    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  }
+
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
 
@@ -115,7 +152,7 @@ void runLagrangianTest() {
 
 int main(int argc, char* argv[]) {
   // Check if we have any command line arguments
-  initialTest();
+  // initialTest();
 
   if (argc > 1) {
     std::string arg = argv[1];
@@ -126,7 +163,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // runLagrangianTest();
+  runLagrangianTest();
 
   return 0;
 }

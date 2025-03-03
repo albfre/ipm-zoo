@@ -4,12 +4,13 @@
 
 namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
-    VariableNames names, Settings settings) {
+    const VariableNames& names,
+    const Settings& settings) {
   using namespace Expression::ExprFactory;
   auto Q = symmetricMatrix("Q");
   auto c = namedConstant("c");
-  auto A_ineq = namedConstant(names.A_ineq);
-  auto A_eq = namedConstant(names.A_eq);
+  auto A_ineq = matrix(names.A_ineq);
+  auto A_eq = matrix(names.A_eq);
   auto mu = namedConstant("\\mu");
   auto e = namedConstant("e");
   auto x = variable(names.x);
@@ -45,20 +46,31 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
       settings.variableBounds == Bounds::Upper ||
       settings.variableBounds == Bounds::Both;
 
-  if (settings.inequalities != Bounds::None) {
+  if (settings.inequalities != Bounds::None &&
+      settings.inequalityHandling == InequalityHandling::Slacks) {
     variables.push_back(lambda_A);
     variables.push_back(s_A);
     terms.push_back(product({transpose(lambda_A), sum({Ax, negate(s_A)})}));
   }
   if (addLowerInequalities) {
     variables.push_back(lambda_sAl);
-    terms.push_back(negate(product(
-        {transpose(lambda_sAl), sum({s_A, negate(s_Al), negate(l_A)})})));
+    if (settings.inequalityHandling == InequalityHandling::Slacks) {
+      terms.push_back(negate(product(
+          {transpose(lambda_sAl), sum({s_A, negate(s_Al), negate(l_A)})})));
+    } else {
+      terms.push_back(negate(product(
+          {transpose(lambda_sAl), sum({Ax, negate(s_Al), negate(l_A)})})));
+    }
   }
   if (addUpperInequalities) {
     variables.push_back(lambda_sAu);
-    terms.push_back(
-        product({transpose(lambda_sAu), sum({s_A, s_Au, negate(u_A)})}));
+    if (settings.inequalityHandling == InequalityHandling::Slacks) {
+      terms.push_back(
+          product({transpose(lambda_sAu), sum({s_A, s_Au, negate(u_A)})}));
+    } else {
+      terms.push_back(
+          product({transpose(lambda_sAu), sum({Ax, s_Au, negate(u_A)})}));
+    }
   }
   if (addLowerVariableBounds) {
     variables.push_back(lambda_sxl);
@@ -104,6 +116,7 @@ std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
         diff.containsSubexpression(invV)) {
       diff = ExprFactory::product({v, diff}).simplify();
     }
+    std::cout << "fo " << diff.toString() << std::endl;
     firstOrder.push_back(diff);
   }
   return firstOrder;

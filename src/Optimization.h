@@ -40,10 +40,12 @@ struct Settings {
   Bounds variableBounds = Bounds::Both;
   bool equalities = false;
   EqualityHandling equalityHandling = EqualityHandling::IndefiniteFactorization;
+  InequalityHandling inequalityHandling = InequalityHandling::Slacks;
 };
 
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
-    VariableNames names, Settings settings);
+    const VariableNames& names,
+    const Settings& settings);
 
 std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
     const Expression::Expr& lagrangian,
