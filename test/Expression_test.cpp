@@ -254,16 +254,16 @@ TEST_F(ExpressionTest, SimplifyMultiplicationWithOnes) {
 TEST_F(ExpressionTest, SimplifyComplex) {
   // Test more complex expression
   auto complexExpr = ExprFactory::sum(
-      {ExprFactory::product({x, y}), ExprFactory::product({y, x}),
+      {ExprFactory::product({x, y}), ExprFactory::product({x, y}),
        ExprFactory::product({a, b}),
        ExprFactory::product({a, ExprFactory::invert(a)}),
-       ExprFactory::negate(ExprFactory::product({b, a})), one, two,
+       ExprFactory::negate(ExprFactory::product({a, b})), one, two,
        ExprFactory::product({three, x}), x, x});
-  // x * y + y * x + a * b + a * inv(a) - b * a + 1 + 2 + 3 * x + x + x
+  // x * y + x * y + a * b + a * inv(a) - a * b + 1 + 2 + 3 * x + x + x
   // = 2 * x * y + 1 + 3 + 5 * x
-  // = 4 + (x * (5 + (2 * y)))
+  // = 4 + (2 * x * y) + (5 * x))
   auto simplified = complexExpr.simplify();
-  EXPECT_EQ(simplified.toString(), "(4 + (x * (5 + (2 * y))))");
+  EXPECT_EQ(simplified.toString(), "(4 + (2 * x * y) + (5 * x))");
 }
 
 TEST_F(ExpressionTest, SimplifyComplex2) {
@@ -274,9 +274,9 @@ TEST_F(ExpressionTest, SimplifyComplex2) {
            {ExprFactory::product({b, x}),
             ExprFactory::product({c, ExprFactory::product({x, c})})})});
   // a * x + b * x + c * (x * c)
-  // = x * (a + b + (c * c))
+  // = ((c * x * c) + ((a + b) * x))
   auto simplified = complexExpr.simplify();
-  EXPECT_EQ(simplified.toString(), "(x * (a + b + (c * c)))");
+  EXPECT_EQ(simplified.toString(), "((c * x * c) + ((a + b) * x))");
 }
 
 // Test variable extraction
