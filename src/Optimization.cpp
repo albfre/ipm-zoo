@@ -4,8 +4,7 @@
 
 namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
-    const VariableNames& names,
-    const Settings& settings) {
+    const VariableNames& names, const Settings& settings) {
   using namespace Expression::ExprFactory;
   auto Q = symmetricMatrix("Q");
   auto c = namedConstant("c");
@@ -116,7 +115,6 @@ std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
         diff.containsSubexpression(invV)) {
       diff = ExprFactory::product({v, diff}).simplify();
     }
-    std::cout << "fo " << diff.toString() << std::endl;
     firstOrder.push_back(diff);
   }
   return firstOrder;
@@ -133,7 +131,7 @@ getNewtonSystem(const Expression::Expr& lagrangian,
   for (auto& c : firstOrder) {
     lhs.emplace_back();
     auto& row = lhs.back();
-    rhs.push_back(ExprFactory::negate(c));
+    rhs.push_back(ExprFactory::negate(c).simplify());
     for (auto& v : variables) {
       row.push_back(c.differentiate(v).simplify());
     }
