@@ -45,6 +45,13 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
   for (const auto& row : rhs) {
     rhsStr += row.toString(condensed) + "\\\\";
   }
+  if (rhs.size() == 1) {
+    auto it =
+        rhsStr.find("- r_{" + variables.front().toString(condensed) + "}");
+    if (it != std::string::npos) {
+      rhsStr.insert(it, "\\\\\n ");
+    }
+  }
 
   const auto rhsShorthand = Optimization::getShorthandRhs(variables);
   std::string rhsShorthandStr = "";
@@ -60,6 +67,36 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
 
   return {lhsStr, rhsStr, rhsShorthandStr, variablesStr};
 }
+
+enum class NewtonSystemType { Full, Augmented, Normal };
+
+NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
+                              const NewtonSystemType type) {
+  const auto variableNames = Optimization::VariableNames();
+  auto [lagrangian, variables] =
+      Optimization::getLagrangian(variableNames, settings);
+  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+
+  auto i = lhs.size();
+  if (type != NewtonSystemType::Full) {
+    i = 1;
+    rhs = Optimization::getShorthandRhs(variables);
+  }
+  if (type == NewtonSystemType::Augmented) {
+    while (i < lhs.size() &&
+           lhs.at(0).at(i) != Expression::ExprFactory::number(0)) {
+      ++i;
+    }
+  }
+
+  while (lhs.size() > i) {
+    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    variables.pop_back();
+  }
+
+  return formatNewtonSystemStrings_(lhs, rhs, variables);
+}
+
 }  // namespace
 
 std::string getLagrangian(const Optimization::Settings& settings) {
@@ -96,24 +133,15 @@ std::string getFirstOrderOptimalityConditions(
 }
 
 NewtonSystem getNewtonSystem(const Optimization::Settings& settings) {
-  const auto variableNames = Optimization::VariableNames();
-  const auto [lagrangian, variables] =
-      Optimization::getLagrangian(variableNames, settings);
-  const auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
-  return formatNewtonSystemStrings_(lhs, rhs, variables);
+  return getNewtonSystem_(settings, NewtonSystemType::Full);
 }
 
-NewtonSystem getReducedNewtonSystem(const Optimization::Settings& settings) {
-  const auto variableNames = Optimization::VariableNames();
-  auto [lagrangian, variables] =
-      Optimization::getLagrangian(variableNames, settings);
-  auto [lhs, _] = Optimization::getNewtonSystem(lagrangian, variables);
-  auto rhs = Optimization::getShorthandRhs(variables);
-  while (lhs.size() > 2) {
-    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-    variables.pop_back();
-  }
-  return formatNewtonSystemStrings_(lhs, rhs, variables);
+NewtonSystem getAugmentedSystem(const Optimization::Settings& settings) {
+  return getNewtonSystem_(settings, NewtonSystemType::Augmented);
+}
+
+NewtonSystem getNormalEquation(const Optimization::Settings& settings) {
+  return getNewtonSystem_(settings, NewtonSystemType::Normal);
 }
 
 // Alternatively, use embind for more direct JS-to-C++ bindings
@@ -167,5 +195,6 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .field("rhsShorthand", &NewtonSystem::rhsShorthand)
       .field("variables", &NewtonSystem::variables);
   function("getNewtonSystem", &getNewtonSystem);
-  function("getReducedNewtonSystem", &getReducedNewtonSystem);
+  function("getAugmentedSystem", &getAugmentedSystem);
+  function("getNormalEquation", &getNormalEquation);
 }

@@ -180,11 +180,17 @@ function updateProblem() {
       outputText += "\\[ = -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
       outputText += "=: \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
 
-      const reducedNewtonSystem = wasmModule.getReducedNewtonSystem(settings);
-      outputText += "<p><strong>Reduced system:</strong></p>";
-      outputText += "\\[ \\left( \\begin{array}{ccccccccccccccc} " + reducedNewtonSystem.lhs + "\\end{array} \\right) "
-      outputText += "\\left( \\begin{array}{ccccccccccccccc} " + reducedNewtonSystem.variables + "\\end{array} \\right) \\]";
-      outputText += "\\[ = \\left( \\begin{array}{c} " + reducedNewtonSystem.rhs + "\\end{array} \\right) \\]"
+      const agumentedSystem = wasmModule.getAugmentedSystem(settings);
+      outputText += "<p><strong>Augmented system:</strong></p>";
+      outputText += "\\[ \\left( \\begin{array}{ccccccccccccccc} " + agumentedSystem.lhs + "\\end{array} \\right) "
+      outputText += "\\left( \\begin{array}{ccccccccccccccc} " + agumentedSystem.variables + "\\end{array} \\right) \\]";
+      outputText += "\\[ = \\left( \\begin{array}{c} " + agumentedSystem.rhs + "\\end{array} \\right) \\]"
+
+      const normalEquation = wasmModule.getNormalEquation(settings);
+      outputText += "<p><strong>Normal equation:</strong></p>";
+      outputText += "\\[ \\left(" + normalEquation.lhs + " \\right) "
+      outputText += normalEquation.variables + " \\]";
+      outputText += "\\[ \\begin{array}{l} =" + normalEquation.rhs + " \\end{array} \\]"
     } catch (error) {
       console.error("Error calling Lagrangian function:", error);
       outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
