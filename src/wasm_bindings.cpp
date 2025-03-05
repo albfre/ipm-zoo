@@ -83,8 +83,12 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
     rhs = Optimization::getShorthandRhs(variables);
   }
   if (type == NewtonSystemType::Augmented) {
-    while (i < lhs.size() &&
-           lhs.at(0).at(i) != Expression::ExprFactory::number(0)) {
+    const auto zero = Expression::ExprFactory::number(0);
+    const auto unity = Expression::ExprFactory::number(1);
+    const auto negUnity =
+        Expression::ExprFactory::negate(Expression::ExprFactory::number(1));
+    const auto reducibles = std::set{zero, unity, negUnity};
+    while (i < lhs.size() && !reducibles.contains(lhs.at(0).at(i))) {
       ++i;
     }
   }
@@ -183,7 +187,9 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .property("inequalities", &Optimization::Settings::inequalities)
       .property("variableBounds", &Optimization::Settings::variableBounds)
       .property("equalities", &Optimization::Settings::equalities)
-      .property("equalityHandling", &Optimization::Settings::equalityHandling);
+      .property("equalityHandling", &Optimization::Settings::equalityHandling)
+      .property("inequalityHandling",
+                &Optimization::Settings::inequalityHandling);
 
   // Register free functions
   function("getLagrangian", &getLagrangian);

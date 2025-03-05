@@ -92,7 +92,7 @@ function getNonnegativeSlacks(inequalities, equalities, variableBounds) {
   return nonnegativeSlacks;
 }
 
-function getSlackProblem(inequalities, equalities, variableBounds, logBarriers) {
+function getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, logBarriers) {
   const hasInequalities = inequalities !== "none";
   const hasEqualities = equalities;
   const hasVariableBounds = variableBounds !== "none";
@@ -110,9 +110,17 @@ function getSlackProblem(inequalities, equalities, variableBounds, logBarriers) 
   }
 
   if (hasInequalities) {
-    outputText += "& " + A_ineq + x + " - " + s_A + " = 0 \\\\\n";
-    if (inequalities === "lower" || inequalities == "both") outputText += "& " + s_A + " - " + s_lA + " = " + l_A + " \\\\\n";
-    if (inequalities === "upper" || inequalities == "both") outputText += "& " + s_A + " + " + s_uA + " = " + u_A + " \\\\\n";
+    const addLower = inequalities === "lower" || inequalities == "both"
+    const addUpper = inequalities === "upepr" || inequalities == "both"
+    if (inequalityHandling === "slacks") {
+      outputText += "& " + A_ineq + x + " - " + s_A + " = 0 \\\\\n";
+      if (addLower) outputText += "& " + s_A + " - " + s_lA + " = " + l_A + " \\\\\n";
+      if (addUpper) outputText += "& " + s_A + " + " + s_uA + " = " + u_A + " \\\\\n";
+    }
+    else {
+      if (addLower) outputText += "& " + A_ineq + x + " - " + s_lA + " = " + l_A + " \\\\\n";
+      if (addUpper) outputText += "& " + A_ineq + x + " + " + s_uA + " = " + u_A + " \\\\\n";
+    }
   }
 
   if (variableBounds !== "none") {
@@ -130,9 +138,9 @@ function getSlackProblem(inequalities, equalities, variableBounds, logBarriers) 
 
 function updateProblem() {
   let inequalities = document.querySelector('input[name="inequalities"]:checked').value;
-  let handlingInequalities = "Slacks"; // Only one option
+  let inequalityHandling = document.querySelector('input[name="handling_inequalities"]:checked').value;
   let equalities = document.getElementById("equalities").checked;
-  let handlingEqualities = document.querySelector('input[name="handling_equalities"]:checked').value;
+  let equalityHandling = document.querySelector('input[name="handling_equalities"]:checked').value;
   let variableBounds = document.querySelector('input[name="variable_bounds"]:checked').value;
 
   const hasInequalities = inequalities !== "none";
@@ -145,10 +153,10 @@ function updateProblem() {
 
   if (hasInequalities || hasVariableBounds) {
     outputText += "<p><strong>Slacked optimization problem:</strong></p>";
-    outputText += getSlackProblem(inequalities, equalities, variableBounds, false);
+    outputText += getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, false);
 
     outputText += "<p><strong>Slacked optimization problem with log-barriers:</strong></p>";
-    outputText += getSlackProblem(inequalities, equalities, variableBounds, true);
+    outputText += getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, true);
   }
 
 
@@ -163,6 +171,7 @@ function updateProblem() {
       const settings = new wasmModule.Settings();
       settings.inequalities = boundsMap[inequalities] ?? wasmModule.Bounds.None;
       settings.variableBounds = boundsMap[variableBounds] ?? wasmModule.Bounds.None;
+      settings.inequalityHandling = inequalityHandling == "slacks" ? wasmModule.InequalityHandling.Slacks : wasmModule.InequalityHandling.SimpleSlacks;
       const lagrangian = wasmModule.getLagrangian(settings);
       outputText += "<p><strong>Lagrangian function:</strong></p>";
       outputText += "\\[ \\begin{align*} L =" + lagrangian + "\\end{align*} \\]";
