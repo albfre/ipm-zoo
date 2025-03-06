@@ -121,12 +121,13 @@ Expr Expr::differentiate(const Expr& var) const {
 
 Expr Expr::simplify(const bool distribute) const {
   auto expr = *this;
-  auto simplified = expr.simplify_(distribute);
-  while (expr != simplified) {
-    expr = simplified;
-    simplified = expr.simplify_(distribute);
+  auto changed = true;
+  while (changed) {
+    auto simplified = expr.simplify_(distribute);
+    changed = expr != simplified;
+    std::swap(expr, simplified);
   }
-  return simplified;
+  return expr;
 }
 
 std::string Expr::toString(const bool condensed) const {
@@ -250,9 +251,7 @@ std::string Expr::toExpressionString() const {
   }
 }
 
-ExprType Expr::getType() const {
-  return type_;
-}
+ExprType Expr::getType() const { return type_; }
 
 std::set<Expr> Expr::getVariables() const {
   std::set<Expr> variables;
@@ -331,10 +330,10 @@ Expr Expr::simplify_(const bool distribute) const {
     case ExprType::Variable:
       return *this;
     case ExprType::Transpose: {
-      const auto& child = getSingleChild_();
+      auto child = getSingleChild_().simplify_(distribute);
       if (child.type_ == ExprType::Transpose) {
         // transpose(transpose(x)) = x;
-        return child.getSingleChild_().simplify_();
+        return child.getSingleChild_();
       } else if (child == zero) {
         // 0^T = 0
         return zero;
@@ -347,22 +346,22 @@ Expr Expr::simplify_(const bool distribute) const {
       } else if (child.type_ == ExprType::Negate) {
         // (-x)^T  = -x^T
         return ExprFactory::negate(
-            ExprFactory::transpose(child.getSingleChild_().simplify_()));
+            ExprFactory::transpose(child.getSingleChild_()));
       } else if (child.type_ == ExprType::Product) {
         // (xyz)^T = z^T y^T x^T
         auto terms = transform(child.terms_, [](const auto& t) {
-          return ExprFactory::transpose(t.simplify_());
+          return ExprFactory::transpose(t);
         });
         std::ranges::reverse(terms);
         return ExprFactory::product(std::move(terms));
       }
-      return ExprFactory::transpose(child.simplify_());
+      return ExprFactory::transpose(child);
     }
     case ExprType::Negate: {
-      const auto& child = getSingleChild_();
+      auto child = getSingleChild_().simplify_(distribute);
       if (child.type_ == ExprType::Negate) {
         // negate(negate(x)) = x
-        return child.getSingleChild_().simplify_();
+        return child.getSingleChild_();
       } else if (child == zero) {
         // -0 = 0
         return zero;
@@ -390,33 +389,33 @@ Expr Expr::simplify_(const bool distribute) const {
           return ExprFactory::sum(std::move(terms));
         }
       }
-      return ExprFactory::negate(child.simplify_());
+      return ExprFactory::negate(child);
     }
     case ExprType::Invert: {
-      const auto& child = getSingleChild_();
+      const auto& child = getSingleChild_().simplify_(distribute);
       if (child.type_ == ExprType::Invert) {
         // invert(invert(x)) = x
-        return child.getSingleChild_().simplify_();
+        return child.getSingleChild_();
       } else if (child.type_ == ExprType::Negate) {
         // invert(negate(x)) = negate(invert(x))
         return ExprFactory::negate(
-            ExprFactory::invert(child.getSingleChild_().simplify_()));
+            ExprFactory::invert(child.getSingleChild_()));
       } else if (child.type_ == ExprType::Product) {
         // invert(x * y * z) = invert(z) * invert(y) * invert(x)
-        auto terms = transform(child.terms_, [](const auto& t) {
-          return ExprFactory::invert(t.simplify_());
-        });
+        auto terms = transform(
+            child.terms_, [](const auto& t) { return ExprFactory::invert(t); });
         std::ranges::reverse(terms);
         return ExprFactory::product(std::move(terms));
       }
-      return ExprFactory::invert(child.simplify_());
+      return ExprFactory::invert(child);
     }
     case ExprType::Log:
-      return ExprFactory::log(getSingleChild_().simplify_());
+      return ExprFactory::log(getSingleChild_().simplify_(distribute));
     case ExprType::Sum: {
       // Recursive simplification
-      auto terms =
-          transform(terms_, [](const auto& t) { return t.simplify_(); });
+      auto terms = transform(terms_, [distribute](const auto& t) {
+        return t.simplify_(distribute);
+      });
 
       // Distributive transformation (x + y + 1.3x = 2.3x + y)
       for (size_t i = 0; i < terms.size(); ++i) {
@@ -532,8 +531,9 @@ Expr Expr::simplify_(const bool distribute) const {
     }
     case ExprType::Product: {
       // Recursive simplification
-      auto terms =
-          transform(terms_, [](const auto& t) { return t.simplify_(); });
+      auto terms = transform(terms_, [distribute](const auto& t) {
+        return t.simplify_(distribute);
+      });
 
       // Associative transformation (x(yz) = xyz)
       associativeTransformation(ExprType::Product, terms);
@@ -732,9 +732,7 @@ double Expr::complexity_() const {
   }
 }
 
-Expr ExprFactory::number(const double value) {
-  return Expr(value);
-}
+Expr ExprFactory::number(const double value) { return Expr(value); }
 Expr ExprFactory::namedConstant(const std::string& name) {
   return Expr(ExprType::NamedConstant, name);
 }

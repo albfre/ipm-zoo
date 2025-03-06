@@ -1,6 +1,8 @@
 #include <emscripten.h>
 #include <emscripten/bind.h>
 
+#include <chrono>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -72,10 +74,17 @@ enum class NewtonSystemType { Full, Augmented, Normal };
 
 NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
                               const NewtonSystemType type) {
+  auto begin = std::chrono::high_resolution_clock::now();
   const auto variableNames = Optimization::VariableNames();
   auto [lagrangian, variables] =
       Optimization::getLagrangian(variableNames, settings);
   auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+  auto end = std::chrono::high_resolution_clock::now();
+  std::cout << "time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                     begin)
+                   .count()
+            << std::endl;
 
   auto i = lhs.size();
   if (type != NewtonSystemType::Full) {
