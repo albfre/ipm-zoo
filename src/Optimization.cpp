@@ -34,6 +34,7 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   const auto cx = product({c, x});
   const auto Ax = product({A_ineq, x});
   const auto Cx = product({A_eq, x});
+  const auto CxMinusB = sum({Cx, negate(b_eq)});
 
   auto terms = std::vector{xQx, cx};
   auto variables = std::vector{x};
@@ -49,8 +50,13 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
       settings.variableBounds == Bounds::Both;
 
   if (settings.equalities) {
-    variables.push_back(lambda_C);
-    terms.push_back(product({transpose(lambda_C), sum({Cx, negate(b_eq)})}));
+    if (settings.equalityHandling == EqualityHandling::PenaltyFunction) {
+      const auto muTerm = product({number(0.5), invert(variable("\\mu"))});
+      terms.push_back(product({muTerm, transpose(CxMinusB), CxMinusB}));
+    } else {
+      variables.push_back(lambda_C);
+      terms.push_back(product({transpose(lambda_C), CxMinusB}));
+    }
   }
 
   if (settings.inequalities != Bounds::None &&

@@ -34,8 +34,11 @@ const s_lA = "g"; // Slack variable for inequality constraint lower bound
 const s_uA = "t"; // Slack variable for inequality constraint upper bound
 const s_lx = "y"; // Slack variable for x lower bound
 const s_ux = "z"; // Slack variable for x upper bound
-const getObjective = (logBarrierVariables = []) => {
+const getObjective = (equalityPenalties, logBarrierVariables = []) => {
   let output = "\\underset{" + x + "}{\\text{minimize}} \\quad & 0.5 " + x + "^T Q " + x + " + c^T" + x;
+  if (equalityPenalties) {
+    output += "+ 0.5 \\mu^{-1}(" + A_eq + x + " - " + b_eq + ")^T(" + A_eq + x + " - " + b_eq + ")";
+  }
   for (const v of logBarrierVariables) {
     output += "- \\mu e^T \\log(" + v + ")";
   }
@@ -49,7 +52,7 @@ function getOriginalProblem(inequalities, equalities, variableBounds) {
   const hasVariableBounds = variableBounds !== "none";
   let outputText = "";
   outputText += "\\[ \\begin{align*}\n";
-  outputText += getObjective();
+  outputText += getObjective(false);
 
   if (hasInequalities || hasEqualities || hasVariableBounds) {
     outputText += "\\text{subject to} \\quad";
@@ -77,41 +80,41 @@ function getOriginalProblem(inequalities, equalities, variableBounds) {
 
 function getNonnegativeSlacks(inequalities, equalities, variableBounds) {
   let nonnegativeSlacks = [];
-  if (inequalities === "lower" || inequalities == "both") {
+  if (inequalities === "lower" || inequalities === "both") {
     nonnegativeSlacks.push(s_lA);
   }
-  if (inequalities === "upper" || inequalities == "both") {
+  if (inequalities === "upper" || inequalities === "both") {
     nonnegativeSlacks.push(s_uA);
   }
-  if (variableBounds === "lower" || variableBounds == "both") {
+  if (variableBounds === "lower" || variableBounds === "both") {
     nonnegativeSlacks.push(s_lx);
   }
-  if (variableBounds === "upper" || variableBounds == "both") {
+  if (variableBounds === "upper" || variableBounds === "both") {
     nonnegativeSlacks.push(s_ux);
   }
   return nonnegativeSlacks;
 }
 
-function getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, logBarriers) {
+function getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, equalityHandling, logBarriers) {
   const hasInequalities = inequalities !== "none";
   const hasEqualities = equalities;
   const hasVariableBounds = variableBounds !== "none";
   let outputText = "";
   outputText += "\\[ \\begin{align*}\n";
   const nonnegativeSlacks = getNonnegativeSlacks(inequalities, equalities, variableBounds);
-  outputText += getObjective(logBarriers ? nonnegativeSlacks : []);
+  outputText += getObjective(equalities && equalityHandling === "penalty", logBarriers ? nonnegativeSlacks : []);
 
   if (hasInequalities || hasEqualities || hasVariableBounds) {
     outputText += "\\text{subject to} \\quad";
   }
 
-  if (hasEqualities) {
+  if (hasEqualities && equalityHandling !== "penalty") {
     outputText += "& " + A_eq + x + " = " + b_eq + "\\\\\n"
   }
 
   if (hasInequalities) {
-    const addLower = inequalities === "lower" || inequalities == "both"
-    const addUpper = inequalities === "upepr" || inequalities == "both"
+    const addLower = inequalities === "lower" || inequalities === "both"
+    const addUpper = inequalities === "upepr" || inequalities === "both"
     if (inequalityHandling === "slacks") {
       outputText += "& " + A_ineq + x + " - " + s_A + " = 0 \\\\\n";
       if (addLower) outputText += "& " + s_A + " - " + s_lA + " = " + l_A + " \\\\\n";
@@ -124,8 +127,8 @@ function getSlackProblem(inequalities, equalities, variableBounds, inequalityHan
   }
 
   if (variableBounds !== "none") {
-    if (variableBounds === "lower" || variableBounds == "both") outputText += "& " + x + " - " + s_lx + " = " + l_x + " \\\\\n";
-    if (variableBounds === "upper" || variableBounds == "both") outputText += "& " + x + " + " + s_ux + " = " + u_x + " \\\\\n";
+    if (variableBounds === "lower" || variableBounds === "both") outputText += "& " + x + " - " + s_lx + " = " + l_x + " \\\\\n";
+    if (variableBounds === "upper" || variableBounds === "both") outputText += "& " + x + " + " + s_ux + " = " + u_x + " \\\\\n";
   }
 
   if (!logBarriers && nonnegativeSlacks) {
@@ -163,14 +166,14 @@ function updateProblem() {
 
   let outputText = ""; //<h3>Quadratic Programming Problem</h3>";
   outputText += "<p><strong>Original optimization problem:</strong></p>";
-  outputText += getOriginalProblem(inequalities, equalities, variableBounds);
+  outputText += getOriginalProblem(inequalities, equalities, equalityHandling, variableBounds);
 
   if (hasInequalities || hasVariableBounds) {
     outputText += "<p><strong>Slacked optimization problem:</strong></p>";
-    outputText += getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, false);
+    outputText += getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, equalityHandling, false);
 
     outputText += "<p><strong>Slacked optimization problem with log-barriers:</strong></p>";
-    outputText += getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, true);
+    outputText += getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, equalityHandling, true);
   }
 
 
@@ -181,12 +184,18 @@ function updateProblem() {
       upper: wasmModule.Bounds.Upper,
       none: wasmModule.Bounds.None,
     };
+    const equalityHandlingMap ={
+      indefinite : wasmModule.EqualityHandling.IndefiniteFactorization,
+      slacks : wasmModule.EqualityHandling.Slack,
+      penalty : wasmModule.EqualityHandling.PenaltyFunction,
+    };
     try {
       const settings = new wasmModule.Settings();
       settings.equalities = equalities;
       settings.inequalities = boundsMap[inequalities] ?? wasmModule.Bounds.None;
       settings.variableBounds = boundsMap[variableBounds] ?? wasmModule.Bounds.None;
-      settings.inequalityHandling = inequalityHandling == "slacks" ? wasmModule.InequalityHandling.Slacks : wasmModule.InequalityHandling.SimpleSlacks;
+      settings.inequalityHandling = inequalityHandling === "slacks" ? wasmModule.InequalityHandling.Slacks : wasmModule.InequalityHandling.SimpleSlacks;
+      settings.equalityHandling = equalityHandlingMap[equalityHandling];
       const lagrangian = wasmModule.getLagrangian(settings);
       outputText += "<p><strong>Lagrangian function:</strong></p>";
       outputText += "\\[ \\begin{align*} L =" + lagrangian + "\\end{align*} \\]";
@@ -215,7 +224,7 @@ function updateProblem() {
       const normalEquation = wasmModule.getNormalEquation(settings);
       outputText += "<p><strong>Normal equation:</strong></p>";
       cs = "c".repeat(countAmpersandsBeforeNewlines(normalEquation.lhs) + 1);
-      if (equalities && equalityHandling == "indefinite") {
+      if (equalities && equalityHandling === "indefinite") {
         outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
         outputText += "\\left( \\begin{array}{c} " + normalEquation.variables + "\\end{array} \\right) \\]";
         outputText += "\\[ = \\left( \\begin{array}{c} " + normalEquation.rhs + "\\end{array} \\right) \\]"
@@ -224,6 +233,7 @@ function updateProblem() {
         outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
         outputText += normalEquation.variables + " \\]";
         outputText += "\\[ \\begin{array}{l} =" + normalEquation.rhs + " \\end{array} \\]"
+        //outputText += "\\[ \\begin{multiline} =" + normalEquation.rhs + " \\end{multiline} \\]"
       }
 
 
@@ -249,7 +259,7 @@ function updateProblem() {
   outputText += "<p><s>11. Reduction to normal equations if possible</s></p>";
   outputText += "<p><s>12. Support for equalities</s></p>";
   outputText += "<p><s>13. Support for direct slacks for inequalities</s></p>";
-  outputText += "<p><s>14. Support for different equality handling</s></p>";
+  outputText += "<p>14. Support for different equality handling</p>";
   outputText += "<p>15. Correct vector differentiation</p>";
 
   document.getElementById("output").innerHTML = outputText;

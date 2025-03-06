@@ -49,6 +49,7 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
   for (const auto& row : rhs) {
     rhsStr += row.toString(condensed) + " \\\\ ";
   }
+  /*
   if (rhs.size() == 1) {
     auto it =
         rhsStr.find("- r_{" + variables.front().toString(condensed) + "}");
@@ -56,6 +57,7 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
       rhsStr.insert(it, " \\\\\n ");
     }
   }
+    */
 
   const auto rhsShorthand = Optimization::getShorthandRhs(variables);
   std::string rhsShorthandStr = "";
@@ -90,7 +92,11 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
 
   auto i = lhs.size();
   if (type != NewtonSystemType::Full) {
-    i = settings.equalities ? 2 : 1;
+    i = settings.equalities &&
+                settings.equalityHandling ==
+                    Optimization::EqualityHandling::IndefiniteFactorization
+            ? 2
+            : 1;
     rhs = Optimization::getShorthandRhs(variables);
   }
   if (type == NewtonSystemType::Augmented) {
