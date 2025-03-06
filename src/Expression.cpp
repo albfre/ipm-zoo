@@ -207,7 +207,12 @@ std::string Expr::toString(const bool condensed) const {
     case ExprType::Product: {
       std::stringstream ss;
       ss << (condensed ? "" : "(");
-      ss << terms_.front().toString(condensed);
+      const auto& front = terms_.front();
+      if (condensed && front.type_ == ExprType::Sum) {
+        ss << "(" << front.toString(condensed) << ")";
+      } else {
+        ss << front.toString(condensed);
+      }
       const auto symbol = condensed ? " " : " * ";
       for (const auto& t : terms_ | std::views::drop(1)) {
         const auto negate = t.type_ == ExprType::Negate;
@@ -551,7 +556,7 @@ Expr Expr::simplify_(const bool distribute) const {
                      : ExprFactory::sum(
                            {ExprFactory::sum(std::move(unfactoredTerms)),
                             factorTimesFactored}))
-                    .simplify_();
+                    .simplify(false);
             associativeTransformation(factoredExpr.type_, factoredExpr.terms_);
             if (factoredExpr.complexity_() < simplified.complexity_()) {
               return factoredExpr;
@@ -641,7 +646,7 @@ Expr Expr::simplify_(const bool distribute) const {
                 });
             auto distributedExpr =
                 ExprFactory::sum(std::move(sumTerms)).simplify(false);
-            if (distributedExpr.complexity_() < simplified.complexity_()) {
+            if (distributedExpr.complexity_() <= simplified.complexity_()) {
               return distributedExpr;
             }
           }

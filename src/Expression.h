@@ -35,11 +35,11 @@ class Expr {
   Expr replaceSubexpression(const Expr& expr, const Expr& replacement) const;
 
  private:
+  double complexity_() const;
   Expr simplify_(bool distribute = true) const;
   const Expr& getSingleChild_() const;
   Expr getLeadingOrEndingFactor_(bool leading) const;
   Expr factorOut(const Expr& factor, bool leading) const;
-  double complexity_() const;
   ExprType type_;
   std::string name_ = "";
   double value_ = 0.0;

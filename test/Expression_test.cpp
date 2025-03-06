@@ -266,6 +266,51 @@ TEST_F(ExpressionTest, SimplifyComplex) {
   EXPECT_EQ(simplified.toString(), "(4 + (2 * x * y) + (5 * x))");
 }
 
+TEST_F(ExpressionTest, SimplifyRhsExpression) {
+  // Test expression appearing in augmented system RHS
+  using namespace ExprFactory;
+  auto expr =
+      product({invert(diagonalMatrix(variable("z"))),
+               diagonalMatrix(variable("\\lambda_{z}")),
+               sum({product({invert(diagonalMatrix(variable("\\lambda_{z}"))),
+                             namedConstant("r_{z}")}),
+                    negate(namedConstant("r_{\\lambda_{z}}"))})});
+  auto expr2 = sum(
+      {product({invert(diagonalMatrix(variable("z"))), namedConstant("r_{z}")}),
+       product({invert(diagonalMatrix(variable("z"))),
+                diagonalMatrix(variable("\\lambda_{z}")),
+                negate(namedConstant("r_{\\lambda_{z}}"))})});
+  auto simplified = expr.simplify();
+  auto simplified2 = expr2.simplify();
+  std::cout << simplified.toString() << std::endl;
+  EXPECT_EQ(simplified.toString(), simplified2.toString());
+}
+
+TEST_F(ExpressionTest, SimplifyRhsExpression2) {
+  // Test expression appearing in normal equation RHS
+  using namespace ExprFactory;
+  auto expr = sum(
+      product(invert(diagonalMatrix(variable(t))),
+              sum(namedConstant(r_{t}),
+                  negate(product(diagonalMatrix(variable(\lambda_{t})),
+                                 namedConstant(r_{\lambda_{t}}))))),
+      negate(namedConstant(r_{s})),
+      negate(product(invert(diagonalMatrix(variable(g))),
+                     sum(namedConstant(r_{g}),
+                         negate(product(diagonalMatrix(variable(\lambda_{g})),
+                                        namedConstant(r_{\lambda_{g}})))))),
+      negate(product(sum(product(invert(diagonalMatrix(variable(g))),
+                                 diagonalMatrix(variable(\lambda_{g}))),
+                         product(invert(diagonalMatrix(variable(t))),
+                                 diagonalMatrix(variable(\lambda_{t})))),
+                     namedConstant(r_{\lambda_{A}}))));
+
+  auto simplified = expr.simplify();
+  auto simplified2 = expr2.simplify();
+  std::cout << simplified.toString() << std::endl;
+  EXPECT_EQ(simplified.toString(), simplified2.toString());
+}
+
 TEST_F(ExpressionTest, SimplifyComplex2) {
   // Test more complex expression
   auto complexExpr = ExprFactory::sum(
