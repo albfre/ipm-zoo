@@ -4,8 +4,6 @@ add_library(SymbolicOptimization
     Expression.h
     Optimization.cpp
     Optimization.h
-    GaussianElimination.cpp
-    GaussianElimination.h
 )
 
 # Make include directories visible to other targets

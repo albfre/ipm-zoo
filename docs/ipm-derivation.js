@@ -25,7 +25,7 @@ const x = "x"; // Primary variable
 const A_ineq = "A"; // Inequality constraint matrix
 const l_A = "l_{A}"; // Inequality constraint lower bound
 const u_A = "u_{A}"; // Inequality constraint upper bound
-const A_eq = "A_{\\text{eq}}"; // Equality constraint matrix
+const A_eq = "C"; // Equality constraint matrix
 const b_eq = "b"; // Equality constraint right-hand side
 const l_x = "l_x"; // Primary variable lower bound
 const u_x = "u_x"; // Primary variable upper bound
@@ -136,12 +136,26 @@ function getSlackProblem(inequalities, equalities, variableBounds, inequalityHan
   return outputText;
 }
 
+function dimZeros(str) {
+  const useDimmedZeros = document.getElementById("dim_zeros").checked;
+  return useDimmedZeros ? str.replace(/(\D|^)0(\D|$)/g, '$1{\\color{lightgray}0}$2') : str;
+}
+
+function countAmpersandsBeforeNewlines(str) {
+  const rows = str.split('\\\\');
+  rows.pop();
+  
+  return rows.map(row => {
+    return (row.match(/&/g) || []).length;
+  });
+}
+
 function updateProblem() {
-  let inequalities = document.querySelector('input[name="inequalities"]:checked').value;
-  let inequalityHandling = document.querySelector('input[name="handling_inequalities"]:checked').value;
-  let equalities = document.getElementById("equalities").checked;
-  let equalityHandling = document.querySelector('input[name="handling_equalities"]:checked').value;
-  let variableBounds = document.querySelector('input[name="variable_bounds"]:checked').value;
+  const inequalities = document.querySelector('input[name="inequalities"]:checked').value;
+  const inequalityHandling = document.querySelector('input[name="handling_inequalities"]:checked').value;
+  const equalities = document.getElementById("equalities").checked;
+  const equalityHandling = document.querySelector('input[name="handling_equalities"]:checked').value;
+  const variableBounds = document.querySelector('input[name="variable_bounds"]:checked').value;
 
   const hasInequalities = inequalities !== "none";
   const hasEqualities = equalities;
@@ -184,15 +198,16 @@ function updateProblem() {
       outputText += "<p><strong>Newton system:</strong></p>";
       outputText += "\\[ \\begin{align*} \\nabla^2 L p = -\\nabla L \\end{align*}, \\]";
       outputText += "where"
-      outputText += "\\[ \\nabla^2 L p = \\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.lhs + "\\end{array} \\right) "
-      outputText += "\\left( \\begin{array}{ccccccccccccccc} " + newtonSystem.variables + "\\end{array} \\right) \\]";
+      const cs = "c".repeat(countAmpersandsBeforeNewlines(newtonSystem.lhs) + 1);
+      outputText += "\\[ \\nabla^2 L p = \\left( \\begin{array}{" + cs + "} " + dimZeros(newtonSystem.lhs) + "\\end{array} \\right) "
+      outputText += "\\left( \\begin{array}{c} " + newtonSystem.variables + "\\end{array} \\right) \\]";
       outputText += "\\[ = -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
       outputText += "=: \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
 
       const agumentedSystem = wasmModule.getAugmentedSystem(settings);
       outputText += "<p><strong>Augmented system:</strong></p>";
-      outputText += "\\[ \\left( \\begin{array}{ccccccccccccccc} " + agumentedSystem.lhs + "\\end{array} \\right) "
-      outputText += "\\left( \\begin{array}{ccccccccccccccc} " + agumentedSystem.variables + "\\end{array} \\right) \\]";
+      outputText += "\\[ \\left( \\begin{array}{ccccccccccccccc} " + dimZeros(agumentedSystem.lhs) + "\\end{array} \\right) "
+      outputText += "\\left( \\begin{array}{c} " + agumentedSystem.variables + "\\end{array} \\right) \\]";
       outputText += "\\[ = \\left( \\begin{array}{c} " + agumentedSystem.rhs + "\\end{array} \\right) \\]"
 
       const normalEquation = wasmModule.getNormalEquation(settings);

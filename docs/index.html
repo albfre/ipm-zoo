@@ -8,7 +8,12 @@
   <link rel="stylesheet" href="styles.css">
   <script>
     MathJax = {
-      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        macros: {
+          dimzero: ["{\\color{lightgray}0}"]
+        }
+      },
       svg: { fontCache: 'global' }
     };
   </script>
@@ -47,6 +52,10 @@
         factorization</label>
       <label><input type="radio" name="handling_equalities" value="slacks"> Slacks</label>
       <label><input type="radio" name="handling_equalities" value="penalty"> Penalty function</label>
+      <br>
+      <h3>Visualization</h3>
+      <label><input type="checkbox" id="dim_zeros" checked> Dim zeros</label>
+      <br>
     </div>
 
     <!-- Output Section (Right) -->

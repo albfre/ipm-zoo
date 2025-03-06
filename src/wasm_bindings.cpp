@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "Expression.h"
-#include "GaussianElimination.h"
 #include "Optimization.h"
 
 using namespace emscripten;
@@ -34,11 +33,14 @@ std::string replaceAll_(std::string str, const std::string& from,
 
 NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
                                         const auto& variables) {
+  const auto unity = Expression::ExprFactory::number(1);
+  const auto I = Expression::ExprFactory::namedConstant("I");
   std::string lhsStr = "";
   const auto condensed = true;
   for (const auto& row : lhs) {
     for (size_t i = 0; i < row.size(); ++i) {
-      lhsStr += row[i].toString(condensed) + (i + 1 == row.size() ? "" : " & ");
+      lhsStr += row[i].replaceSubexpression(unity, I).toString(condensed) +
+                (i + 1 == row.size() ? "" : " & ");
     }
     lhsStr += "\\\\";
   }
@@ -103,7 +105,7 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
   }
 
   while (lhs.size() > i) {
-    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
     variables.pop_back();
   }
 

@@ -101,6 +101,35 @@ TEST_F(OptimizationTest, GetShorthandRhs) {
   }
 }
 
+TEST_F(OptimizationTest, GaussianElimination) {
+  auto settings = Settings();
+  auto names = VariableNames();
+  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto [lhs, _] = getNewtonSystem(lagrangian, variables);
+  auto rhs = getShorthandRhs(variables);
+  while (lhs.size() > 1) {
+    std::string lhsStr = "";
+    const auto condensed = true;
+    for (const auto& row : lhs) {
+      for (size_t i = 0; i < row.size(); ++i) {
+        lhsStr +=
+            row[i].toString(condensed) + (i + 1 == row.size() ? "" : " & ");
+      }
+      lhsStr += "\\\\\n";
+    }
+
+    std::string rhsStr = "";
+    for (const auto& row : rhs) {
+      rhsStr += row.toString(condensed) + "\\\\\n";
+    }
+    std::cout << lhsStr << std::endl;
+    std::cout << rhsStr << std::endl;
+    std::cout << "\n\n";
+
+    gaussianElimination(lhs, rhs, lhs.size() - 1);
+  }
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

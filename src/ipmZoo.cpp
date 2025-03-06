@@ -4,7 +4,6 @@
 #include <memory>
 
 #include "Expression.h"
-#include "GaussianElimination.h"
 #include "Optimization.h"
 
 void initialTest() {
@@ -81,8 +80,7 @@ void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
   for (const auto& row : lhs) {
     for (size_t i = 0; i < row.size(); ++i) {
       std::cout << row[i].toString();
-      if (i < row.size() - 1)
-        std::cout << " & ";
+      if (i < row.size() - 1) std::cout << " & ";
     }
     std::cout << " \\\\" << std::endl;
   }
@@ -121,26 +119,26 @@ void runLagrangianTest() {
 
   std::cout << "\n\n";
 
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
   if (settings.inequalityHandling == Optimization::InequalityHandling::Slacks) {
-    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
   }
 
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
 
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
   if (settings.inequalityHandling == Optimization::InequalityHandling::Slacks) {
-    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
   }
 
   while (lhs.size() > 1) {
-    GaussianElimination::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
   }
 
   std::cout << "Lhs matrix:" << std::endl;

@@ -1,36 +1,36 @@
 #include "Optimization.h"
 
-#include <iostream>
+#include <cassert>
 
 namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     const VariableNames& names, const Settings& settings) {
   using namespace Expression::ExprFactory;
-  auto Q = symmetricMatrix("Q");
-  auto c = namedConstant("c");
-  auto A_ineq = matrix(names.A_ineq);
-  auto A_eq = matrix(names.A_eq);
-  auto mu = namedConstant("\\mu");
-  auto e = namedConstant("e");
-  auto x = variable(names.x);
-  auto s_A = variable(names.s_A);
-  auto s_Al = variable(names.s_Al);
-  auto s_Au = variable(names.s_Au);
-  auto s_xl = variable(names.s_xl);
-  auto s_xu = variable(names.s_xu);
-  auto lambda_A = variable("\\lambda_{" + names.A_ineq + "}");
-  auto lambda_sAl = variable("\\lambda_{" + names.s_Al + "}");
-  auto lambda_sAu = variable("\\lambda_{" + names.s_Au + "}");
-  auto lambda_sxl = variable("\\lambda_{" + names.s_xl + "}");
-  auto lambda_sxu = variable("\\lambda_{" + names.s_xu + "}");
-  auto l_A = namedConstant(names.l_A);
-  auto u_A = namedConstant(names.u_A);
-  auto l_x = namedConstant(names.l_x);
-  auto u_x = namedConstant(names.u_x);
+  const auto Q = symmetricMatrix(names.Q);
+  const auto c = namedConstant(names.c);
+  const auto A_ineq = matrix(names.A_ineq);
+  const auto A_eq = matrix(names.A_eq);
+  const auto mu = namedConstant("\\mu");
+  const auto e = namedConstant("e");
+  const auto x = variable(names.x);
+  const auto s_A = variable(names.s_A);
+  const auto s_Al = variable(names.s_Al);
+  const auto s_Au = variable(names.s_Au);
+  const auto s_xl = variable(names.s_xl);
+  const auto s_xu = variable(names.s_xu);
+  const auto lambda_A = variable("\\lambda_{" + names.A_ineq + "}");
+  const auto lambda_sAl = variable("\\lambda_{" + names.s_Al + "}");
+  const auto lambda_sAu = variable("\\lambda_{" + names.s_Au + "}");
+  const auto lambda_sxl = variable("\\lambda_{" + names.s_xl + "}");
+  const auto lambda_sxu = variable("\\lambda_{" + names.s_xu + "}");
+  const auto l_A = namedConstant(names.l_A);
+  const auto u_A = namedConstant(names.u_A);
+  const auto l_x = namedConstant(names.l_x);
+  const auto u_x = namedConstant(names.u_x);
 
-  auto xQx = product({number(0.5), transpose(x), Q, x});
-  auto cx = product({c, x});
-  auto Ax = product({A_ineq, x});
+  const auto xQx = product({number(0.5), transpose(x), Q, x});
+  const auto cx = product({c, x});
+  const auto Ax = product({A_ineq, x});
 
   auto terms = std::vector{xQx, cx};
   auto variables = std::vector{x};
@@ -111,9 +111,10 @@ std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
   firstOrder.reserve(variables.size());
   for (const auto& v : variables) {
     auto diff = lagrangian.differentiate(v).simplify();
-    if (const auto invV = ExprFactory::invert(v);
+    if (const auto invV = ExprFactory::invert(ExprFactory::diagonalMatrix(v));
         diff.containsSubexpression(invV)) {
-      diff = ExprFactory::product({v, diff}).simplify();
+      diff = ExprFactory::product({ExprFactory::diagonalMatrix(v), diff})
+                 .simplify();
     }
     firstOrder.push_back(diff);
   }
@@ -149,4 +150,43 @@ std::vector<Expression::Expr> getShorthandRhs(
   return rhs;
 }
 
+void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
+                         std::vector<Expression::Expr>& rhs,
+                         const size_t sourceRow) {
+  using namespace Expression;
+  const auto zero = ExprFactory::number(0.0);
+  size_t targetRow = 0;
+  for (; targetRow < lhs.size(); ++targetRow) {
+    if (targetRow != sourceRow && lhs.at(targetRow).at(sourceRow) != zero) {
+      break;
+    }
+  }
+  assert(targetRow < lhs.size());
+  const auto targetExpr = lhs.at(targetRow).at(sourceRow);
+  const auto sourceExpr = lhs.at(sourceRow).at(sourceRow);
+  const auto factor =
+      ExprFactory::negate(
+          ExprFactory::product({targetExpr, ExprFactory::invert(sourceExpr)}))
+          .simplify();
+  const auto addRowTimesFactorToRow = [&factor](const Expr& sourceTerm,
+                                                const Expr& targetTerm) {
+    const auto sourceTermTimesFactor =
+        ExprFactory::product({factor, sourceTerm}).simplify();
+    return ExprFactory::sum({targetTerm, sourceTermTimesFactor}).simplify();
+  };
+
+  for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
+    lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
+                                                     lhs.at(targetRow).at(i));
+  }
+
+  rhs.at(targetRow) =
+      addRowTimesFactorToRow(rhs.at(sourceRow), rhs.at(targetRow));
+
+  lhs.erase(lhs.begin() + sourceRow);
+  for (auto& lhsRow : lhs) {
+    lhsRow.erase(lhsRow.begin() + sourceRow);
+  }
+  rhs.erase(rhs.begin() + sourceRow);
+}
 }  // namespace Optimization

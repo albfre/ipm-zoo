@@ -10,6 +10,7 @@ enum class ExprType {
   NamedConstant,
   Matrix,
   SymmetricMatrix,
+  DiagonalMatrix,
   Variable,
   Transpose,
   Invert,
@@ -54,6 +55,7 @@ Expr namedConstant(const std::string& name);
 Expr matrix(const std::string& name);
 Expr symmetricMatrix(const std::string& name);
 Expr variable(const std::string& name);
+Expr diagonalMatrix(Expr expr);
 Expr transpose(Expr expr);
 Expr negate(Expr expr);
 Expr invert(Expr expr);

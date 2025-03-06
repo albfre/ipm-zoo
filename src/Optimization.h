@@ -4,7 +4,8 @@
 namespace Optimization {
 struct VariableNames {
   std::string x = "x";
-  std::string A_eq = "A_eq";
+  std::string A_eq = "C";
+  std::string b_eq = "b";
   std::string A_ineq = "A";
   std::string s_A = "s";
   std::string s_Al = "g";
@@ -15,6 +16,8 @@ struct VariableNames {
   std::string u_A = "u_A";
   std::string l_x = "l_x";
   std::string u_x = "u_x";
+  std::string Q = "Q";
+  std::string c = "c";
 };
 
 enum class Bounds {
@@ -44,8 +47,7 @@ struct Settings {
 };
 
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
-    const VariableNames& names,
-    const Settings& settings);
+    const VariableNames& names, const Settings& settings);
 
 std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
     const Expression::Expr& lagrangian,
@@ -58,4 +60,7 @@ getNewtonSystem(const Expression::Expr& lagrangian,
 
 std::vector<Expression::Expr> getShorthandRhs(
     const std::vector<Expression::Expr>& variables);
+
+void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
+                         std::vector<Expression::Expr>& rhs, size_t sourceRow);
 }  // namespace Optimization
