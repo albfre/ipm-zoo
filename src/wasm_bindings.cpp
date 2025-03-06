@@ -42,25 +42,25 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
       lhsStr += row[i].replaceSubexpression(unity, I).toString(condensed) +
                 (i + 1 == row.size() ? "" : " & ");
     }
-    lhsStr += "\\\\";
+    lhsStr += " \\\\ ";
   }
 
   std::string rhsStr = "";
   for (const auto& row : rhs) {
-    rhsStr += row.toString(condensed) + "\\\\";
+    rhsStr += row.toString(condensed) + " \\\\ ";
   }
   if (rhs.size() == 1) {
     auto it =
         rhsStr.find("- r_{" + variables.front().toString(condensed) + "}");
     if (it != std::string::npos) {
-      rhsStr.insert(it, "\\\\\n ");
+      rhsStr.insert(it, " \\\\\n ");
     }
   }
 
   const auto rhsShorthand = Optimization::getShorthandRhs(variables);
   std::string rhsShorthandStr = "";
   for (const auto& row : rhsShorthand) {
-    rhsShorthandStr += row.toString(condensed) + "\\\\";
+    rhsShorthandStr += row.toString(condensed) + " \\\\ ";
   }
 
   std::string variablesStr = "";
@@ -90,7 +90,7 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
 
   auto i = lhs.size();
   if (type != NewtonSystemType::Full) {
-    i = 1;
+    i = settings.equalities ? 2 : 1;
     rhs = Optimization::getShorthandRhs(variables);
   }
   if (type == NewtonSystemType::Augmented) {
@@ -121,13 +121,21 @@ std::string getLagrangian(const Optimization::Settings& settings) {
 
   const auto condensed = true;
   auto str = "& " + lagrangian.toString(condensed);
-  auto it = str.find("+ \\lambda");
-  if (it != std::string::npos) {
-    str.insert(it, "\\\\\n & ");
+  auto pos = 0;
+  while (pos != std::string::npos) {
+    pos = str.find("\\lambda", pos + 1);
+    if (pos != std::string::npos && pos > 2) {
+      str.insert(pos - 2, "\\\\\n & ");
+    }
+    for (size_t i = 0; i < 3; ++i) {
+      pos = pos == std::string::npos ? std::string::npos
+                                     : str.find("\\lambda", pos + 1);
+    }
   }
-  it = str.find("- \\mu");
-  if (it != std::string::npos) {
-    str.insert(it, "\\\\\n & ");
+
+  pos = str.find("- \\mu");
+  if (pos != std::string::npos) {
+    str.insert(pos, "\\\\\n & ");
   }
   return str;
 }

@@ -10,6 +10,7 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   const auto c = namedConstant(names.c);
   const auto A_ineq = matrix(names.A_ineq);
   const auto A_eq = matrix(names.A_eq);
+  const auto b_eq = matrix(names.b_eq);
   const auto mu = namedConstant("\\mu");
   const auto e = namedConstant("e");
   const auto x = variable(names.x);
@@ -18,6 +19,7 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   const auto s_Au = variable(names.s_Au);
   const auto s_xl = variable(names.s_xl);
   const auto s_xu = variable(names.s_xu);
+  const auto lambda_C = variable("\\lambda_{" + names.A_eq + "}");
   const auto lambda_A = variable("\\lambda_{" + names.A_ineq + "}");
   const auto lambda_sAl = variable("\\lambda_{" + names.s_Al + "}");
   const auto lambda_sAu = variable("\\lambda_{" + names.s_Au + "}");
@@ -31,6 +33,7 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   const auto xQx = product({number(0.5), transpose(x), Q, x});
   const auto cx = product({c, x});
   const auto Ax = product({A_ineq, x});
+  const auto Cx = product({A_eq, x});
 
   auto terms = std::vector{xQx, cx};
   auto variables = std::vector{x};
@@ -44,6 +47,11 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   const auto addUpperVariableBounds =
       settings.variableBounds == Bounds::Upper ||
       settings.variableBounds == Bounds::Both;
+
+  if (settings.equalities) {
+    variables.push_back(lambda_C);
+    terms.push_back(product({transpose(lambda_C), sum({Cx, negate(b_eq)})}));
+  }
 
   if (settings.inequalities != Bounds::None &&
       settings.inequalityHandling == InequalityHandling::Slacks) {

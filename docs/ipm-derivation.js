@@ -183,6 +183,7 @@ function updateProblem() {
     };
     try {
       const settings = new wasmModule.Settings();
+      settings.equalities = equalities;
       settings.inequalities = boundsMap[inequalities] ?? wasmModule.Bounds.None;
       settings.variableBounds = boundsMap[variableBounds] ?? wasmModule.Bounds.None;
       settings.inequalityHandling = inequalityHandling == "slacks" ? wasmModule.InequalityHandling.Slacks : wasmModule.InequalityHandling.SimpleSlacks;
@@ -198,23 +199,34 @@ function updateProblem() {
       outputText += "<p><strong>Newton system:</strong></p>";
       outputText += "\\[ \\begin{align*} \\nabla^2 L p = -\\nabla L \\end{align*}, \\]";
       outputText += "where"
-      const cs = "c".repeat(countAmpersandsBeforeNewlines(newtonSystem.lhs) + 1);
+      let cs = "c".repeat(countAmpersandsBeforeNewlines(newtonSystem.lhs) + 1);
       outputText += "\\[ \\nabla^2 L p = \\left( \\begin{array}{" + cs + "} " + dimZeros(newtonSystem.lhs) + "\\end{array} \\right) "
       outputText += "\\left( \\begin{array}{c} " + newtonSystem.variables + "\\end{array} \\right) \\]";
       outputText += "\\[ = -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
       outputText += "=: \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
 
-      const agumentedSystem = wasmModule.getAugmentedSystem(settings);
+      const augmentedSystem = wasmModule.getAugmentedSystem(settings);
       outputText += "<p><strong>Augmented system:</strong></p>";
-      outputText += "\\[ \\left( \\begin{array}{ccccccccccccccc} " + dimZeros(agumentedSystem.lhs) + "\\end{array} \\right) "
-      outputText += "\\left( \\begin{array}{c} " + agumentedSystem.variables + "\\end{array} \\right) \\]";
-      outputText += "\\[ = \\left( \\begin{array}{c} " + agumentedSystem.rhs + "\\end{array} \\right) \\]"
+      cs = "c".repeat(countAmpersandsBeforeNewlines(augmentedSystem.lhs) + 1);
+      outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
+      outputText += "\\left( \\begin{array}{c} " + augmentedSystem.variables + "\\end{array} \\right) \\]";
+      outputText += "\\[ = \\left( \\begin{array}{c} " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
 
       const normalEquation = wasmModule.getNormalEquation(settings);
       outputText += "<p><strong>Normal equation:</strong></p>";
-      outputText += "\\[ \\left(" + normalEquation.lhs + " \\right) "
-      outputText += normalEquation.variables + " \\]";
-      outputText += "\\[ \\begin{array}{l} =" + normalEquation.rhs + " \\end{array} \\]"
+      cs = "c".repeat(countAmpersandsBeforeNewlines(normalEquation.lhs) + 1);
+      if (equalities && equalityHandling == "indefinite") {
+        outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
+        outputText += "\\left( \\begin{array}{c} " + normalEquation.variables + "\\end{array} \\right) \\]";
+        outputText += "\\[ = \\left( \\begin{array}{c} " + normalEquation.rhs + "\\end{array} \\right) \\]"
+      }
+      else {
+        outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
+        outputText += normalEquation.variables + " \\]";
+        outputText += "\\[ \\begin{array}{l} =" + normalEquation.rhs + " \\end{array} \\]"
+      }
+
+
     } catch (error) {
       console.error("Error calling Lagrangian function:", error);
       outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
@@ -232,11 +244,13 @@ function updateProblem() {
   outputText += "<p><s>6. Reduction of rows for log-barriers</s></p>";
   outputText += "<p><s>7. Reduction of rows for Lagrange multipliers</s></p>";
   outputText += "<p>8. Expressions for search direction variables in reduced system</p>";
-  outputText += "<p>9. Augmented system and LU/LDLT solution methods</p>";
-  outputText += "<p>10. Reduction to normal equations if possible</p>";
-  outputText += "<p>11. Support for equalities </p>";
-  outputText += "<p>12. Support for direct slacks for inequalities</p>";
-  outputText += "<p>13. Correct vector differentiation</p>";
+  outputText += "<p><s>9. Augmented system</s></p>";
+  outputText += "<p>10. LU/LDLT solution methods</p>";
+  outputText += "<p><s>11. Reduction to normal equations if possible</s></p>";
+  outputText += "<p><s>12. Support for equalities</s></p>";
+  outputText += "<p><s>13. Support for direct slacks for inequalities</s></p>";
+  outputText += "<p><s>14. Support for different equality handling</s></p>";
+  outputText += "<p>15. Correct vector differentiation</p>";
 
   document.getElementById("output").innerHTML = outputText;
   MathJax.typesetPromise().catch((err) => {
