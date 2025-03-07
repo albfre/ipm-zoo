@@ -39,8 +39,12 @@ const getObjective = (equalityPenalties, logBarrierVariables = []) => {
   if (equalityPenalties) {
     output += "+ 0.5 \\mu^{-1}(" + A_eq + x + " - " + b_eq + ")^T(" + A_eq + x + " - " + b_eq + ")";
   }
-  for (const v of logBarrierVariables) {
-    output += "- \\mu e^T \\log(" + v + ")";
+  if (logBarrierVariables.length > 0)
+  {
+    output +=  "\\\\\n & ";
+    for (const v of logBarrierVariables) {
+      output += "- \\mu e^T \\log(" + v + ")";
+    }
   }
   output += " \\\\";
   return output;
@@ -67,6 +71,8 @@ function getOriginalProblem(inequalities, equalities, variableBounds) {
     if (inequalities === "upper") outputText += "& " + A_ineq + x + " \\leq " + u_A + " \\\\\n";
     if (inequalities === "both") outputText += "& " + l_A + " \\leq " + A_ineq + x + " \\leq " + u_A + " \\\\\n";
   }
+  console.log("variableBounds")
+  console.log(variableBounds)
 
   if (variableBounds !== "none") {
     if (variableBounds === "lower") outputText += "& " + x + " \\geq " + l_x + " \\\\\n";
@@ -164,9 +170,9 @@ function updateProblem() {
   const hasEqualities = equalities;
   const hasVariableBounds = variableBounds !== "none";
 
-  let outputText = ""; //<h3>Quadratic Programming Problem</h3>";
+  let outputText = "";
   outputText += "<p><strong>Original optimization problem:</strong></p>";
-  outputText += getOriginalProblem(inequalities, equalities, equalityHandling, variableBounds);
+  outputText += getOriginalProblem(inequalities, equalities, variableBounds);
 
   if (hasInequalities || hasVariableBounds) {
     outputText += "<p><strong>Slacked optimization problem:</strong></p>";
@@ -219,7 +225,7 @@ function updateProblem() {
       cs = "c".repeat(countAmpersandsBeforeNewlines(augmentedSystem.lhs) + 1);
       outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
       outputText += "\\left( \\begin{array}{c} " + augmentedSystem.variables + "\\end{array} \\right) \\]";
-      outputText += "\\[ = \\left( \\begin{array}{c} " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
+      outputText += "\\[ = \\left( \\begin{array}{ll} " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
 
       const normalEquation = wasmModule.getNormalEquation(settings);
       outputText += "<p><strong>Normal equation:</strong></p>";
@@ -227,13 +233,12 @@ function updateProblem() {
       if (equalities && equalityHandling === "indefinite") {
         outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
         outputText += "\\left( \\begin{array}{c} " + normalEquation.variables + "\\end{array} \\right) \\]";
-        outputText += "\\[ = \\left( \\begin{array}{c} " + normalEquation.rhs + "\\end{array} \\right) \\]"
+        outputText += "\\[ = \\left( \\begin{array}{ll} " + normalEquation.rhs + "\\end{array} \\right) \\]"
       }
       else {
         outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
         outputText += normalEquation.variables + " \\]";
-        outputText += "\\[ \\begin{array}{l} =" + normalEquation.rhs + " \\end{array} \\]"
-        //outputText += "\\[ \\begin{multiline} =" + normalEquation.rhs + " \\end{multiline} \\]"
+        outputText += "\\[ \\begin{array}{ll} =" + normalEquation.rhs + " \\end{array} \\]"
       }
 
 

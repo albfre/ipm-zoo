@@ -46,18 +46,28 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
   }
 
   std::string rhsStr = "";
+  const auto breaks = std::set<std::string>{" + ", " - "};
   for (const auto& row : rhs) {
-    rhsStr += row.toString(condensed) + " \\\\ ";
-  }
-  /*
-  if (rhs.size() == 1) {
-    auto it =
-        rhsStr.find("- r_{" + variables.front().toString(condensed) + "}");
-    if (it != std::string::npos) {
-      rhsStr.insert(it, " \\\\\n ");
+    auto rowStr = row.toString(condensed);
+    int numParenthesis = 0;
+    size_t numTerms = 0;
+    size_t lastBreak = 0;
+    for (size_t i = 0; i + 2 < rowStr.length(); ++i) {
+      const auto c = rowStr[i];
+      numParenthesis += c == '(' ? 1 : 0;
+      numParenthesis -= c == ')' ? 1 : 0;
+      numTerms += c == '+' ? 1 : 0;
+      numTerms += c == '-' ? 1 : 0;
+      const auto sub = rowStr.substr(i, 3);
+      if (numParenthesis == 0 && breaks.contains(sub) &&
+          numTerms > lastBreak + 3) {
+        rowStr.insert(i, " \\\\\n \\qquad");
+        lastBreak = numTerms;
+      }
     }
+
+    rhsStr += rowStr + " \\\\ ";
   }
-    */
 
   const auto rhsShorthand = Optimization::getShorthandRhs(variables);
   std::string rhsShorthandStr = "";
