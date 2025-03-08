@@ -177,8 +177,13 @@ std::string Expr::toString(const bool condensed) const {
       }
       return child.toString(condensed) + "^T";
     }
-    case ExprType::Negate:
-      return "-" + getSingleChild_().toString(condensed);
+    case ExprType::Negate: {
+      const auto& child = getSingleChild_();
+      if (condensed && child.type_ == ExprType::Sum) {
+        return "-(" + child.toString(condensed) + ")";
+      }
+      return "-" + child.toString(condensed);
+    }
     case ExprType::Invert: {
       const auto& child = getSingleChild_();
       if (condensed &&
