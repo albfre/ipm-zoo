@@ -94,7 +94,6 @@ Expr Expr::differentiate(const Expr& var) const {
     case ExprType::Product: {
       std::vector<Expr> sumTerms;
       sumTerms.reserve(terms_.size());
-      const auto varTranspose = ExprFactory::transpose(var);
       for (size_t i = 0; i < terms_.size(); ++i) {
         {
           auto terms = terms_;
@@ -114,9 +113,11 @@ Expr Expr::differentiate(const Expr& var) const {
           // d/dx(f(x)^T g(x)) = d/dx(f(x)^T) g(x) + d/dx(g(x))^T f(x)
           auto terms = std::vector(terms_.begin(), terms_.begin() + i);
           auto rest = std::vector(terms_.begin() + i + 1, terms_.end());
-          terms.push_back(
-              ExprFactory::transpose(ExprFactory::product(std::move(rest)))
-                  .differentiate(var));                  // d/dx(g(x))^T
+          auto restTerm = rest.size() == 1
+                              ? rest.front()
+                              : ExprFactory::product(std::move(rest));
+          terms.push_back(ExprFactory::transpose(restTerm).differentiate(
+              var));                                     // d/dx(g(x))^T
           terms.push_back(terms_[i].getSingleChild_());  // f(x)
           sumTerms.push_back(
               ExprFactory::product(std::move(terms)));  // d/dx(g(x))^T f(x)
@@ -285,6 +286,13 @@ std::string Expr::toExpressionString() const {
 
 ExprType Expr::getType() const { return type_; }
 
+const std::string& Expr::getName() const {
+  assert((std::set{ExprType::NamedConstant, ExprType::Variable,
+                   ExprType::Matrix, ExprType::SymmetricMatrix}
+              .contains(type_)));
+  return name_;
+}
+
 std::set<Expr> Expr::getVariables() const {
   std::set<Expr> variables;
   for (auto& t : terms_) {
@@ -373,11 +381,9 @@ Expr Expr::simplify_(const bool distribute) const {
       if (child.type_ == ExprType::Transpose) {
         // transpose(transpose(x)) = x;
         return child.getSingleChild_();
-      } else if (child == zero) {
-        // 0^T = 0
-        return zero;
-      } else if (child == unity) {
-        return unity;
+      } else if (child == zero || child == unity) {
+        // 0^T = 0, 1^T = 1
+        return child;
       } else if (child.type_ == ExprType::SymmetricMatrix ||
                  child.type_ == ExprType::DiagonalMatrix) {
         return child;
@@ -422,11 +428,12 @@ Expr Expr::simplify_(const bool distribute) const {
                   return t.type_ == ExprType::Negate;
                 })) > child.terms_.size() / 2) {
           auto terms = child.terms_;
-          for (auto& t : terms) {
+          for (size_t i = 0; i < terms.size(); ++i) {
+            const auto& t = child.terms_[i];
             if (t.type_ == ExprType::Negate) {
-              t = t.getSingleChild_();
+              terms[i] = t.getSingleChild_();
             } else {
-              t = ExprFactory::negate(t);
+              terms[i] = ExprFactory::negate(t);
             }
           }
           return ExprFactory::sum(std::move(terms));
@@ -452,8 +459,9 @@ Expr Expr::simplify_(const bool distribute) const {
       }
       return ExprFactory::invert(std::move(child));
     }
-    case ExprType::Log:
+    case ExprType::Log: {
       return ExprFactory::log(getSingleChild_().simplify_(distribute));
+    }
     case ExprType::Sum: {
       // Recursive simplification
       auto terms = transform(terms_, [distribute](const auto& t) {
@@ -468,7 +476,8 @@ Expr Expr::simplify_(const bool distribute) const {
                  t.terms_.at(0).type_ == ExprType::Number &&
                  t.terms_.at(1) == term;
         };
-        if (std::ranges::count_if(terms,
+        if (term != zero &&
+            std::ranges::count_if(terms,
                                   [&term, &isNumberTimesTerm](const auto& t) {
                                     return t == term || isNumberTimesTerm(t);
                                   }) > 1) {
@@ -516,6 +525,16 @@ Expr Expr::simplify_(const bool distribute) const {
 
       // Commutative transformation (z + y + x = x + y + z)
       std::ranges::sort(terms);
+
+      // -x - y = -(x + y)
+      if (std::ranges::all_of(terms, [](const auto& t) {
+            return t.type_ == ExprType::Negate;
+          })) {
+        auto newTerms = transform(terms, [](const auto& t) {
+          return t.getSingleChild_();
+        });  // Seems necessary for WebAssembly
+        return ExprFactory::negate(ExprFactory::sum(std::move(newTerms)));
+      }
 
       const auto simplified = ExprFactory::sum(terms);
 
@@ -682,8 +701,9 @@ Expr Expr::getLeadingOrEndingFactor_(const bool leading) const {
     case ExprType::Invert:
     case ExprType::Log:
       return *this;
-    case ExprType::Negate:
+    case ExprType::Negate: {
       return getSingleChild_().getLeadingOrEndingFactor_(leading);
+    }
     case ExprType::Sum: {
       const auto termFactor = terms_.front().getLeadingOrEndingFactor_(leading);
       if (std::ranges::all_of(terms_, [&](const auto& t) {
@@ -705,6 +725,9 @@ Expr Expr::getLeadingOrEndingFactor_(const bool leading) const {
 
 Expr Expr::factorOut(const Expr& factor, const bool leading) const {
   assert(getLeadingOrEndingFactor_(leading) == factor);
+  if (factor == *this) {
+    return unity;
+  }
 
   switch (type_) {
     case ExprType::Number:
@@ -716,10 +739,12 @@ Expr Expr::factorOut(const Expr& factor, const bool leading) const {
     case ExprType::Transpose:
     case ExprType::Invert:
     case ExprType::Log:
-      assert(factor == *this);
-      return unity;
+      assert(false);  // Should have been handled by factor == *this above
     case ExprType::Negate: {
-      return ExprFactory::negate(getSingleChild_().factorOut(factor, leading));
+      {
+        return ExprFactory::negate(
+            getSingleChild_().factorOut(factor, leading));
+      }
     }
     case ExprType::Sum: {
       auto terms = terms_;

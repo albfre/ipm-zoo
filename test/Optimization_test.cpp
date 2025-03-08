@@ -126,7 +126,33 @@ TEST_F(OptimizationTest, GaussianElimination) {
     std::cout << rhsStr << std::endl;
     std::cout << "\n\n";
 
-    gaussianElimination(lhs, rhs, lhs.size() - 1, variables);
+    std::cout << "delta def" << std::endl;
+    auto deltaDefinition =
+        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    gaussianElimination(lhs, rhs, lhs.size() - 1);
+  }
+}
+
+TEST_F(OptimizationTest, GetNewton) {
+  const auto variableNames = Optimization::VariableNames();
+  const auto settings = Optimization::Settings();
+  auto [lagrangian, variables] =
+      Optimization::getLagrangian(variableNames, settings);
+  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+
+  auto i = 1;
+  rhs = Optimization::getShorthandRhs(variables);
+
+  std::vector<std::pair<Expression::Expr, Expression::Expr>>
+      variableDefinitions;
+  while (lhs.size() > i) {
+    auto deltaVariable = Expression::ExprFactory::variable(
+        "\\Delta " + variables.at(lhs.size() - 1).getName());
+    auto deltaDefinition =
+        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    variableDefinitions.push_back({deltaVariable, deltaDefinition});
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    variables.pop_back();
   }
 }
 

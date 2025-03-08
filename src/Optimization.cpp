@@ -1,6 +1,7 @@
 #include "Optimization.h"
 
 #include <cassert>
+#include <iostream>
 
 namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
@@ -164,11 +165,40 @@ std::vector<Expression::Expr> getShorthandRhs(
   return rhs;
 }
 
-std::pair<Expression::Expr, Expression::Expr> gaussianElimination(
-    std::vector<std::vector<Expression::Expr>>& lhs,
-    std::vector<Expression::Expr>& rhs, const size_t sourceRow,
-    const std::vector<Expression::Expr>& variables) {
+Expression::Expr deltaDefinition(
+    const std::vector<std::vector<Expression::Expr>>& lhs,
+    const std::vector<Expression::Expr>& rhs,
+    const std::vector<Expression::Expr>& variables, const size_t sourceRow) {
   using namespace Expression;
+  assert(lhs.size() == rhs.size());
+  assert(lhs.size() <= variables.size());
+  assert(sourceRow < lhs.size());
+  const auto zero = ExprFactory::number(0.0);
+
+  const auto sourceExpr = lhs.at(sourceRow).at(sourceRow);
+  auto terms = lhs.at(sourceRow);
+  assert(terms.size() <= variables.size());
+  for (size_t i = 0; i < terms.size(); ++i) {
+    auto deltaVariable =
+        ExprFactory::variable("\\Delta " + variables.at(i).getName());
+    terms[i] = ExprFactory::product({terms[i], std::move(deltaVariable)});
+  }
+
+  terms.erase(terms.begin() + sourceRow);
+  auto sum = ExprFactory::sum(std::move(terms));
+
+  return ExprFactory::product(
+             {ExprFactory::invert(sourceExpr),
+              ExprFactory::sum({rhs.at(sourceRow), ExprFactory::negate(sum)})})
+      .simplify();
+}
+
+void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
+                         std::vector<Expression::Expr>& rhs,
+                         const size_t sourceRow) {
+  using namespace Expression;
+  assert(lhs.size() == rhs.size());
+  assert(sourceRow < lhs.size());
   const auto zero = ExprFactory::number(0.0);
   size_t targetRow = 0;
   for (; targetRow < lhs.size(); ++targetRow) {
@@ -189,14 +219,6 @@ std::pair<Expression::Expr, Expression::Expr> gaussianElimination(
         ExprFactory::product({factor, sourceTerm}).simplify();
     return ExprFactory::sum({targetTerm, sourceTermTimesFactor}).simplify();
   };
-  auto terms = lhs.at(sourceRow);
-  terms.erase(terms.begin() + sourceRow);
-  auto sum = ExprFactory::sum(std::move(terms));
-
-  auto variableDefinition = ExprFactory::product(
-      {sourceExpr,
-       ExprFactory::sum({rhs.at(sourceRow), ExprFactory::negate(sum)})});
-
   for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
     lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
                                                      lhs.at(targetRow).at(i));
@@ -210,6 +232,5 @@ std::pair<Expression::Expr, Expression::Expr> gaussianElimination(
     lhsRow.erase(lhsRow.begin() + sourceRow);
   }
   rhs.erase(rhs.begin() + sourceRow);
-  return {variables.at(sourceRow), variableDefinition};
 }
 }  // namespace Optimization

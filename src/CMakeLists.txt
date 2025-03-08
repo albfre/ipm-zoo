@@ -21,8 +21,8 @@ else()
     # Add specific flags for this target
     target_link_options(symbolicOptimizationWasm PRIVATE
         "-s EXPORT_NAME=SymbolicOptimizationModule"
-        "-s EXPORTED_FUNCTIONS=['_getLagrangian','_malloc','_free']"
-        "-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap'']"
+        "-s EXPORTED_FUNCTIONS=['_malloc','_free']"
+        "-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
         "--bind"
     )
     

@@ -30,6 +30,7 @@ class Expr {
   std::string toString(bool condensed = false) const;
   std::string toExpressionString() const;
   ExprType getType() const;
+  const std::string& getName() const;
   std::set<Expr> getVariables() const;
   bool containsSubexpression(const Expr& expr) const;
   Expr replaceSubexpression(const Expr& expr, const Expr& replacement) const;

@@ -71,8 +71,6 @@ function getOriginalProblem(inequalities, equalities, variableBounds) {
     if (inequalities === "upper") outputText += "& " + A_ineq + x + " \\leq " + u_A + " \\\\\n";
     if (inequalities === "both") outputText += "& " + l_A + " \\leq " + A_ineq + x + " \\leq " + u_A + " \\\\\n";
   }
-  console.log("variableBounds")
-  console.log(variableBounds)
 
   if (variableBounds !== "none") {
     if (variableBounds === "lower") outputText += "& " + x + " \\geq " + l_x + " \\\\\n";
@@ -202,6 +200,7 @@ function updateProblem() {
       settings.variableBounds = boundsMap[variableBounds] ?? wasmModule.Bounds.None;
       settings.inequalityHandling = inequalityHandling === "slacks" ? wasmModule.InequalityHandling.Slacks : wasmModule.InequalityHandling.SimpleSlacks;
       settings.equalityHandling = equalityHandlingMap[equalityHandling];
+
       const lagrangian = wasmModule.getLagrangian(settings);
       outputText += "<p><strong>Lagrangian function:</strong></p>";
       outputText += "\\[ \\begin{align*} L =" + lagrangian + "\\end{align*} \\]";
@@ -225,23 +224,24 @@ function updateProblem() {
       cs = "c".repeat(countAmpersandsBeforeNewlines(augmentedSystem.lhs) + 1);
       outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
       outputText += "\\left( \\begin{array}{c} " + augmentedSystem.variables + "\\end{array} \\right) \\]";
-      outputText += "\\[ = \\left( \\begin{array}{ll} " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
+      outputText += "\\[ = \\left( \\begin{array}{l} " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
+      outputText += "where"
+      outputText += "\\[ \\begin{align*} " + augmentedSystem.variableDefinitions + "\\end{align*} \\]"
 
       const normalEquation = wasmModule.getNormalEquation(settings);
       outputText += "<p><strong>Normal equation:</strong></p>";
       cs = "c".repeat(countAmpersandsBeforeNewlines(normalEquation.lhs) + 1);
+      outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
       if (equalities && equalityHandling === "indefinite") {
-        outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
         outputText += "\\left( \\begin{array}{c} " + normalEquation.variables + "\\end{array} \\right) \\]";
-        outputText += "\\[ = \\left( \\begin{array}{ll} " + normalEquation.rhs + "\\end{array} \\right) \\]"
+        outputText += "\\[ = \\left( \\begin{array}{l} " + normalEquation.rhs + "\\end{array} \\right) \\]"
       }
       else {
-        outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
         outputText += normalEquation.variables + " \\]";
-        outputText += "\\[ \\begin{array}{ll} =" + normalEquation.rhs + " \\end{array} \\]"
+        outputText += "\\[ \\begin{array}{c} =" + normalEquation.rhs + " \\end{array} \\]"
       }
-
-
+      outputText += "where"
+      outputText += "\\[ \\begin{align*} " + normalEquation.variableDefinitions + "\\end{align*} \\]"
     } catch (error) {
       console.error("Error calling Lagrangian function:", error);
       outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
@@ -258,7 +258,7 @@ function updateProblem() {
   outputText += "<p><s>5. Newton system</s></p>";
   outputText += "<p><s>6. Reduction of rows for log-barriers</s></p>";
   outputText += "<p><s>7. Reduction of rows for Lagrange multipliers</s></p>";
-  outputText += "<p>8. Expressions for search direction variables in reduced system</p>";
+  outputText += "<p><s>8. Expressions for search direction variables in reduced system</s></p>";
   outputText += "<p><s>9. Augmented system</s></p>";
   outputText += "<p>10. LU/LDLT solution methods</p>";
   outputText += "<p><s>11. Reduction to normal equations if possible</s></p>";

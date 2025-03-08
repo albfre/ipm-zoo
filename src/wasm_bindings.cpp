@@ -17,8 +17,7 @@ struct NewtonSystem {
   std::string rhs;
   std::string rhsShorthand;
   std::string variables;
-  std::vector<std::pair<Expression::Expr, Expression::Expr>>
-      variableDefinitions;
+  std::string variableDefinitions;
 };
 
 namespace {
@@ -34,7 +33,8 @@ std::string replaceAll_(std::string str, const std::string& from,
 }
 
 NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
-                                        const auto& variables) {
+                                        const auto& variables,
+                                        const auto& variableDefinitions) {
   const auto unity = Expression::ExprFactory::number(1);
   const auto I = Expression::ExprFactory::namedConstant("I");
   std::string lhsStr = "";
@@ -83,7 +83,15 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
                     (i + 1 == variables.size() ? "" : " \\\\ ");
   }
 
-  return {lhsStr, rhsStr, rhsShorthandStr, variablesStr};
+  std::string definitionsStr = "";
+  for (size_t i = variableDefinitions.size(); i > 0; --i) {
+    definitionsStr +=
+        variableDefinitions.at(i - 1).first.toString(condensed) +
+        " &= " + variableDefinitions.at(i - 1).second.toString(condensed) +
+        (i - 1 == 0 ? "" : " \\\\ ");
+  }
+
+  return {lhsStr, rhsStr, rhsShorthandStr, variablesStr, definitionsStr};
 }
 
 enum class NewtonSystemType { Full, Augmented, Normal };
@@ -125,14 +133,16 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
   std::vector<std::pair<Expression::Expr, Expression::Expr>>
       variableDefinitions;
   while (lhs.size() > i) {
-    variableDefinitions.push_back(
-        Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1, variables));
+    auto deltaVariable = Expression::ExprFactory::variable(
+        "\\Delta " + variables.at(lhs.size() - 1).getName());
+    auto deltaDefinition =
+        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    variableDefinitions.push_back({deltaVariable, deltaDefinition});
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
     variables.pop_back();
   }
 
-  auto ns = formatNewtonSystemStrings_(lhs, rhs, variables);
-  ns.variableDefinitions = std::move(variableDefinitions);
-  return ns;
+  return formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
 }
 
 }  // namespace
