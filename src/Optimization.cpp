@@ -164,9 +164,10 @@ std::vector<Expression::Expr> getShorthandRhs(
   return rhs;
 }
 
-void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
-                         std::vector<Expression::Expr>& rhs,
-                         const size_t sourceRow) {
+std::pair<Expression::Expr, Expression::Expr> gaussianElimination(
+    std::vector<std::vector<Expression::Expr>>& lhs,
+    std::vector<Expression::Expr>& rhs, const size_t sourceRow,
+    const std::vector<Expression::Expr>& variables) {
   using namespace Expression;
   const auto zero = ExprFactory::number(0.0);
   size_t targetRow = 0;
@@ -188,6 +189,13 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
         ExprFactory::product({factor, sourceTerm}).simplify();
     return ExprFactory::sum({targetTerm, sourceTermTimesFactor}).simplify();
   };
+  auto terms = lhs.at(sourceRow);
+  terms.erase(terms.begin() + sourceRow);
+  auto sum = ExprFactory::sum(std::move(terms));
+
+  auto variableDefinition = ExprFactory::product(
+      {sourceExpr,
+       ExprFactory::sum({rhs.at(sourceRow), ExprFactory::negate(sum)})});
 
   for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
     lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
@@ -202,5 +210,6 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
     lhsRow.erase(lhsRow.begin() + sourceRow);
   }
   rhs.erase(rhs.begin() + sourceRow);
+  return {variables.at(sourceRow), variableDefinition};
 }
 }  // namespace Optimization

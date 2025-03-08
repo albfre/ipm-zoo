@@ -126,7 +126,7 @@ TEST_F(OptimizationTest, GaussianElimination) {
     std::cout << rhsStr << std::endl;
     std::cout << "\n\n";
 
-    gaussianElimination(lhs, rhs, lhs.size() - 1);
+    gaussianElimination(lhs, rhs, lhs.size() - 1, variables);
   }
 }
 

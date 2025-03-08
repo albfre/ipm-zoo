@@ -17,6 +17,8 @@ struct NewtonSystem {
   std::string rhs;
   std::string rhsShorthand;
   std::string variables;
+  std::vector<std::pair<Expression::Expr, Expression::Expr>>
+      variableDefinitions;
 };
 
 namespace {
@@ -120,12 +122,17 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
     }
   }
 
+  std::vector<std::pair<Expression::Expr, Expression::Expr>>
+      variableDefinitions;
   while (lhs.size() > i) {
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    variableDefinitions.push_back(
+        Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1, variables));
     variables.pop_back();
   }
 
-  return formatNewtonSystemStrings_(lhs, rhs, variables);
+  auto ns = formatNewtonSystemStrings_(lhs, rhs, variables);
+  ns.variableDefinitions = std::move(variableDefinitions);
+  return ns;
 }
 
 }  // namespace
@@ -234,7 +241,8 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .field("lhs", &NewtonSystem::lhs)
       .field("rhs", &NewtonSystem::rhs)
       .field("rhsShorthand", &NewtonSystem::rhsShorthand)
-      .field("variables", &NewtonSystem::variables);
+      .field("variables", &NewtonSystem::variables)
+      .field("variableDefinitions", &NewtonSystem::variableDefinitions);
   function("getNewtonSystem", &getNewtonSystem);
   function("getAugmentedSystem", &getAugmentedSystem);
   function("getNormalEquation", &getNormalEquation);

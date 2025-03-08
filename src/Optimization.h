@@ -61,6 +61,8 @@ getNewtonSystem(const Expression::Expr& lagrangian,
 std::vector<Expression::Expr> getShorthandRhs(
     const std::vector<Expression::Expr>& variables);
 
-void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
-                         std::vector<Expression::Expr>& rhs, size_t sourceRow);
+std::pair<Expression::Expr, Expression::Expr> gaussianElimination(
+    std::vector<std::vector<Expression::Expr>>& lhs,
+    std::vector<Expression::Expr>& rhs, size_t sourceRow,
+    const std::vector<Expression::Expr>& variables);
 }  // namespace Optimization
