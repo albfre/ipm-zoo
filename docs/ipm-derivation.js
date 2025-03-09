@@ -203,45 +203,45 @@ function updateProblem() {
 
       const lagrangian = wasmModule.getLagrangian(settings);
       outputText += "<p><strong>Lagrangian function:</strong></p>";
-      outputText += "\\[ \\begin{align*} L =" + lagrangian + "\\end{align*} \\]";
+      outputText += "\\[ \\begin{align*}\n L =" + lagrangian + "\\end{align*} \\]";
 
       const firstOrder = wasmModule.getFirstOrderOptimalityConditions(settings);
       outputText += "<p><strong>First-order optimality conditions:</strong></p>";
-      outputText += "\\[ \\begin{align*}" + firstOrder + "\\end{align*} \\]";
+      outputText += "\\[ \\begin{align*}\n " + firstOrder + "\\end{align*} \\]";
 
       const newtonSystem = wasmModule.getNewtonSystem(settings);
       outputText += "<p><strong>Newton system:</strong></p>";
-      outputText += "\\[ \\begin{align*} \\nabla^2 L p = -\\nabla L \\end{align*}, \\]";
+      outputText += "\\[ \\begin{align*}\n \\nabla^2 L p = -\\nabla L \\end{align*}, \\]";
       outputText += "where"
       let cs = "c".repeat(countAmpersandsBeforeNewlines(newtonSystem.lhs) + 1);
-      outputText += "\\[ \\nabla^2 L p = \\left( \\begin{array}{" + cs + "} " + dimZeros(newtonSystem.lhs) + "\\end{array} \\right) "
-      outputText += "\\left( \\begin{array}{c} " + newtonSystem.variables + "\\end{array} \\right) \\]";
-      outputText += "\\[ = -\\nabla L = \\left( \\begin{array}{c} " + newtonSystem.rhs + "\\end{array} \\right)"
-      outputText += "=: \\left( \\begin{array}{c} " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
+      outputText += "\\[ \\nabla^2 L p = \\left( \\begin{array}{" + cs + "}\n " + dimZeros(newtonSystem.lhs) + "\\end{array} \\right) "
+      outputText += "\\left( \\begin{array}{c}\n " + newtonSystem.variables + "\\end{array} \\right) \\]";
+      outputText += "\\[ = -\\nabla L = \\left( \\begin{array}{c}\n " + newtonSystem.rhs + "\\end{array} \\right)"
+      outputText += "=: \\left( \\begin{array}{c}\n " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
 
       const augmentedSystem = wasmModule.getAugmentedSystem(settings);
       outputText += "<p><strong>Augmented system:</strong></p>";
       cs = "c".repeat(countAmpersandsBeforeNewlines(augmentedSystem.lhs) + 1);
-      outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
-      outputText += "\\left( \\begin{array}{c} " + augmentedSystem.variables + "\\end{array} \\right) \\]";
-      outputText += "\\[ = \\left( \\begin{array}{l} " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
+      outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
+      outputText += "\\left( \\begin{array}{c}\n " + augmentedSystem.variables + "\\end{array} \\right) \\]";
+      outputText += "\\[ = \\left( \\begin{array}{l}\n " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
       outputText += "where"
-      outputText += "\\[ \\begin{align*} " + augmentedSystem.variableDefinitions + "\\end{align*} \\]"
+      outputText += "\\[ \\begin{align*}\n " + augmentedSystem.variableDefinitions + "\\end{align*} \\]"
 
       const normalEquation = wasmModule.getNormalEquation(settings);
       outputText += "<p><strong>Normal equation:</strong></p>";
       cs = "c".repeat(countAmpersandsBeforeNewlines(normalEquation.lhs) + 1);
-      outputText += "\\[ \\left( \\begin{array}{" + cs + "} " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
+      outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(normalEquation.lhs) + "\\end{array} \\right) "
       if (equalities && equalityHandling === "indefinite") {
-        outputText += "\\left( \\begin{array}{c} " + normalEquation.variables + "\\end{array} \\right) \\]";
-        outputText += "\\[ = \\left( \\begin{array}{l} " + normalEquation.rhs + "\\end{array} \\right) \\]"
+        outputText += "\\left( \\begin{array}{c}\n " + normalEquation.variables + "\\end{array} \\right) \\]";
+        outputText += "\\[ = \\left( \\begin{array}{l}\n " + normalEquation.rhs + "\\end{array} \\right) \\]"
       }
       else {
         outputText += normalEquation.variables + " \\]";
-        outputText += "\\[ \\begin{array}{c} =" + normalEquation.rhs + " \\end{array} \\]"
+        outputText += "\\[ \\begin{array}{c}\n =" + normalEquation.rhs + " \\end{array} \\]"
       }
       outputText += "where"
-      outputText += "\\[ \\begin{align*} " + normalEquation.variableDefinitions + "\\end{align*} \\]"
+      outputText += "\\[ \\begin{align*}\n " + normalEquation.variableDefinitions + "\\end{align*} \\]"
     } catch (error) {
       console.error("Error calling Lagrangian function:", error);
       outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";

@@ -32,6 +32,39 @@ std::string replaceAll_(std::string str, const std::string& from,
   return str;
 }
 
+std::string addLineBreaks(std::string str,
+                          const std::string breakStr = " \\\\\n \\qquad ") {
+  const auto breaks = std::set<std::string>{" - ", " + "};
+  int numParenthesis = 0;
+
+  size_t numBreaks = 0;
+  for (size_t i = 0; i < str.length(); ++i) {
+    for (const auto& sub : breaks) {
+      numBreaks += (str.substr(i, sub.length()) == sub) ? 1 : 0;
+    }
+  }
+
+  size_t currentBreakIndex = 0;
+  size_t lastBreak = 0;
+  for (size_t i = 1; i + 2 < str.length(); ++i) {
+    const auto c = str[i];
+    numParenthesis += c == '(' ? 1 : 0;
+    numParenthesis -= c == ')' ? 1 : 0;
+    const auto isBreak = breaks.contains(str.substr(i, 3));
+    currentBreakIndex += isBreak ? 1 : 0;
+    if (isBreak && currentBreakIndex + 1 < numBreaks) {
+      if (numParenthesis == 0 && currentBreakIndex > lastBreak + 3) {
+        str.insert(i, breakStr);
+        lastBreak = currentBreakIndex;
+      } else if (numParenthesis == 1 && currentBreakIndex > lastBreak + 5) {
+        str.insert(i, breakStr);
+        lastBreak = currentBreakIndex;
+      }
+    }
+  }
+  return str;
+}
+
 NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
                                         const auto& variables,
                                         const auto& variableDefinitions) {
@@ -44,51 +77,34 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
       lhsStr += row[i].replaceSubexpression(unity, I).toString(condensed) +
                 (i + 1 == row.size() ? "" : " & ");
     }
-    lhsStr += " \\\\ ";
+    lhsStr += " \\\\\n ";
   }
 
   std::string rhsStr = "";
-  const auto breaks = std::set<std::string>{" + ", " - "};
   for (const auto& row : rhs) {
-    auto rowStr = row.toString(condensed);
-    int numParenthesis = 0;
-    size_t numTerms = 0;
-    size_t lastBreak = 0;
-    for (size_t i = 0; i + 2 < rowStr.length(); ++i) {
-      const auto c = rowStr[i];
-      numParenthesis += c == '(' ? 1 : 0;
-      numParenthesis -= c == ')' ? 1 : 0;
-      numTerms += c == '+' ? 1 : 0;
-      numTerms += c == '-' ? 1 : 0;
-      const auto sub = rowStr.substr(i, 3);
-      if (numParenthesis == 0 && breaks.contains(sub) &&
-          numTerms > lastBreak + 3) {
-        rowStr.insert(i, " \\\\\n \\qquad");
-        lastBreak = numTerms;
-      }
-    }
-
-    rhsStr += rowStr + " \\\\ ";
+    auto rowStr = addLineBreaks(row.toString(condensed));
+    rhsStr += rowStr + " \\\\\n ";
   }
 
   const auto rhsShorthand = Optimization::getShorthandRhs(variables);
   std::string rhsShorthandStr = "";
   for (const auto& row : rhsShorthand) {
-    rhsShorthandStr += row.toString(condensed) + " \\\\ ";
+    rhsShorthandStr += addLineBreaks(row.toString(condensed)) + " \\\\\n ";
   }
 
   std::string variablesStr = "";
   for (size_t i = 0; i < variables.size(); ++i) {
     variablesStr += "\\Delta " + variables[i].toString(condensed) +
-                    (i + 1 == variables.size() ? "" : " \\\\ ");
+                    (i + 1 == variables.size() ? "\n" : " \\\\\n ");
   }
 
   std::string definitionsStr = "";
   for (size_t i = variableDefinitions.size(); i > 0; --i) {
     definitionsStr +=
-        variableDefinitions.at(i - 1).first.toString(condensed) +
-        " &= " + variableDefinitions.at(i - 1).second.toString(condensed) +
-        (i - 1 == 0 ? "" : " \\\\ ");
+        variableDefinitions.at(i - 1).first.toString(condensed) + " &= " +
+        addLineBreaks(variableDefinitions.at(i - 1).second.toString(condensed),
+                      " \\\\\n & \\qquad ") +
+        (i - 1 == 0 ? "\n" : " \\\\\n ");
   }
 
   return {lhsStr, rhsStr, rhsShorthandStr, variablesStr, definitionsStr};
@@ -110,36 +126,41 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
                    .count()
             << std::endl;
 
-  auto i = lhs.size();
-  if (type != NewtonSystemType::Full) {
-    i = settings.equalities &&
-                settings.equalityHandling ==
-                    Optimization::EqualityHandling::IndefiniteFactorization
-            ? 2
-            : 1;
-    rhs = Optimization::getShorthandRhs(variables);
-  }
-  if (type == NewtonSystemType::Augmented) {
+  const auto augmentedSize = [&]() {
     const auto zero = Expression::ExprFactory::number(0);
     const auto unity = Expression::ExprFactory::number(1);
     const auto negUnity =
         Expression::ExprFactory::negate(Expression::ExprFactory::number(1));
     const auto reducibles = std::set{zero, unity, negUnity};
+    size_t i = 0;
     while (i < lhs.size() && !reducibles.contains(lhs.at(0).at(i))) {
       ++i;
     }
-  }
+    return i;
+  }();
 
   std::vector<std::pair<Expression::Expr, Expression::Expr>>
       variableDefinitions;
-  while (lhs.size() > i) {
-    auto deltaVariable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1).getName());
-    auto deltaDefinition =
-        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
-    variableDefinitions.push_back({deltaVariable, deltaDefinition});
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-    variables.pop_back();
+  if (type != NewtonSystemType::Full) {
+    while (lhs.size() > augmentedSize) {
+      auto deltaVariable = Expression::ExprFactory::variable(
+          "\\Delta " + variables.at(lhs.size() - 1).getName());
+      auto deltaDefinition =
+          Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+      variableDefinitions.push_back({deltaVariable, deltaDefinition});
+      Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+      variables.pop_back();
+    }
+
+    if (type == NewtonSystemType::Normal) {
+      auto deltaVariable = Expression::ExprFactory::variable(
+          "\\Delta " + variables.at(0).getName());
+      auto deltaDefinition =
+          Optimization::deltaDefinition(lhs, rhs, variables, 0);
+      variableDefinitions.push_back({deltaVariable, deltaDefinition});
+      Optimization::gaussianElimination(lhs, rhs, 0);
+      variables.erase(variables.begin());
+    }
   }
 
   return formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
