@@ -432,14 +432,12 @@ Expr Expr::simplify_(const bool distribute) const {
                 std::ranges::count_if(child.terms_, [](const auto& t) {
                   return t.type_ == ExprType::Negate;
                 })) > child.terms_.size() / 2) {
-          auto terms = child.terms_;
-          for (size_t i = 0; i < terms.size(); ++i) {
-            const auto& t = child.terms_[i];
-            if (t.type_ == ExprType::Negate) {
-              terms[i] = t.getSingleChild_();
-            } else {
-              terms[i] = ExprFactory::negate(t);
-            }
+          auto terms = std::vector<Expr>();
+          terms.reserve(child.terms_.size());
+          for (const auto& t : child.terms_) {
+            terms.emplace_back(t.type_ == ExprType::Negate
+                                   ? t.getSingleChild_()
+                                   : ExprFactory::negate(t));
           }
           return ExprFactory::sum(std::move(terms));
         }
@@ -548,8 +546,11 @@ Expr Expr::simplify_(const bool distribute) const {
       if (distribute) {
         for (const auto leading : std::vector{true, false}) {
           std::map<Expr, size_t> numOccurrencesOfFactors;
+          std::vector<Expr> factorPerTerm;
+          factorPerTerm.reserve(terms.size());
           for (auto& t : terms) {
-            ++numOccurrencesOfFactors[t.getLeadingOrEndingFactor_(leading)];
+            factorPerTerm.push_back(t.getLeadingOrEndingFactor_(leading));
+            ++numOccurrencesOfFactors[factorPerTerm.back()];
           }
           std::vector<std::pair<Expr, size_t>> sorted(
               numOccurrencesOfFactors.begin(), numOccurrencesOfFactors.end());
@@ -562,26 +563,33 @@ Expr Expr::simplify_(const bool distribute) const {
             }
             std::vector<Expr> factoredTerms;
             std::vector<Expr> unfactoredTerms;
-            for (auto& t : terms) {
-              if (t.getLeadingOrEndingFactor_(leading) == factor) {
-                factoredTerms.push_back(t.factorOut(factor, leading));
+            factoredTerms.reserve(terms.size());
+            unfactoredTerms.reserve(terms.size());
+            for (size_t i = 0; i < terms.size(); ++i) {
+              if (factorPerTerm.at(i) == factor) {
+                factoredTerms.push_back(terms[i].factorOut(factor, leading));
               } else {
-                unfactoredTerms.push_back(t);
+                unfactoredTerms.push_back(terms[i]);
               }
             }
 
-            const auto sumFactored = ExprFactory::sum(std::move(factoredTerms));
-            const auto factorTimesFactored =
-                leading ? ExprFactory::product({factor, sumFactored})
-                        : ExprFactory::product({sumFactored, factor});
+            auto sumFactored = ExprFactory::sum(std::move(factoredTerms));
+            auto factorTimesFactored =
+                leading
+                    ? ExprFactory::product({factor, std::move(sumFactored)})
+                    : ExprFactory::product({std::move(sumFactored), factor});
             auto factoredExpr =
                 (unfactoredTerms.empty()
-                     ? factorTimesFactored
+                     ? std::move(factorTimesFactored)
                      : ExprFactory::sum(
                            {ExprFactory::sum(std::move(unfactoredTerms)),
                             factorTimesFactored}))
                     .simplify(false);
-            associativeTransformation(factoredExpr.type_, factoredExpr.terms_);
+            if (std::set{ExprType::Sum, ExprType::Product}.contains(
+                    factoredExpr.type_)) {
+              associativeTransformation(factoredExpr.type_,
+                                        factoredExpr.terms_);
+            }
             if (factoredExpr.complexity_() < simplified.complexity_()) {
               return factoredExpr;
             }

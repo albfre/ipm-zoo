@@ -239,13 +239,16 @@ Expression::Expr deltaDefinition(
   assert(sourceRow < lhs.size());
   const auto zero = ExprFactory::number(0.0);
 
-  const auto sourceExpr = lhs.at(sourceRow).at(sourceRow);
-  auto terms = lhs.at(sourceRow);
-  assert(terms.size() <= variables.size());
-  for (size_t i = 0; i < terms.size(); ++i) {
+  const auto& lhsSourceRow = lhs.at(sourceRow);
+  const auto& sourceExpr = lhsSourceRow.at(sourceRow);
+  auto terms = std::vector<Expr>();
+  terms.reserve(lhsSourceRow.size());
+  assert(lhsSourceRow.size() <= variables.size());
+  for (size_t i = 0; i < lhsSourceRow.size(); ++i) {
     auto deltaVariable =
         ExprFactory::variable("\\Delta " + variables.at(i).getName());
-    terms[i] = ExprFactory::product({terms[i], std::move(deltaVariable)});
+    terms.emplace_back(
+        ExprFactory::product({lhsSourceRow[i], std::move(deltaVariable)}));
   }
 
   terms.erase(terms.begin() + sourceRow);
@@ -272,17 +275,18 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
   }
   assert(!targetRows.empty());
   for (auto& targetRow : targetRows) {
-    const auto targetExpr = lhs.at(targetRow).at(sourceRow);
-    const auto sourceExpr = lhs.at(sourceRow).at(sourceRow);
+    const auto& targetExpr = lhs.at(targetRow).at(sourceRow);
+    const auto& sourceExpr = lhs.at(sourceRow).at(sourceRow);
     const auto factor =
         ExprFactory::negate(
             ExprFactory::product({targetExpr, ExprFactory::invert(sourceExpr)}))
             .simplify();
     const auto addRowTimesFactorToRow = [&factor](const Expr& sourceTerm,
                                                   const Expr& targetTerm) {
-      const auto sourceTermTimesFactor =
+      auto sourceTermTimesFactor =
           ExprFactory::product({factor, sourceTerm}).simplify();
-      return ExprFactory::sum({targetTerm, sourceTermTimesFactor}).simplify();
+      return ExprFactory::sum({targetTerm, std::move(sourceTermTimesFactor)})
+          .simplify();
     };
     for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
       lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
