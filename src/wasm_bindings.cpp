@@ -34,6 +34,7 @@ std::string replaceAll_(std::string str, const std::string& from,
 
 std::string addLineBreaks(std::string str,
                           const std::string breakStr = " \\\\\n \\qquad ") {
+  return str;
   const auto breaks = std::set<std::string>{" - ", " + "};
   int numParenthesis = 0;
 
