@@ -220,8 +220,6 @@ function updateProblem() {
       settings.inequalities = boundsMap[inequalities] ?? wasmModule.Bounds.None;
       settings.variableBounds = boundsMap[variableBounds] ?? wasmModule.Bounds.None;
       settings.inequalityHandling = inequalityHandling === "slacks" ? wasmModule.InequalityHandling.Slacks : wasmModule.InequalityHandling.SimpleSlacks;
-      console.log("equalityhandling")
-      console.log(equalityHandling)
       settings.equalityHandling = equalityHandlingMap[equalityHandling];
 
       const lagrangian = wasmModule.getLagrangian(settings);

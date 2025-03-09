@@ -295,7 +295,7 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
   enum_<Optimization::EqualityHandling>("EqualityHandling")
       .value("None", Optimization::EqualityHandling::None)
       .value("Slacks", Optimization::EqualityHandling::Slacks)
-      .value("SimpleSlacks", Optimization::EqualityHandling::Slacks)
+      .value("SimpleSlacks", Optimization::EqualityHandling::SimpleSlacks)
       .value("PenaltyFunction",
              Optimization::EqualityHandling::PenaltyFunction);
 
