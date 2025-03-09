@@ -9,9 +9,12 @@ struct VariableNames {
   std::string A_ineq = "A";
   std::string s_A = "s";
   std::string s_Al = "g";
-  std::string s_Au = "t";
+  std::string s_Au = "h";
   std::string s_xl = "y";
   std::string s_xu = "z";
+  std::string s_C = "t";
+  std::string s_Cl = "v";
+  std::string s_Cu = "w";
   std::string l_A = "l_A";
   std::string u_A = "u_A";
   std::string l_x = "l_x";
@@ -33,16 +36,18 @@ enum class InequalityHandling {
 };
 
 enum class EqualityHandling {
-  IndefiniteFactorization,
+  None,
   Slacks,
+  SimpleSlacks,
   PenaltyFunction,
+  PenaltyFunctionWithExtraVariable,
 };
 
 struct Settings {
   Bounds inequalities = Bounds::Both;
   Bounds variableBounds = Bounds::Both;
   bool equalities = false;
-  EqualityHandling equalityHandling = EqualityHandling::IndefiniteFactorization;
+  EqualityHandling equalityHandling = EqualityHandling::None;
   InequalityHandling inequalityHandling = InequalityHandling::Slacks;
 };
 

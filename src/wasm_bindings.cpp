@@ -21,6 +21,16 @@ struct NewtonSystem {
 };
 
 namespace {
+Optimization::Settings changePenaltyToPenaltyWithExtraVariables(
+    Optimization::Settings settings) {
+  if (settings.equalityHandling ==
+      Optimization::EqualityHandling::PenaltyFunction) {
+    settings.equalityHandling =
+        Optimization::EqualityHandling::PenaltyFunctionWithExtraVariable;
+  }
+  return settings;
+}
+
 std::string replaceAll_(std::string str, const std::string& from,
                         const std::string& to) {
   size_t start_pos = 0;
@@ -69,14 +79,20 @@ std::string addLineBreaks(std::string str,
 NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
                                         const auto& variables,
                                         const auto& variableDefinitions) {
-  const auto unity = Expression::ExprFactory::number(1);
-  const auto I = Expression::ExprFactory::namedConstant("I");
+  using namespace Expression::ExprFactory;
+  const auto unity = number(1);
+  const auto I = namedConstant("I");
+  const auto mu = namedConstant("\\mu");
+  const auto muI = product({mu, I}).simplify();
   std::string lhsStr = "";
   const auto condensed = true;
   for (const auto& row : lhs) {
     for (size_t i = 0; i < row.size(); ++i) {
-      lhsStr += row[i].replaceSubexpression(unity, I).toString(condensed) +
-                (i + 1 == row.size() ? "" : " & ");
+      auto rowExpr = row[i];
+      rowExpr = rowExpr.replaceSubexpression(unity, I);
+      rowExpr = rowExpr.replaceSubexpression(mu, muI);
+      lhsStr +=
+          rowExpr.toString(condensed) + (i + 1 == row.size() ? "" : " & ");
     }
     lhsStr += " \\\\\n ";
   }
@@ -113,19 +129,15 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
 
 enum class NewtonSystemType { Full, Augmented, Normal };
 
-NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
+NewtonSystem getNewtonSystem_(const Optimization::Settings& settingsIn,
                               const NewtonSystemType type) {
-  auto begin = std::chrono::high_resolution_clock::now();
+  const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
+  const auto begin = std::chrono::high_resolution_clock::now();
   const auto variableNames = Optimization::VariableNames();
   auto [lagrangian, variables] =
       Optimization::getLagrangian(variableNames, settings);
   auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
-  auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                     begin)
-                   .count()
-            << std::endl;
+  const auto endNewton = std::chrono::high_resolution_clock::now();
 
   const auto augmentedSize = [&]() {
     const auto zero = Expression::ExprFactory::number(0);
@@ -139,17 +151,32 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
     }
     return i;
   }();
+  const auto endAugmented = std::chrono::high_resolution_clock::now();
 
   std::vector<std::pair<Expression::Expr, Expression::Expr>>
       variableDefinitions;
+  std::chrono::milliseconds gaussianCount =
+      std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
+                                                            endNewton);
+  std::chrono::milliseconds deltaCount =
+      std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
+                                                            endNewton);
   if (type != NewtonSystemType::Full) {
     while (lhs.size() > augmentedSize) {
       auto deltaVariable = Expression::ExprFactory::variable(
           "\\Delta " + variables.at(lhs.size() - 1).getName());
+      const auto beginDelta = std::chrono::high_resolution_clock::now();
       auto deltaDefinition =
           Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+      const auto endDelta = std::chrono::high_resolution_clock::now();
       variableDefinitions.push_back({deltaVariable, deltaDefinition});
       Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+      const auto endGaussian = std::chrono::high_resolution_clock::now();
+      gaussianCount += std::chrono::duration_cast<std::chrono::milliseconds>(
+          endGaussian - endDelta);
+      deltaCount += std::chrono::duration_cast<std::chrono::milliseconds>(
+          endDelta - beginDelta);
+
       variables.pop_back();
     }
 
@@ -163,6 +190,21 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settings,
       variables.erase(variables.begin());
     }
   }
+  const auto end = std::chrono::high_resolution_clock::now();
+  std::cout << "time: newton: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
+                                                                     begin)
+                   .count()
+            << ", augmented: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   endAugmented - endNewton)
+                   .count()
+            << ", delta: " << deltaCount << ", gaussain: " << gaussianCount
+            << ", full: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                     begin)
+                   .count()
+            << std::endl;
 
   return formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
 }
@@ -177,30 +219,31 @@ std::string getLagrangian(const Optimization::Settings& settings) {
   const auto condensed = true;
   auto str = "& " + lagrangian.toString(condensed);
   auto pos = 0;
-  while (pos != std::string::npos) {
-    pos = str.find("\\lambda", pos + 1);
-    if (pos != std::string::npos && pos > 2) {
-      str.insert(pos - 2, "\\\\\n & ");
+  const auto addNewlines = [&](const auto& term) {
+    pos = str.find(term);
+    while (pos != std::string::npos) {
+      str.insert(pos - 1, " \\\\\n & ");
+      for (size_t i = 0; i < 3; ++i) {
+        pos = pos == std::string::npos ? std::string::npos
+                                       : str.find(term, pos + 1);
+      }
+      if (pos != std::string::npos) {
+        pos = str.find(term, pos + 1);
+      }
     }
-    for (size_t i = 0; i < 3; ++i) {
-      pos = pos == std::string::npos ? std::string::npos
-                                     : str.find("\\lambda", pos + 1);
-    }
-  }
-
-  pos = str.find("- \\mu");
-  if (pos != std::string::npos) {
-    str.insert(pos, "\\\\\n & ");
-  }
+  };
+  addNewlines("\\lambda");
+  addNewlines("- \\mu");
   return str;
 }
 
 std::string getFirstOrderOptimalityConditions(
-    const Optimization::Settings& settings) {
+    const Optimization::Settings& settingsIn) {
   const auto variableNames = Optimization::VariableNames();
+  const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
   const auto [lagrangian, variables] =
       Optimization::getLagrangian(variableNames, settings);
-  const auto firstOrder =
+  auto firstOrder =
       Optimization::getFirstOrderOptimalityConditions(lagrangian, variables);
   const auto condensed = true;
   std::string str = "";
@@ -250,9 +293,9 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .value("SimpleSlacks", Optimization::InequalityHandling::SimpleSlacks);
 
   enum_<Optimization::EqualityHandling>("EqualityHandling")
-      .value("IndefiniteFactorization",
-             Optimization::EqualityHandling::IndefiniteFactorization)
+      .value("None", Optimization::EqualityHandling::None)
       .value("Slacks", Optimization::EqualityHandling::Slacks)
+      .value("SimpleSlacks", Optimization::EqualityHandling::Slacks)
       .value("PenaltyFunction",
              Optimization::EqualityHandling::PenaltyFunction);
 
@@ -265,16 +308,17 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .property("inequalityHandling",
                 &Optimization::Settings::inequalityHandling);
 
-  // Register free functions
-  function("getLagrangian", &getLagrangian);
-  function("getFirstOrderOptimalityConditions",
-           &getFirstOrderOptimalityConditions);
   value_object<NewtonSystem>("NewtonSystem")
       .field("lhs", &NewtonSystem::lhs)
       .field("rhs", &NewtonSystem::rhs)
       .field("rhsShorthand", &NewtonSystem::rhsShorthand)
       .field("variables", &NewtonSystem::variables)
       .field("variableDefinitions", &NewtonSystem::variableDefinitions);
+
+  // Register free functions
+  function("getLagrangian", &getLagrangian);
+  function("getFirstOrderOptimalityConditions",
+           &getFirstOrderOptimalityConditions);
   function("getNewtonSystem", &getNewtonSystem);
   function("getAugmentedSystem", &getAugmentedSystem);
   function("getNormalEquation", &getNormalEquation);
