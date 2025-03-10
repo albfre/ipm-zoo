@@ -20,6 +20,12 @@ struct NewtonSystem {
   std::string variableDefinitions;
 };
 
+struct NewtonSystemTriplet {
+  NewtonSystem full;
+  NewtonSystem augmented;
+  NewtonSystem normal;
+};
+
 namespace {
 Optimization::Settings changePenaltyToPenaltyWithExtraVariables(
     Optimization::Settings settings) {
@@ -210,6 +216,91 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settingsIn,
   return formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
 }
 
+std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
+    const Optimization::Settings& settingsIn) {
+  const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
+  const auto begin = std::chrono::high_resolution_clock::now();
+  const auto variableNames = Optimization::VariableNames();
+  auto [lagrangian, variables] =
+      Optimization::getLagrangian(variableNames, settings);
+  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+  const auto endNewton = std::chrono::high_resolution_clock::now();
+
+  const auto augmentedSize = [&]() {
+    const auto zero = Expression::ExprFactory::number(0);
+    const auto unity = Expression::ExprFactory::number(1);
+    const auto negUnity =
+        Expression::ExprFactory::negate(Expression::ExprFactory::number(1));
+    const auto reducibles = std::set{zero, unity, negUnity};
+    size_t i = 0;
+    while (i < lhs.size() && !reducibles.contains(lhs.at(0).at(i))) {
+      ++i;
+    }
+    return i;
+  }();
+  const auto endAugmented = std::chrono::high_resolution_clock::now();
+
+  std::vector<std::pair<Expression::Expr, Expression::Expr>>
+      variableDefinitions;
+  std::chrono::milliseconds gaussianCount =
+      std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
+                                                            endNewton);
+  std::chrono::milliseconds deltaCount =
+      std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
+                                                            endNewton);
+
+  auto newtonSystem =
+      formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
+
+  rhs = Optimization::getShorthandRhs(variables);
+  while (lhs.size() > augmentedSize) {
+    auto deltaVariable = Expression::ExprFactory::variable(
+        "\\Delta " + variables.at(lhs.size() - 1).getName());
+    const auto beginDelta = std::chrono::high_resolution_clock::now();
+    auto deltaDefinition =
+        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    const auto endDelta = std::chrono::high_resolution_clock::now();
+    variableDefinitions.push_back({deltaVariable, deltaDefinition});
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    const auto endGaussian = std::chrono::high_resolution_clock::now();
+    gaussianCount += std::chrono::duration_cast<std::chrono::milliseconds>(
+        endGaussian - endDelta);
+    deltaCount += std::chrono::duration_cast<std::chrono::milliseconds>(
+        endDelta - beginDelta);
+
+    variables.pop_back();
+  }
+  auto augmentedSystem =
+      formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
+
+  auto deltaVariable =
+      Expression::ExprFactory::variable("\\Delta " + variables.at(0).getName());
+  auto deltaDefinition = Optimization::deltaDefinition(lhs, rhs, variables, 0);
+  variableDefinitions.push_back({deltaVariable, deltaDefinition});
+  Optimization::gaussianElimination(lhs, rhs, 0);
+  variables.erase(variables.begin());
+
+  auto normalEquations =
+      formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
+  const auto end = std::chrono::high_resolution_clock::now();
+  std::cout << "time: newton: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
+                                                                     begin)
+                   .count()
+            << ", augmented: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   endAugmented - endNewton)
+                   .count()
+            << ", delta: " << deltaCount << ", gaussian: " << gaussianCount
+            << ", full: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                     begin)
+                   .count()
+            << std::endl;
+
+  return {newtonSystem, augmentedSystem, normalEquations};
+}
+
 }  // namespace
 
 std::string getLagrangian(const Optimization::Settings& settings) {
@@ -266,6 +357,11 @@ NewtonSystem getNormalEquation(const Optimization::Settings& settings) {
   return getNewtonSystem_(settings, NewtonSystemType::Normal);
 }
 
+NewtonSystemTriplet getNewtonSystems(const Optimization::Settings& settings) {
+  auto [full, augmented, normal] = getNewtonSystems_(settings);
+  return {full, augmented, normal};
+}
+
 // Alternatively, use embind for more direct JS-to-C++ bindings
 EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
   class_<Optimization::VariableNames>("VariableNames")
@@ -316,6 +412,11 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .field("variables", &NewtonSystem::variables)
       .field("variableDefinitions", &NewtonSystem::variableDefinitions);
 
+  value_object<NewtonSystemTriplet>("NewtonSystemTriplet")
+      .field("full", &NewtonSystemTriplet::full)
+      .field("augmented", &NewtonSystemTriplet::augmented)
+      .field("normal", &NewtonSystemTriplet::normal);
+
   // Register free functions
   function("getLagrangian", &getLagrangian);
   function("getFirstOrderOptimalityConditions",
@@ -323,4 +424,5 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
   function("getNewtonSystem", &getNewtonSystem);
   function("getAugmentedSystem", &getAugmentedSystem);
   function("getNormalEquation", &getNormalEquation);
+  function("getNewtonSystems", &getNewtonSystems);
 }

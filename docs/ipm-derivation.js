@@ -230,7 +230,9 @@ function updateProblem() {
       outputText += "<p><strong>First-order optimality conditions:</strong></p>";
       outputText += "\\[ \\begin{align*}\n " + firstOrder + "\\end{align*} \\]";
 
-      const newtonSystem = wasmModule.getNewtonSystem(settings);
+      const newtonSystems = wasmModule.getNewtonSystems(settings);
+      const newtonSystem = newtonSystems.full;
+      //const newtonSystem = wasmModule.getNewtonSystem(settings);
       outputText += "<p><strong>Newton system:</strong></p>";
       outputText += "\\[ \\begin{align*}\n \\nabla^2 L p = -\\nabla L \\end{align*}, \\]";
       outputText += "or"
@@ -240,7 +242,8 @@ function updateProblem() {
       outputText += "\\[ = \\left( \\begin{array}{c}\n " + newtonSystem.rhs + "\\end{array} \\right)"
       outputText += "=: \\left( \\begin{array}{c}\n " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
 
-      const augmentedSystem = wasmModule.getAugmentedSystem(settings);
+      const augmentedSystem = newtonSystems.augmented;
+      //const augmentedSystem = wasmModule.getAugmentedSystem(settings);
       outputText += "<p><strong>Augmented system:</strong></p>";
       cs = "c".repeat(countAmpersandsBeforeNewlines(augmentedSystem.lhs) + 1);
       outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
@@ -249,7 +252,8 @@ function updateProblem() {
       outputText += "where"
       outputText += "\\[ \\begin{align*}\n " + augmentedSystem.variableDefinitions + "\\end{align*} \\]"
 
-      const normalEquations = wasmModule.getNormalEquation(settings);
+      const normalEquations = newtonSystems.normal;
+      //const normalEquations = wasmModule.getNormalEquation(settings);
       outputText += "<p><strong>Normal equations:</strong></p>";
       const numNormalEquationVariables = countAmpersandsBeforeNewlines(normalEquations.lhs) + 1;
       cs = "c".repeat(numNormalEquationVariables);
