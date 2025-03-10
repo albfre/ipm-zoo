@@ -500,7 +500,22 @@ Expr Expr::simplify_(const bool distribute) const {
       }
 
       // Associative transformation ((x + y) + z = x + y + z)
-      associativeTransformation(ExprType::Sum, terms);
+      std::vector<Expr> newTerms;
+      newTerms.reserve(terms.size());
+      for (const auto& t : terms) {
+        if (t.type_ == ExprType::Sum) {
+          newTerms.insert(newTerms.end(), t.terms_.begin(), t.terms_.end());
+        } else if (t.type_ == ExprType::Negate &&
+                   t.getSingleChild_().type_ == ExprType::Sum) {
+          const auto& childTerms = t.getSingleChild_().terms_;
+          for (const auto& ct : childTerms) {
+            newTerms.push_back(ExprFactory::negate(ct));
+          }
+        } else {
+          newTerms.push_back(t);
+        }
+      }
+      terms = std::move(newTerms);
 
       // Identity transformations (x + 0 = x)
       std::erase_if(terms, [&](const auto& t) { return t == zero; });

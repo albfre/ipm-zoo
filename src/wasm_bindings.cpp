@@ -162,6 +162,7 @@ NewtonSystem getNewtonSystem_(const Optimization::Settings& settingsIn,
       std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
                                                             endNewton);
   if (type != NewtonSystemType::Full) {
+    rhs = Optimization::getShorthandRhs(variables);
     while (lhs.size() > augmentedSize) {
       auto deltaVariable = Expression::ExprFactory::variable(
           "\\Delta " + variables.at(lhs.size() - 1).getName());
