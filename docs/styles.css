@@ -13,13 +13,18 @@ body {
   padding: 30px;
 }
 
+/* Logo Styling */
+.logo {
+  display: block;
+  height: 120px;
+}
+
 /* Layout */
 .container {
   display: flex;
   gap: 40px;
   max-width: 768px;
-  margin: 0;
-  margin-left: 150px;
+  margin: 0 auto;
 }
 
 /* Input Section */
@@ -78,23 +83,40 @@ input[type="checkbox"] {
   color: #222;
 }
 
-.logo {
-  position: fixed;
-  z-index: 1000;
-  float: left;
-  display: block;
+/* Desktop Layout */
+@media (min-width: 901px) {
+  .logo {
+    position: fixed;
+    top: 30px;
+    left: 15px;
+    z-index: 1000;
+  }
+  
+  body {
+    padding-left: 150px; /* Make space for the fixed logo */
+  }
+  
+  .container {
+    flex-direction: row;
+    margin-left: 0;
+    margin-left: 30px; /* Add horizontal margin between logo and container */
+  }
 }
 
-/* On mobile screens, use column layout and center the logo on top */
+/* Mobile Layout */
 @media (max-width: 900px) {
+  .logo {
+    position: static;
+    margin: 0 auto 20px;
+  }
+  
   .container {
     flex-direction: column;
+    margin: 0 auto;
   }
-  .logo {
-    float: none;
-    display: block;
-    margin: 0 auto 10px;
-    text-align: center;
+  
+  body {
+    padding: 20px;
   }
 }
 
