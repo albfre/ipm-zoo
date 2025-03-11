@@ -471,51 +471,55 @@ Expr Expr::simplify_(const bool distribute) const {
         return t.simplify_(distribute);
       });
 
-      // Distributive transformation (x + y + 1.3x = 2.3x + y)
-      for (size_t i = 0; i < terms.size(); ++i) {
-        const auto term = terms.at(i);
-        const auto isNumberTimesTerm = [&term](const auto& t) {
-          return t.type_ == ExprType::Product && t.terms_.size() == 2 &&
-                 t.terms_.at(0).type_ == ExprType::Number &&
-                 t.terms_.at(1) == term;
-        };
-        if (term != zero &&
-            std::ranges::count_if(terms,
-                                  [&term, &isNumberTimesTerm](const auto& t) {
-                                    return t == term || isNumberTimesTerm(t);
-                                  }) > 1) {
-          const auto value = std::accumulate(
-              terms.cbegin(), terms.cend(), 0.0,
-              [&term, &isNumberTimesTerm](const double s, const auto& t) {
-                return s + (t == term              ? 1.0
-                            : isNumberTimesTerm(t) ? t.terms_.at(0).value_
-                                                   : 0.0);
-              });
-          std::erase_if(terms, [&term, &isNumberTimesTerm](const auto& t) {
-            return t == term || isNumberTimesTerm(t);
-          });
-          terms.push_back(
-              ExprFactory::product({ExprFactory::number(value), term}));
-        }
-      }
-
       // Associative transformation ((x + y) + z = x + y + z)
       std::vector<Expr> newTerms;
       newTerms.reserve(terms.size());
-      for (const auto& t : terms) {
+      for (auto& t : terms) {
         if (t.type_ == ExprType::Sum) {
           newTerms.insert(newTerms.end(), t.terms_.begin(), t.terms_.end());
         } else if (t.type_ == ExprType::Negate &&
                    t.getSingleChild_().type_ == ExprType::Sum) {
-          const auto& childTerms = t.getSingleChild_().terms_;
-          for (const auto& ct : childTerms) {
-            newTerms.push_back(ExprFactory::negate(ct));
+          auto& childTerms = t.getSingleChild_().terms_;
+          newTerms.reserve(newTerms.size() + childTerms.size());
+          for (auto& ct : childTerms) {
+            newTerms.emplace_back(ExprFactory::negate(std::move(ct)));
           }
         } else {
-          newTerms.push_back(t);
+          newTerms.emplace_back(std::move(t));
         }
       }
       terms = std::move(newTerms);
+
+      // Distributive transformation (x + y + 1.3x = 2.3x + y)
+      for (size_t i = 0; i < terms.size(); ++i) {
+        if (terms.at(i) != zero) {
+          const auto term = terms.at(i);
+          const auto negTerm = ExprFactory::negate(term);
+          const auto isNumberTimesTerm = [&term](const auto& t) {
+            return t.type_ == ExprType::Product && t.terms_.size() == 2 &&
+                   t.terms_.at(0).type_ == ExprType::Number &&
+                   t.terms_.at(1) == term;
+          };
+          const auto isTerm = [&term, &negTerm,
+                               &isNumberTimesTerm](const auto& t) {
+            return t == term || t == negTerm || isNumberTimesTerm(t);
+          };
+          if (std::ranges::count_if(terms, isTerm) > 1) {
+            const auto value = std::accumulate(
+                terms.cbegin(), terms.cend(), 0.0,
+                [&term, &negTerm, &isNumberTimesTerm](const double s,
+                                                      const auto& t) {
+                  return s + (t == term              ? 1.0
+                              : t == negTerm         ? -1.0
+                              : isNumberTimesTerm(t) ? t.terms_.at(0).value_
+                                                     : 0.0);
+                });
+            std::erase_if(terms, isTerm);
+            terms.push_back(
+                ExprFactory::product({ExprFactory::number(value), term}));
+          }
+        }
+      }
 
       // Identity transformations (x + 0 = x)
       std::erase_if(terms, [&](const auto& t) { return t == zero; });
