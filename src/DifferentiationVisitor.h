@@ -57,38 +57,31 @@ struct DifferentiationVisitor {
       }
 
       // Handle special case for transpose
-      if (x.terms.size() > 1 &&
-          std::visit(
-              overloaded{
-                  [&](const Transpose& y) {
-                    return std::visit(
-                        overloaded{
-                            [](const Matrix& z) { return false; },
-                            [&](const auto& z) {
-                              // xi is a transpose with a non-matrix child
+      if (x.terms.size() > i + 1 &&
+          match(
+              xi.getImpl(), [](const auto&) { return false; },
+              [&](const Transpose& y) {
+                return match(
+                    y.child->getImpl(), [](const Matrix& z) { return false; },
+                    [&](const auto& z) {
+                      // xi is a transpose with a non-matrix child
 
-                              // d/dx(f(x)^T g(x)) = d/dx(f(x)^T) g(x) +
-                              // d/dx(g(x))^T f(x)
-                              auto terms = std::vector(x.terms.begin(),
-                                                       x.terms.begin() + i);
-                              auto rest = std::vector(x.terms.begin() + i + 1,
-                                                      x.terms.end());
+                      // d/dx(f(x)^T g(x)) = d/dx(f(x)^T) g(x) +
+                      // d/dx(g(x))^T f(x)
+                      auto terms =
+                          std::vector(x.terms.begin(), x.terms.begin() + i);
+                      auto rest =
+                          std::vector(x.terms.begin() + i + 1, x.terms.end());
 
-                              terms.push_back(
-                                  ExprFactory::transpose(
-                                      ExprFactory::product(std::move(rest)))
-                                      .differentiate(var));
-                              terms.push_back(*y.child);
-
-                              sumTerms.push_back(
-                                  ExprFactory::product(std::move(terms)));
-
-                              return true;
-                            }},
-                        y.child->getImpl());
-                  },
-                  [](const auto&) { return false; }},
-              xi.getImpl())) {
+                      terms.push_back(ExprFactory::transpose(
+                                          ExprFactory::product(std::move(rest)))
+                                          .differentiate(var));
+                      terms.push_back(*y.child);
+                      sumTerms.push_back(
+                          ExprFactory::product(std::move(terms)));
+                      return true;
+                    });
+              })) {
         break;
       }
     }

@@ -9,6 +9,7 @@
 void initialTest() {
   using namespace Expression;
 
+  auto one = ExprFactory::number(1);
   auto A = ExprFactory::variable("A");
   auto X = ExprFactory::variable("X");
   auto B = ExprFactory::variable("B");
@@ -17,63 +18,71 @@ void initialTest() {
   auto y = ExprFactory::variable("y");
   auto z = ExprFactory::variable("z");
   auto a = ExprFactory::variable("a");
+  auto c = ExprFactory::namedConstant("c");
+  auto M = ExprFactory::matrix("M");
 
-  {
-    std::cout << "x^T a and a^T x" << std::endl;
-    auto t1 = ExprFactory::product({ExprFactory::transpose(x), a});
-    auto t2 = ExprFactory::product({ExprFactory::transpose(a), x});
-    std::cout << t1.differentiate(x).simplify().toString() << std::endl;
-    std::cout << t2.differentiate(x).simplify().toString() << std::endl;
-  }
-  {
-    std::cout << "a x^T Q x and a x^T Qsym x and 0.5 x^T Qsym x" << std::endl;
-    auto t1 = ExprFactory::product(
-        {a, ExprFactory::transpose(x), ExprFactory::variable("Q"), x});
-    auto t2 = ExprFactory::product(
-        {a, ExprFactory::transpose(x), ExprFactory::symmetricMatrix("Q"), x});
-    auto t3 = ExprFactory::product({ExprFactory::number(0.5),
-                                    ExprFactory::transpose(x),
-                                    ExprFactory::symmetricMatrix("Q"), x});
-    std::cout << t1.differentiate(x).simplify().toString() << std::endl;
-    std::cout << t2.differentiate(x).simplify().toString() << std::endl;
-    std::cout << t3.differentiate(x).simplify().toString() << std::endl;
-  }
+  std::cout << "num: " << one.toString() << std::endl;
+  std::cout << "var: " << A.toString() << std::endl;
+  std::cout << "named constand: " << c.toString() << std::endl;
+  std::cout << "matrix: " << M.toString() << std::endl;
 
-  if (false) {
-    auto expr1 = ExprFactory::sum(
-        {ExprFactory::product({A, X}),
-         ExprFactory::sum(
-             {ExprFactory::product({B, X}),
-              ExprFactory::product({C, ExprFactory::product({X, C})})})});
+  /* {
+      std::cout << "x^T a and a^T x" << std::endl;
+      auto t1 = ExprFactory::product({ExprFactory::transpose(x), a});
+      auto t2 = ExprFactory::product({ExprFactory::transpose(a), x});
+      std::cout << t1.differentiate(x).simplify().toString() << std::endl;
+      std::cout << t2.differentiate(x).simplify().toString() << std::endl;
+    }
+    {
+      std::cout << "a x^T Q x and a x^T Qsym x and 0.5 x^T Qsym x" << std::endl;
+      auto t1 = ExprFactory::product(
+          {a, ExprFactory::transpose(x), ExprFactory::variable("Q"), x});
+      auto t2 = ExprFactory::product(
+          {a, ExprFactory::transpose(x), ExprFactory::symmetricMatrix("Q"), x});
+      auto t3 = ExprFactory::product({ExprFactory::number(0.5),
+                                      ExprFactory::transpose(x),
+                                      ExprFactory::symmetricMatrix("Q"), x});
+      std::cout << t1.differentiate(x).simplify().toString() << std::endl;
+      std::cout << t2.differentiate(x).simplify().toString() << std::endl;
+      std::cout << t3.differentiate(x).simplify().toString() << std::endl;
+    }
 
-    auto expr2 = ExprFactory::sum(
-        {ExprFactory::product({x, y}), ExprFactory::product({y, x}),
-         ExprFactory::product({A, C}),
-         ExprFactory::negate(ExprFactory::product({C, A})),
-         ExprFactory::number(1.3), ExprFactory::number(2.3),
-         ExprFactory::product({ExprFactory::number(1.3), x}), x, x});
+    if (false) {
+      auto expr1 = ExprFactory::sum(
+          {ExprFactory::product({A, X}),
+           ExprFactory::sum(
+               {ExprFactory::product({B, X}),
+                ExprFactory::product({C, ExprFactory::product({X, C})})})});
 
-    auto expr3 =
-        ExprFactory::negate(ExprFactory::negate(ExprFactory::sum({A, B})));
+      auto expr2 = ExprFactory::sum(
+          {ExprFactory::product({x, y}), ExprFactory::product({y, x}),
+           ExprFactory::product({A, C}),
+           ExprFactory::negate(ExprFactory::product({C, A})),
+           ExprFactory::number(1.3), ExprFactory::number(2.3),
+           ExprFactory::product({ExprFactory::number(1.3), x}), x, x});
 
-    std::cout << "Matrix Expression: " << expr1.toString() << "\n";
-    std::cout << "Simplified: " << expr1.simplify().toString() << "\n";
-    std::cout << "Diff: " << expr1.differentiate(X).simplify().toString()
-              << "\n";
+      auto expr3 =
+          ExprFactory::negate(ExprFactory::negate(ExprFactory::sum({A, B})));
 
-    std::cout << "Algebraic Expression: " << expr2.toString() << "\n";
-    std::cout << "Simplified: " << expr2.simplify().toString() << "\n";
-    std::cout << "Diff: "
-              << expr2.simplify().differentiate(x).simplify().toString()
-              << "\n";
+      std::cout << "Matrix Expression: " << expr1.toString() << "\n";
+      std::cout << "Simplified: " << expr1.simplify().toString() << "\n";
+      std::cout << "Diff: " << expr1.differentiate(X).simplify().toString()
+                << "\n";
 
-    std::cout << "Algebraic Expression: " << expr3.toString() << "\n";
-    std::cout << "Simplified: " << expr3.simplify().toString() << "\n";
-    std::cout << "Diff A: " << expr3.differentiate(A).simplify().toString()
-              << "\n";
-    std::cout << "Diff x: " << expr3.differentiate(x).simplify().toString()
-              << "\n";
-  }
+      std::cout << "Algebraic Expression: " << expr2.toString() << "\n";
+      std::cout << "Simplified: " << expr2.simplify().toString() << "\n";
+      std::cout << "Diff: "
+                << expr2.simplify().differentiate(x).simplify().toString()
+                << "\n";
+
+      std::cout << "Algebraic Expression: " << expr3.toString() << "\n";
+      std::cout << "Simplified: " << expr3.simplify().toString() << "\n";
+      std::cout << "Diff A: " << expr3.differentiate(A).simplify().toString()
+                << "\n";
+      std::cout << "Diff x: " << expr3.differentiate(x).simplify().toString()
+                << "\n";
+    }
+    */
 }
 
 void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
@@ -92,6 +101,7 @@ void printRhs(const std::vector<Expression::Expr>& rhs) {
   }
 }
 
+/*
 void runLagrangianTest() {
   using namespace Expression;
   auto settings = Optimization::Settings();
@@ -147,10 +157,11 @@ void runLagrangianTest() {
   std::cout << "Rhs: " << std::endl;
   printRhs(rhs);
 }
+*/
 
 int main(int argc, char* argv[]) {
   // Check if we have any command line arguments
-  // initialTest();
+  initialTest();
 
   if (argc > 1) {
     std::string arg = argv[1];
@@ -161,7 +172,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  runLagrangianTest();
+  // runLagrangianTest();
 
   return 0;
 }

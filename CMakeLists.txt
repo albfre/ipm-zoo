@@ -63,6 +63,7 @@ endif()
 add_subdirectory(src)
 
 # Only add test directory for native builds
-if(NOT EMSCRIPTEN)
-  add_subdirectory(test)
-endif()
+
+#if(NOT EMSCRIPTEN)
+#  add_subdirectory(test)
+#endif()

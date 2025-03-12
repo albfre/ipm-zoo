@@ -2,8 +2,10 @@
 add_library(SymbolicOptimization
     Expression.cpp
     Expression.h
-    Optimization.cpp
-    Optimization.h
+    Helpers.h
+    ToStringVisitor.h
+    DifferentiationVisitor.h
+    SimplificationVisitor.h
 )
 
 # Make include directories visible to other targets
