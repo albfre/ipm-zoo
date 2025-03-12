@@ -2,11 +2,11 @@
 #include <algorithm>
 #include <cassert>
 #include <ranges>
+
 #include "Expression.h"
 #include "Helpers.h"
 
 namespace Expression {
-// Visitor for differentiation
 struct DifferentiationVisitor {
   const Expr& var;
 
@@ -17,6 +17,9 @@ struct DifferentiationVisitor {
   Expr operator()(const SymmetricMatrix&) const { return zero; }
   Expr operator()(const Variable& x) const {
     return Expr(x) == var ? unity : zero;
+  }
+  Expr operator()(const DiagonalMatrix& x) const {
+    return ExprFactory::diagonalMatrix(x.child->differentiate(var));
   }
   // Transpose: d/dx(f(x)^T) = (d/dx(f(x)))^T
   Expr operator()(const Transpose& x) const {
@@ -53,35 +56,42 @@ struct DifferentiationVisitor {
       {
         auto terms = x.terms;
         terms[i] = xi.differentiate(var);  // Differentiate one term
+        if (i + 2 == terms.size() && is<DiagonalMatrix>(terms[i]) &&
+            is<Variable>(terms[i + 1])) {
+          terms[i + 1] = ExprFactory::diagonalMatrix(terms[i + 1]);
+        }
         sumTerms.push_back(ExprFactory::product(std::move(terms)));
       }
 
       // Handle special case for transpose
       if (x.terms.size() > i + 1 &&
           match(
-              xi.getImpl(), [](const auto&) { return false; },
+              xi,
               [&](const Transpose& y) {
                 return match(
-                    y.child->getImpl(), [](const Matrix& z) { return false; },
+                    *y.child, [](const Matrix& z) { return false; },
                     [&](const auto& z) {
                       // xi is a transpose with a non-matrix child
 
-                      // d/dx(f(x)^T g(x)) = d/dx(f(x)^T) g(x) +
-                      // d/dx(g(x))^T f(x)
+                      // d/dx(f(x)^T g(x)) = d/dx(f(x)^T) g(x) + d/dx(g(x))^T
+                      // f(x)
                       auto terms =
                           std::vector(x.terms.begin(), x.terms.begin() + i);
-                      auto rest =
-                          std::vector(x.terms.begin() + i + 1, x.terms.end());
-
-                      terms.push_back(ExprFactory::transpose(
-                                          ExprFactory::product(std::move(rest)))
-                                          .differentiate(var));
-                      terms.push_back(*y.child);
-                      sumTerms.push_back(
-                          ExprFactory::product(std::move(terms)));
+                      auto restTerm =
+                          i + 2 == x.terms.size()
+                              ? x.terms[i + 1]
+                              : ExprFactory::product(std::vector(
+                                    x.terms.begin() + i + 1, x.terms.end()));
+                      terms.push_back(
+                          ExprFactory::transpose(std::move(restTerm))
+                              .differentiate(var));  // d/dx(g(x))^T
+                      terms.push_back(*y.child);     // f(x)
+                      sumTerms.push_back(ExprFactory::product(
+                          std::move(terms)));  // d/dx(g(x))^T f(x)
                       return true;
                     });
-              })) {
+              },
+              [](const auto&) { return false; })) {
         break;
       }
     }

@@ -27,6 +27,7 @@ struct NamedConstant : public NamedNullaryExpr {};
 struct Variable : public NamedNullaryExpr {};
 struct Matrix : public NamedNullaryExpr {};
 struct SymmetricMatrix : public NamedNullaryExpr {};
+struct DiagonalMatrix : public UnaryExpr {};
 struct Transpose : public UnaryExpr {};
 struct Invert : public UnaryExpr {};
 struct Log : public UnaryExpr {};
@@ -35,22 +36,13 @@ struct Sum : public NaryExpr {};
 struct Product : public NaryExpr {};
 
 class Expr {
-  using ExprVariant = std::variant<Number,
-                                   NamedConstant,
-                                   Matrix,
-                                   SymmetricMatrix,
-                                   Variable,
-                                   Transpose,
-                                   Invert,
-                                   Log,
-                                   Sum,
-                                   Product,
-                                   Negate>;
+  using ExprVariant = std::variant<Number, NamedConstant, Variable, Matrix,
+                                   SymmetricMatrix, DiagonalMatrix, Transpose,
+                                   Invert, Log, Sum, Product, Negate>;
 
  public:
-  template <typename T,
-            typename =
-                std::enable_if_t<std::is_base_of_v<UnaryExpr, std::decay_t<T>>>>
+  template <typename T, typename = std::enable_if_t<
+                            std::is_base_of_v<UnaryExpr, std::decay_t<T>>>>
   explicit Expr(const T& value)
       : impl_(T{std::make_unique<Expr>(*value.child)}) {}
   template <typename T,
@@ -71,7 +63,7 @@ class Expr {
 
  private:
   ExprVariant impl_;
-  // Expr getLeadingOrEndingFactor_(bool leading) const;
+  Expr getLeadingOrEndingFactor_(bool leading) const;
   // Expr factorOut(const Expr& factor, bool leading) const;
   double complexity_() const;
 };
@@ -82,14 +74,15 @@ bool operator==(const Expr& left, const Expr& right);
 namespace ExprFactory {
 Expr number(const double value);
 Expr namedConstant(const std::string& name);
+Expr variable(const std::string& name);
 Expr matrix(const std::string& name);
 Expr symmetricMatrix(const std::string& name);
-Expr variable(const std::string& name);
+Expr diagonalMatrix(Expr expr);
 Expr transpose(Expr expr);
 Expr negate(Expr expr);
 Expr invert(Expr expr);
 Expr log(Expr expr);
-Expr product(std::vector<Expr> terms);
 Expr sum(std::vector<Expr> terms);
+Expr product(std::vector<Expr> terms);
 }  // namespace ExprFactory
 }  // namespace Expression

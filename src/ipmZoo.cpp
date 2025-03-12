@@ -4,7 +4,6 @@
 #include <memory>
 
 #include "Expression.h"
-#include "GaussianElimination.h"
 #include "Optimization.h"
 
 void initialTest() {
@@ -90,8 +89,7 @@ void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
   for (const auto& row : lhs) {
     for (size_t i = 0; i < row.size(); ++i) {
       std::cout << row[i].toString();
-      if (i < row.size() - 1)
-        std::cout << " & ";
+      if (i < row.size() - 1) std::cout << " & ";
     }
     std::cout << " \\\\" << std::endl;
   }
