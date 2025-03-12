@@ -1,6 +1,7 @@
 #pragma once
 #include <ranges>
 #include <sstream>
+
 #include "Expression.h"
 #include "Helpers.h"
 
@@ -20,6 +21,23 @@ struct ToStringVisitor {
     } else {
       static_assert(always_false_v<decltype(x)>);
     }
+  }
+
+  std::string operator()(const DiagonalMatrix& x) const {
+    const auto& c = *x.child;
+    return match(
+        c,
+        [](const Variable& x) {
+          auto name = x.name;
+          for (size_t i = 0; i < name.size(); ++i) {
+            if (std::isalpha(name[i])) {
+              name[i] = std::toupper(name[i]);
+              return name;
+            }
+          }
+          return "\\diag(" + name + ")";
+        },
+        [&](const auto&) { return "\\diag(" + c.toString(condensed) + ")"; });
   }
 
   std::string operator()(const Transpose& x) const {
@@ -85,6 +103,10 @@ struct ToExpressionStringVisitor {
     return "namedConstant(" + x.name + ")";
   }
 
+  std::string operator()(const Variable& x) const {
+    return "variable(" + x.name + ")";
+  }
+
   std::string operator()(const Matrix& x) const {
     return "matrix(" + x.name + ")";
   }
@@ -93,8 +115,8 @@ struct ToExpressionStringVisitor {
     return "symmetricMatrix(" + x.name + ")";
   }
 
-  std::string operator()(const Variable& x) const {
-    return "variable(" + x.name + ")";
+  std::string operator()(const DiagonalMatrix& x) const {
+    return "diagonalMatrix(" + x.child->toExpressionString() + ")";
   }
 
   std::string operator()(const Transpose& x) const {

@@ -1,5 +1,6 @@
 #pragma once
 #include <tuple>
+
 #include "Expression.h"
 
 namespace Expression {
@@ -15,16 +16,10 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-template <typename Variant, typename... Lambdas>
-auto match(Variant&& var, Lambdas&&... lambdas) {
+template <typename... Lambdas>
+auto match(const Expr& var, Lambdas&&... lambdas) {
   return std::visit(overloaded{std::forward<Lambdas>(lambdas)...},
-                    std::forward<Variant>(var));
-}
-
-template <typename Variant, typename... Lambdas>
-void matchDefaultDoNothing(Variant&& var, Lambdas&&... lambdas) {
-  std::visit(overloaded{[](const auto&) {}, std::forward<Lambdas>(lambdas)...},
-             std::forward<Variant>(var));
+                    var.getImpl());
 }
 
 // Helper template for static_assert that depends on a type
@@ -32,15 +27,23 @@ template <typename T>
 inline constexpr bool always_false_v = false;
 
 // Helper templates for type checking
-template <typename T, typename Tuple>
-struct is_any_of;
+template <typename T>
+struct is_named_nullary : std::is_base_of<NamedNullaryExpr, std::decay_t<T>> {};
 
-template <typename T, typename... Types>
-struct is_any_of<T, std::tuple<Types...>>
-    : std::disjunction<std::is_same<T, Types>...> {};
+template <typename T>
+inline constexpr bool is_named_nullary_v = is_named_nullary<T>::value;
 
-template <typename T, typename Tuple>
-inline constexpr bool is_any_of_v = is_any_of<T, Tuple>::value;
+template <typename T>
+struct is_unary : std::is_base_of<UnaryExpr, std::decay_t<T>> {};
+
+template <typename T>
+inline constexpr bool is_unary_v = is_unary<T>::value;
+
+template <typename T>
+struct is_nary : std::is_base_of<NaryExpr, std::decay_t<T>> {};
+
+template <typename T>
+inline constexpr bool is_nary_v = is_nary<T>::value;
 
 template <typename T>
 bool is(const Expr& expr) {

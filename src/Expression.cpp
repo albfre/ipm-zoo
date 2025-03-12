@@ -72,18 +72,18 @@ bool Expr::containsSubexpression(const Expr& expr) const {
   if (*this == expr) {
     return true;
   }
-  return match(impl_, [&expr](const auto& x) {
-    using T = std::decay_t<decltype(x)>;
-    if constexpr (std::is_base_of_v<NaryExpr, T>) {
-      return std::ranges::any_of(x.terms, [&expr](const auto& t) {
-        return t.containsSubexpression(expr);
-      });
-    } else if constexpr (std::is_base_of_v<UnaryExpr, T>) {
-      return x.child->containsSubexpression(expr);
-    } else {
-      return false;
-    }
-  });
+  return match(
+      *this,
+      [&expr](const auto& x)
+        requires is_nary_v<decltype(x)> {
+          return std::ranges::any_of(x.terms, [&expr](const auto& t) {
+            return t.containsSubexpression(expr);
+          });
+        },
+                 [&expr](const auto& x)
+                   requires is_unary_v<decltype(x)>
+      { return x.child->containsSubexpression(expr); },
+      [](const auto&) { return false; });
 }
 
 std::string Expr::toString(const bool condensed) const {
@@ -94,25 +94,43 @@ std::string Expr::toExpressionString() const {
   return std::visit(ToExpressionStringVisitor{}, impl_);
 }
 
+Expr Expr::getLeadingOrEndingFactor_(const bool leading) const {
+  return match(
+      *this,
+      [&](const Negate& x) {
+        return x.child->getLeadingOrEndingFactor_(leading);
+      },
+      [&](const Sum& x) {
+        const auto termFactor =
+            x.terms.front().getLeadingOrEndingFactor_(leading);
+        if (std::ranges::all_of(x.terms, [&](const auto& t) {
+              return t.getLeadingOrEndingFactor_(leading) == termFactor;
+            })) {
+          return termFactor;
+        }
+        return *this;
+      },
+      [&](const Product& x) {
+        return (leading ? x.terms.front() : x.terms.back())
+            .getLeadingOrEndingFactor_(leading);
+      },
+      [&](const auto& x) { return *this; });
+}
+
 double Expr::complexity_() const {
   return match(
-      impl_, [](const Number&) { return 0.5; },
-      [](const NamedConstant&) { return 1.0; },
-      [](const Matrix&) { return 1.0; },
-      [](const SymmetricMatrix&) { return 1.0; },
-      [](const Variable&) { return 1.0; },
-      [](const Transpose& x) { return 0.5 + x.child->complexity_(); },
-      [](const Negate& x) { return 0.5 + x.child->complexity_(); },
-      [](const Invert& x) { return 0.5 + x.child->complexity_(); },
-      [](const Log& x) { return 1.0 + x.child->complexity_(); },
-      [](const auto& x) {
-        if constexpr (std::is_base_of_v<NaryExpr, std::decay_t<decltype(x)>>) {
-          return std::transform_reduce(
-              x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
-              [](const auto& t) { return t.complexity_(); });
-        } else {
-          static_assert(always_false_v<decltype(x)>);
-        }
+      *this, [](const Number&) { return 0.5; },
+      [](const auto& x)
+          -> std::enable_if_t<is_named_nullary_v<decltype(x)>, double> {
+        return 1.0;
+      },
+      [](const auto& x) -> std::enable_if_t<is_unary_v<decltype(x)>, double> {
+        return 0.5 + x.child->complexity_();
+      },
+      [](const auto& x) -> std::enable_if_t<is_nary_v<decltype(x)>, double> {
+        return std::transform_reduce(
+            x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
+            [](const auto& t) { return t.complexity_(); });
       });
 }
 
@@ -120,12 +138,15 @@ Expr ExprFactory::number(const double value) { return Expr(Number{value}); }
 Expr ExprFactory::namedConstant(const std::string& name) {
   return Expr(NamedConstant{name});
 }
+Expr ExprFactory::variable(const std::string& name) {
+  return Expr(Variable{name});
+}
 Expr ExprFactory::matrix(const std::string& name) { return Expr(Matrix{name}); }
 Expr ExprFactory::symmetricMatrix(const std::string& name) {
   return Expr(SymmetricMatrix{name});
 }
-Expr ExprFactory::variable(const std::string& name) {
-  return Expr(Variable{name});
+Expr ExprFactory::diagonalMatrix(Expr expr) {
+  return Expr(DiagonalMatrix{std::make_unique<Expr>(std::move(expr))});
 }
 Expr ExprFactory::diagonalMatrix(Expr expr) {
   return Expr(ExprType::DiagonalMatrix, {std::move(expr)});
@@ -142,10 +163,10 @@ Expr ExprFactory::invert(Expr expr) {
 Expr ExprFactory::log(Expr expr) {
   return Expr(Log{std::make_unique<Expr>(std::move(expr))});
 }
-Expr ExprFactory::product(std::vector<Expr> terms) {
-  return Expr(Product{std::move(terms)});
-}
 Expr ExprFactory::sum(std::vector<Expr> terms) {
   return Expr(Sum{std::move(terms)});
+}
+Expr ExprFactory::product(std::vector<Expr> terms) {
+  return Expr(Product{std::move(terms)});
 }
 }  // namespace Expression

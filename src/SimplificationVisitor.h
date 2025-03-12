@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <numeric>
 #include <ranges>
+
 #include "Expression.h"
 #include "Helpers.h"
 
@@ -11,24 +12,8 @@ struct SimplificationVisitor {
   explicit SimplificationVisitor(const bool distribute)
       : distribute(distribute) {}
 
-  /* const auto eraseCanceling =
-  [](const ExprType type, auto& terms, const auto& replacement) {
-    for (size_t i = 0; i < terms.size(); ++i) {
-      const auto& t1 = terms.at(i);
-      for (size_t j = i + 1; j < terms.size(); ++j) {
-        const auto& t2 = terms.at(j);
-        if ((t1.type_ == type && t1.getSingleChild_() == t2) ||
-            (t2.type_ == type && t2.getSingleChild_() == t1)) {
-          terms.erase(terms.begin() + j);
-          terms.erase(terms.begin() + i);
-          terms.insert(terms.begin() + i, replacement);
-          break;
-        }
-      }
-    }
-  };
-
   // Associative transformation lambda
+  /*
   const auto associativeTransformation = [](const ExprType type, auto& terms) {
     assert((std::set{ExprType::Sum, ExprType::Product}.contains(type)));
     std::vector<Expr> newTerms;
@@ -51,15 +36,14 @@ struct SimplificationVisitor {
   Expr operator()(const Variable& x) const { return Expr(x); }
 
   Expr operator()(const Transpose& x) const {
-    const auto child = x.child->simplify(distribute);
+    auto child = x.child->simplify(distribute);
     if (child == zero || child == unity) {
       return child;  // 0^T = 0, 1^T = 1
     }
     return match(
-        child.getImpl(),
-        [](const Transpose& x) { return *x.child; },  // (x^T)^T = x
-        [](const SymmetricMatrix& x) { return Expr(x); },
-        [](const Invert& x) { return Expr(x); },
+        child, [](const Transpose& x) { return *x.child; },  // (x^T)^T = x
+        [&](const SymmetricMatrix& x) { return child; },
+        [&](const Invert& x) { return child; },
         [this](const Negate& x) {
           // (-x)^T  = -x^T
           return ExprFactory::negate(ExprFactory::transpose(*x.child));
@@ -81,9 +65,9 @@ struct SimplificationVisitor {
       return zero;
     }
     return match(
-        child.getImpl(),
+        child, [](const Number& x) { return ExprFactory::number(-x.value); },
         [](const Negate& x) { return *x.child; },  // negate(negate(x)) = x
-        [this](const Product& x) {
+        [&](const Product& x) {
           const auto it = std::ranges::find_if(x.terms, is<Negate>);
           if (it != x.terms.end()) {
             auto terms = x.terms;
@@ -91,28 +75,28 @@ struct SimplificationVisitor {
                 *std::get<Negate>(it->getImpl()).child;
             return ExprFactory::product(std::move(terms));
           }
-          return ExprFactory::negate(Expr(x));
+          return ExprFactory::negate(child);
         },
-        [](const Sum& x) {
+        [&](const Sum& x) {
           if (static_cast<size_t>(std::ranges::count_if(x.terms, is<Negate>)) >
               x.terms.size() / 2) {
             auto terms = x.terms;
             for (auto& t : terms) {
               t = match(
-                  t.getImpl(), [](const Negate& y) { return *y.child; },
-                  [](const auto& y) { return ExprFactory::negate(Expr(y)); });
+                  t, [](const Negate& y) { return *y.child; },
+                  [&](const auto&) { return ExprFactory::negate(t); });
             }
             return ExprFactory::sum(std::move(terms));
           }
-          return ExprFactory::negate(Expr(x));
+          return ExprFactory::negate(std::move(child));
         },
-        [this](const auto& x) { return ExprFactory::negate(Expr(x)); });
+        [&](const auto& x) { return ExprFactory::negate(std::move(child)); });
   }
 
   Expr operator()(const Invert& x) const {
     auto child = x.child->simplify(distribute);
     return match(
-        child.getImpl(),
+        child,
         [](const Invert& y) { return *y.child; },  // invert(invert(x)) = x
         [](const Negate& y) {
           // invert(negate(x)) = negate(invert(x))
@@ -125,7 +109,7 @@ struct SimplificationVisitor {
           std::ranges::reverse(terms);
           return ExprFactory::product(std::move(terms));
         },
-        [&](const auto&) { return ExprFactory::invert(child); });
+        [&](const auto&) { return ExprFactory::invert(std::move(child)); });
   }
 
   Expr operator()(const Log& x) const {
@@ -139,26 +123,55 @@ struct SimplificationVisitor {
     auto terms = transform(
         x.terms, [this](const auto& t) { return t.simplify(distribute); });
 
+    // Associative transformation ((x + y) + z = x + y + z)
+    std::vector<Expr> newTerms;
+    newTerms.reserve(terms.size());
+    for (auto& t : terms) {
+      match(
+          t,
+          [&](const Sum& x) {
+            newTerms.insert(newTerms.end(), x.terms.begin(), x.terms.end());
+          },
+          [&](auto& x) {
+            if constexpr (std::is_same_v<Negate, std::decay_t<decltype(x)>>) {
+              auto& child = x.child;
+              if constexpr (std::is_same_v<Sum,
+                                           std::decay_t<decltype(child)>>) {
+                newTerms.reserve(newTerms.size() + child.terms.size());
+                for (auto& ct : child.terms) {
+                  newTerms.emplace_back(ExprFactory::negate(std::move(ct)));
+                }
+                return;
+              }
+            }
+            newTerms.emplace_back(std::move(t));
+          });
+    }
+    terms = std::move(newTerms);
+
     // Distributive transformation (x + y + 1.3x = 2.3x + y)
     for (size_t i = 0; i < terms.size(); ++i) {
-      const auto& term = terms.at(i);
+      const auto term = terms.at(i);
+      const auto negTerm = ExprFactory::negate(terms.at(i));
       const auto isNumberTimesTerm = [&term](const auto& t) -> bool {
         return match(
-            t.getImpl(),
+            t,
             [&term](const Product& x) {
               return x.terms.size() == 2 && is<Number>(x.terms.front()) &&
                      x.terms.back() == term;
             },
             [](const auto&) { return false; });
       };
-      if (std::ranges::count_if(terms,
-                                [&term, &isNumberTimesTerm](const auto& t) {
-                                  return t == term || isNumberTimesTerm(t);
-                                }) > 1) {
+      const auto isTerm = [&](const auto& t) {
+        return t == term || t == negTerm || isNumberTimesTerm(t);
+      };
+      if (std::ranges::any_of(terms, isTerm)) {
         const auto value = std::accumulate(
             terms.cbegin(), terms.cend(), 0.0,
-            [&term, &isNumberTimesTerm](const auto s, const auto& t) -> double {
-              return s + (t == term ? 1.0
+            [&term, &negTerm, &isNumberTimesTerm](const auto s,
+                                                  const auto& t) -> double {
+              return s + (t == term      ? 1.0
+                          : t == negTerm ? -1.0
                           : isNumberTimesTerm(t)
                               ? std::get<Number>(std::get<Product>(t.getImpl())
                                                      .terms.front()
@@ -166,93 +179,91 @@ struct SimplificationVisitor {
                                     .value
                               : 0.0);
             });
-        std::erase_if(terms, [&term, &isNumberTimesTerm](const auto& t) {
-          return t == term || isNumberTimesTerm(t);
-        });
+        std::erase_if(terms, isTerm);
         terms.push_back(
             ExprFactory::product({ExprFactory::number(value), term}));
       }
     }
+
+    // Identity transformations (x + 0 = x)
+    std::erase_if(terms, [&](const auto& t) { return t == zero; });
+
+    if (terms.empty()) {
+      return zero;
+    }
+
+    // Canceling transformation (x - x = 0)
+    eraseCanceling_<Negate>(terms, zero);
+
+    // Numerical transformation (1 + x + 2 = 3 + x)
+    if (std::ranges::any_of(terms,
+                            [](const auto& t) { return is<Number>(t); })) {
+      const auto value = std::accumulate(
+          terms.cbegin(), terms.cend(), 0.0, [](const double s, const auto& t) {
+            return s + match(
+                           t, [](const Number& x) { return x.value; },
+                           [](const auto&) { return 0.0; });
+          });
+      std::erase_if(terms, [](const auto& t) { return is<Number>(t); });
+      terms.push_back(ExprFactory::number(value));
+    }
+
+    // Commutative transformation (z + y + x = x + y + z)
+    std::ranges::sort(terms);
+
+    auto simplified = ExprFactory::sum(terms);
+
+    // Check whether extracting common factors leads to a shorter expression
+    // (xy + xz + xw = x(y + z + w)
     /*
-        // Associative transformation ((x + y) + z = x + y + z)
-        associativeTransformation(ExprType::Sum, terms);
-
-        // Identity transformations (x + 0 = x)
-        std::erase_if(terms, [&](const auto& t) { return t == zero; });
-
-        if (terms.empty()) {
-          return zero;
+    if (distribute) {
+      for (const auto leading : std::vector{true, false}) {
+        std::map<Expr, size_t> numOccurancesOfFactors;
+        for (auto& t : terms) {
+          ++numOccurancesOfFactors[t.getLeadingOrEndingFactor_(leading)];
         }
 
-        // Canceling transformation (x - x = 0)
-        eraseCanceling(ExprType::Negate, terms, zero);
-
-        // Numerical transformation (1 + x + 2 = 3 + x)
-        if (std::ranges::count_if(terms, [](const auto& t) {
-              return t.type_ == ExprType::Number;
-            }) > 1) {
-          const auto value = std::accumulate(
-              terms.cbegin(), terms.cend(), 0.0, [](const double s, const auto&
-       t) { return s + (t.type_ == ExprType::Number ? t.value_ : 0.0);
-              });
-          std::erase_if(terms,
-                        [](const auto& t) { return t.type_ == ExprType::Number;
-       }); terms.push_back(ExprFactory::number(value));
-        }
-
-        // Commutative transformation (z + y + x = x + y + z)
-        std::ranges::sort(terms);
-
-        const auto simplified = ExprFactory::sum(terms);
-
-        // Check whether extracting common factors leads to a shorter expression
-        // (xy + xz + xw = x(y + z + w)
-        if (distribute) {
-          for (const auto leading : std::vector{true, false}) {
-            std::map<Expr, size_t> numOccurancesOfFactors;
-            for (auto& t : terms) {
-              ++numOccurancesOfFactors[t.getLeadingOrEndingFactor_(leading)];
-            }
-
-            if (const auto it =
-                    std::ranges::max_element(numOccurancesOfFactors,
-                                             [](const auto& p1, const auto& p2)
-       { return p1.second < p2.second;
-                                             });
-                it->second >= 2) {
-              std::vector<Expr> factoredTerms;
-              std::vector<Expr> unfactoredTerms;
-              const auto& factor = it->first;
-              for (auto& t : terms) {
-                if (t.getLeadingOrEndingFactor_(leading) == factor) {
-                  factoredTerms.push_back(t.factorOut(factor, leading));
-                } else {
-                  unfactoredTerms.push_back(t);
-                }
-              }
-
-              const auto sumFactored =
-       ExprFactory::sum(std::move(factoredTerms)); const auto
-       factorTimesFactored = leading ? ExprFactory::product({factor,
-       sumFactored}) : ExprFactory::product({sumFactored, factor}); auto
-       factoredExpr = (unfactoredTerms.empty() ? factorTimesFactored :
-       ExprFactory::sum( {ExprFactory::sum(std::move(unfactoredTerms)),
-                              factorTimesFactored}))
-                      .simplify_();
-              associativeTransformation(factoredExpr.type_,
-       factoredExpr.terms_); if (factoredExpr.complexity_() <
-       simplified.complexity_()) { return factoredExpr;
-              }
+        if (const auto it =
+                std::ranges::max_element(numOccurancesOfFactors,
+                                         [](const auto& p1, const auto& p2) {
+                                           return p1.second < p2.second;
+                                         });
+            it->second >= 2) {
+          std::vector<Expr> factoredTerms;
+          std::vector<Expr> unfactoredTerms;
+          const auto& factor = it->first;
+          for (auto& t : terms) {
+            if (t.getLeadingOrEndingFactor_(leading) == factor) {
+              factoredTerms.push_back(t.factorOut(factor, leading));
+            } else {
+              unfactoredTerms.push_back(t);
             }
           }
+
+          const auto sumFactored = ExprFactory::sum(std::move(factoredTerms));
+          const auto factorTimesFactored =
+              leading ? ExprFactory::product({factor, sumFactored})
+                      : ExprFactory::product({sumFactored, factor});
+          auto factoredExpr =
+              (unfactoredTerms.empty()
+                   ? factorTimesFactored
+                   : ExprFactory::sum(
+                         {ExprFactory::sum(std::move(unfactoredTerms)),
+                          factorTimesFactored}))
+                  .simplify_();
+          associativeTransformation(factoredExpr.type_, factoredExpr.terms_);
+          if (factoredExpr.complexity_() < simplified.complexity_()) {
+            return factoredExpr;
+          }
         }
-          */
+      }
+    }
+    */
 
     if (terms.size() == 1) {
       return terms.front();
     }
 
-    auto simplified = ExprFactory::sum(terms);
     return simplified;
   }
   /*
@@ -350,5 +361,24 @@ struct SimplificationVisitor {
         throw std::runtime_error("Unhandled enum");
     }
     */
+
+ private:
+  template <typename T>
+  void eraseCanceling_(std::vector<Expr>& terms,
+                       const Expr& replacement) const {
+    for (size_t i = 0; i < terms.size(); ++i) {
+      const auto& t1 = terms.at(i);
+      for (size_t j = i + 1; j < terms.size(); ++j) {
+        const auto& t2 = terms.at(j);
+        if ((is<T>(t1) && *std::get<T>(t1.getImpl()).child == t2) ||
+            (is<T>(t2) && *std::get<T>(t2.getImpl()).child == t1)) {
+          terms.erase(terms.begin() + j);
+          terms.erase(terms.begin() + i);
+          terms.insert(terms.begin() + i, replacement);
+          break;
+        }
+      }
+    }
+  }
 };
 }  // namespace Expression
