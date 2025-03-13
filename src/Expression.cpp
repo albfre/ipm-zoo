@@ -74,12 +74,11 @@ bool Expr::containsSubexpression(const Expr& expr) const {
   }
   return match(
       *this, ([&expr](const auto& x)
-                requires is_nary_v<decltype(x)>
-              {
-                return std::ranges::any_of(x.terms, [&expr](const auto& t) {
-                  return t.containsSubexpression(expr);
-                });
-              }),
+                requires is_nary_v<decltype(x)> {
+                  return std::ranges::any_of(x.terms, [&expr](const auto& t) {
+                    return t.containsSubexpression(expr);
+                  });
+                }),
               [&expr](const auto& x)
                 requires is_unary_v<decltype(x)>
               { return x.child->containsSubexpression(expr); },
@@ -95,13 +94,13 @@ Expr Expr::replaceSubexpression(const Expr& expr,
       *this,
       // Handle n-ary expressions
       ([&](const auto& x)
-         requires is_nary_v<decltype(x)>
-       {
-         auto terms = transform(x.terms, [&expr, &replacement](const auto& t) {
-           return t.replaceSubexpression(expr, replacement);
-         });
-         return Expr(std::decay_t<decltype(x)>{std::move(terms)});
-       }),
+         requires is_nary_v<decltype(x)> {
+           auto terms =
+               transform(x.terms, [&expr, &replacement](const auto& t) {
+                 return t.replaceSubexpression(expr, replacement);
+               });
+           return Expr(std::decay_t<decltype(x)>{std::move(terms)});
+         }),
 
        // Handle unary expressions
        [&expr, &replacement](const auto& x)
@@ -193,6 +192,26 @@ double Expr::complexity() const {
             x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
             [](const auto& t) { return t.complexity(); });
       });
+}
+
+std::set<Expr> Expr::getVariables() const {
+  std::set<Expr> variables;
+  match(
+      *this, [&](const Variable& x) { variables.insert(*this); },
+      ([&](const auto& x)
+         requires is_nary_v<decltype(x)> {
+           for (const auto& t : x.terms) {
+             const auto v = t.getVariables();
+             variables.insert(v.begin(), v.end());
+           }
+         }),
+       [&](const auto& x)
+         requires is_unary_v<decltype(x)> {
+           const auto v = x.child->getVariables();
+           variables.insert(v.begin(), v.end());
+         },
+       [](const auto&) {});
+  return variables;
 }
 
 Expr ExprFactory::number(const double value) { return Expr(Number{value}); }

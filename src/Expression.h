@@ -63,6 +63,7 @@ class Expr {
   Expr getLeadingOrEndingFactor(bool leading) const;
   Expr factorOut(const Expr& factor, bool leading) const;
   double complexity() const;
+  std::set<Expr> getVariables() const;
 
  private:
   ExprVariant impl_;
