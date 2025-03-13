@@ -504,7 +504,7 @@ Expr Expr::simplify_(const bool distribute) const {
                                &isNumberTimesTerm](const auto& t) {
             return t == term || t == negTerm || isNumberTimesTerm(t);
           };
-          if (std::ranges::any_of(terms, isTerm)) {
+          if (std::ranges::count_if(terms, isTerm) > 1) {
             const auto value = std::accumulate(
                 terms.cbegin(), terms.cend(), 0.0,
                 [&term, &negTerm, &isNumberTimesTerm](const double s,
@@ -532,9 +532,9 @@ Expr Expr::simplify_(const bool distribute) const {
       eraseCanceling(ExprType::Negate, terms, zero);
 
       // Numerical transformation (1 + x + 2 = 3 + x)
-      if (std::ranges::any_of(terms, [](const auto& t) {
+      if (std::ranges::count_if(terms, [](const auto& t) {
             return t.type_ == ExprType::Number;
-          })) {
+          }) > 1) {
         const auto value = std::accumulate(
             terms.cbegin(), terms.cend(), 0.0,
             [](const double s, const auto& t) {
@@ -666,9 +666,9 @@ Expr Expr::simplify_(const bool distribute) const {
           terms, [](const auto& t) { return t.type_ == ExprType::Number; });
 
       // Numerical transformation (2 * x * 3 = 6 * x)
-      if (std::ranges::any_of(terms, [](const auto& t) {
+      if (std::ranges::count_if(terms, [](const auto& t) {
             return t.type_ == ExprType::Number;
-          })) {
+          }) > 1) {
         const auto value = std::accumulate(
             terms.cbegin(), terms.cend(), 1.0,
             [](const double s, const auto& t) {
