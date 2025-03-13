@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include "Helpers.h"
+
 using namespace Expression;
 
 class ExpressionTest : public ::testing::Test {
@@ -25,15 +27,15 @@ TEST_F(ExpressionTest, BasicConstruction) {
   // Test number
   auto num = ExprFactory::number(42.0);
   EXPECT_EQ(num.toString(), "42");
-  EXPECT_EQ(num.getType(), ExprType::Number);
+  EXPECT_TRUE(is<Number>(num));
 
   // Test variable
   EXPECT_EQ(x.toString(), "x");
-  EXPECT_EQ(x.getType(), ExprType::Variable);
+  EXPECT_TRUE(is<Variable>(x));
 
   // Test named constant
   EXPECT_EQ(a.toString(), "a");
-  EXPECT_EQ(a.getType(), ExprType::NamedVector);
+  EXPECT_TRUE(is<NamedConstant>(a));
 }
 
 // Test basic arithmetic operations

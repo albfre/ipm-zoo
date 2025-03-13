@@ -70,16 +70,28 @@ struct ToStringVisitor {
 
   std::string operator()(const Sum& x) const {
     std::stringstream ss;
+    ss << (condensed ? "" : "(");
     ss << x.terms.front().toString(condensed);
     for (const auto& t : x.terms | std::views::drop(1)) {
-      ss << (is<Negate>(t) ? " - " : " + ") << t.toString(condensed);
+      if (is<Negate>(t)) {
+        ss << " - " << t.toString(condensed);
+      } else {
+        ss << " + " << t.toString(condensed);
+      }
     }
-    return condensed ? "(" + ss.str() + ")" : ss.str();
+    ss << (condensed ? "" : ")");
+    return ss.str();
   }
 
   std::string operator()(const Product& x) const {
     std::stringstream ss;
-    ss << x.terms.front().toString(condensed);
+    ss << (condensed ? "" : "(");
+    const auto& front = x.terms.front();
+    if (condensed && is<Sum>(front)) {
+      ss << "(" << front.toString(condensed) << ")";
+    } else {
+      ss << front.toString(condensed);
+    }
     const auto symbol = condensed ? " " : " * ";
     for (const auto& t : x.terms | std::views::drop(1)) {
       if (is<Negate>(t) || (condensed && is<Sum>(t))) {
@@ -88,7 +100,8 @@ struct ToStringVisitor {
         ss << symbol << t.toString(condensed);
       }
     }
-    return condensed ? "(" + ss.str() + ")" : ss.str();
+    ss << (condensed ? "" : ")");
+    return ss.str();
   }
 };
 

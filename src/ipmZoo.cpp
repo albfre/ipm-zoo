@@ -70,7 +70,10 @@ void initialTest() {
               << "\n";
 
     std::cout << "Algebraic Expression: " << expr2.toString() << "\n";
+    std::cout << "Algebraic Expression: " << expr2.toExpressionString() << "\n";
     std::cout << "Simplified: " << expr2.simplify().toString() << "\n";
+    std::cout << "Simplified: " << expr2.simplify().toExpressionString()
+              << "\n";
     std::cout << "Diff: "
               << expr2.simplify().differentiate(x).simplify().toString()
               << "\n";
@@ -101,7 +104,7 @@ void test2() {
   auto y = ExprFactory::variable("y");
   auto e = ExprFactory::sum({ExprFactory::product({one, one}), one});
   std::cout << "e.toString(): " << e.toString() << std::endl;
-  std::cout << "e.simplify().toString(): " << e.simplify().toString()
+  std::cout << "e.simplify().toString(): " << e.simplify().toExpressionString()
             << std::endl;
 }
 
@@ -169,8 +172,8 @@ void runLagrangianTest() {
 
 int main(int argc, char* argv[]) {
   // Check if we have any command line arguments
-  test2();
-  // initialTest();
+  // test2();
+  initialTest();
 
   if (argc > 1) {
     std::string arg = argv[1];

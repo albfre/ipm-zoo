@@ -140,7 +140,7 @@ struct SimplificationVisitor {
     terms = std::move(newTerms);
 
     // Numerical transformation (1 + x + 2 = 3 + x)
-    if (std::ranges::any_of(terms, is<Number>)) {
+    if (std::ranges::count_if(terms, is<Number>) > 1) {
       const auto value = std::accumulate(
           terms.cbegin(), terms.cend(), 0.0, [](const double s, const auto& t) {
             return s + match(
@@ -167,7 +167,7 @@ struct SimplificationVisitor {
       const auto isTerm = [&](const auto& t) {
         return t == term || t == negTerm || isNumberTimesTerm(t);
       };
-      if (std::ranges::any_of(terms, isTerm)) {
+      if (std::ranges::count_if(terms, isTerm) > 1) {
         const auto value = std::accumulate(
             terms.cbegin(), terms.cend(), 0.0,
             [&term, &negTerm, &isNumberTimesTerm](const auto s,
@@ -248,10 +248,9 @@ struct SimplificationVisitor {
           match(
               factoredExpr,
               [&](auto& x)
-                requires is_nary_v<decltype(x)>
-              {
-                associativeTransformation<std::decay_t<decltype(x)>>(x.terms);
-              },
+                requires is_nary_v<decltype(x)> {
+                  associativeTransformation<std::decay_t<decltype(x)>>(x.terms);
+                },
               [&](const auto&) {});
           if (factoredExpr.complexity() < simplified.complexity()) {
             return factoredExpr;
@@ -299,11 +298,8 @@ struct SimplificationVisitor {
     // of inverse) (x * inv(x) = 1)
     eraseCanceling_<Invert>(terms, unity);
 
-    // Commutative transformation (2x3y = 2*3*xy)
-    std::ranges::partition(terms, is<Number>);
-
     // Numerical transformation (2 * x * 3 = 6 * x)
-    if (std::ranges::any_of(terms, is<Number>)) {
+    if (std::ranges::count_if(terms, is<Number>) > 1) {
       const auto value = std::accumulate(
           terms.cbegin(), terms.cend(), 1.0, [](const double s, const auto& t) {
             return s *
@@ -312,6 +308,9 @@ struct SimplificationVisitor {
       std::erase_if(terms, is<Number>);
       terms.push_back(ExprFactory::number(value));
     }
+
+    // Commutative transformation (2x3y = 2*3*xy)
+    std::ranges::partition(terms, is<Number>);
 
     if (terms.size() == 1) {
       return terms.front();
