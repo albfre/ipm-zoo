@@ -73,17 +73,43 @@ bool Expr::containsSubexpression(const Expr& expr) const {
     return true;
   }
   return match(
+      *this, ([&expr](const auto& x)
+                requires is_nary_v<decltype(x)>
+              {
+                return std::ranges::any_of(x.terms, [&expr](const auto& t) {
+                  return t.containsSubexpression(expr);
+                });
+              }),
+              [&expr](const auto& x)
+                requires is_unary_v<decltype(x)>
+              { return x.child->containsSubexpression(expr); },
+              [](const auto&) { return false; });
+}
+
+Expr Expr::replaceSubexpression(const Expr& expr,
+                                const Expr& replacement) const {
+  if (*this == expr) {
+    return replacement;
+  }
+  return match(
       *this,
-      [&expr](const auto& x)
-        requires is_nary_v<decltype(x)> {
-          return std::ranges::any_of(x.terms, [&expr](const auto& t) {
-            return t.containsSubexpression(expr);
-          });
-        },
-                 [&expr](const auto& x)
-                   requires is_unary_v<decltype(x)>
-      { return x.child->containsSubexpression(expr); },
-      [](const auto&) { return false; });
+      // Handle n-ary expressions
+      ([&](const auto& x)
+         requires is_nary_v<decltype(x)>
+       {
+         auto terms = transform(x.terms, [&expr, &replacement](const auto& t) {
+           return t.replaceSubexpression(expr, replacement);
+         });
+         return Expr(std::decay_t<decltype(x)>{std::move(terms)});
+       }),
+
+       // Handle unary expressions
+       [&expr, &replacement](const auto& x)
+         requires is_unary_v<decltype(x)>
+       { return x.child->replaceSubexpression(expr, replacement); },
+
+       // Handle all other expressions
+       [&](const auto& x) { return *this; });
 }
 
 std::string Expr::toString(const bool condensed) const {
@@ -94,17 +120,17 @@ std::string Expr::toExpressionString() const {
   return std::visit(ToExpressionStringVisitor{}, impl_);
 }
 
-Expr Expr::getLeadingOrEndingFactor_(const bool leading) const {
+Expr Expr::getLeadingOrEndingFactor(const bool leading) const {
   return match(
       *this,
       [&](const Negate& x) {
-        return x.child->getLeadingOrEndingFactor_(leading);
+        return x.child->getLeadingOrEndingFactor(leading);
       },
       [&](const Sum& x) {
         const auto termFactor =
-            x.terms.front().getLeadingOrEndingFactor_(leading);
+            x.terms.front().getLeadingOrEndingFactor(leading);
         if (std::ranges::all_of(x.terms, [&](const auto& t) {
-              return t.getLeadingOrEndingFactor_(leading) == termFactor;
+              return t.getLeadingOrEndingFactor(leading) == termFactor;
             })) {
           return termFactor;
         }
@@ -112,12 +138,47 @@ Expr Expr::getLeadingOrEndingFactor_(const bool leading) const {
       },
       [&](const Product& x) {
         return (leading ? x.terms.front() : x.terms.back())
-            .getLeadingOrEndingFactor_(leading);
+            .getLeadingOrEndingFactor(leading);
       },
       [&](const auto& x) { return *this; });
 }
 
-double Expr::complexity_() const {
+Expr Expr::factorOut(const Expr& factor, const bool leading) const {
+  if (factor == *this) {
+    return unity;
+  }
+  assert(getLeadingOrEndingFactor(leading) == factor);
+
+  return match(
+      *this,
+      [&](const Negate& x) {
+        return ExprFactory::negate(x.child->factorOut(factor, leading));
+      },
+      [&](const Sum& x) {
+        auto terms = transform(x.terms, [&](const auto& t) {
+          return t.factorOut(factor, leading);
+        });
+        return ExprFactory::sum(std::move(terms));
+      },
+      [&](const Product& x) {
+        auto terms = x.terms;
+        for (size_t i = 0; i < terms.size(); ++i) {
+          if (auto& t = terms[leading ? i : terms.size() - 1 - i];
+              t.getLeadingOrEndingFactor(leading) == factor) {
+            t = t.factorOut(factor, leading);
+            return ExprFactory::product(std::move(terms));
+          }
+        }
+        assert(false);  // Should not be reached
+        return *this;
+      },
+      [&](const auto& x) {
+        assert(false);
+        return *this;
+      });
+}
+
+double Expr::complexity() const {
   return match(
       *this, [](const Number&) { return 0.5; },
       [](const auto& x)
@@ -125,12 +186,12 @@ double Expr::complexity_() const {
         return 1.0;
       },
       [](const auto& x) -> std::enable_if_t<is_unary_v<decltype(x)>, double> {
-        return 0.5 + x.child->complexity_();
+        return 0.5 + x.child->complexity();
       },
       [](const auto& x) -> std::enable_if_t<is_nary_v<decltype(x)>, double> {
         return std::transform_reduce(
             x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
-            [](const auto& t) { return t.complexity_(); });
+            [](const auto& t) { return t.complexity(); });
       });
 }
 

@@ -107,49 +107,32 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
         assert(false);
     }
   }
-  if (hasFullySlackedEqualities) {
-    variables.push_back(lambda_C);
-  }
+  const auto addVariableIf = [&variables, &terms](bool condition,
+                                                  const Expression::Expr& var) {
+    if (condition) {
+      variables.push_back(var);
+    }
+  };
 
-  if (hasSimplySlackedEqualities) {
-    variables.push_back(lambda_sCl);
-    variables.push_back(lambda_sCu);
-  }
+  addVariableIf(hasFullySlackedEqualities, lambda_C);
+  addVariableIf(hasSimplySlackedEqualities, lambda_sCl);
+  addVariableIf(hasSimplySlackedEqualities, lambda_sCu);
+  addVariableIf(hasFullySlackedInequalities, lambda_A);
+  addVariableIf(hasSimplySlackedInequalities && addLowerInequalities,
+                lambda_sAl);
+  addVariableIf(hasSimplySlackedInequalities && addUpperInequalities,
+                lambda_sAu);
+  addVariableIf(hasFullySlackedEqualities, s_C);
+  addVariableIf(hasFullySlackedInequalities, s_A);
+  addVariableIf(hasFullySlackedEqualities, lambda_sCl);
+  addVariableIf(hasFullySlackedEqualities, lambda_sCu);
+  addVariableIf(hasFullySlackedInequalities && addLowerInequalities,
+                lambda_sAl);
+  addVariableIf(hasFullySlackedInequalities && addUpperInequalities,
+                lambda_sAu);
 
   if (hasFullySlackedInequalities) {
-    variables.push_back(lambda_A);
     terms.push_back(product({transpose(lambda_A), sum({Ax, negate(s_A)})}));
-  }
-
-  if (hasSimplySlackedInequalities) {
-    if (addLowerInequalities) {
-      variables.push_back(lambda_sAl);
-    }
-    if (addUpperInequalities) {
-      variables.push_back(lambda_sAu);
-    }
-  }
-
-  if (hasFullySlackedEqualities) {
-    variables.push_back(s_C);
-  }
-
-  if (hasFullySlackedInequalities) {
-    variables.push_back(s_A);
-  }
-
-  if (hasFullySlackedEqualities) {
-    variables.push_back(lambda_sCl);
-    variables.push_back(lambda_sCu);
-  }
-
-  if (hasFullySlackedInequalities) {
-    if (addLowerInequalities) {
-      variables.push_back(lambda_sAl);
-    }
-    if (addUpperInequalities) {
-      variables.push_back(lambda_sAu);
-    }
   }
 
   if (addLowerInequalities) {
@@ -366,7 +349,7 @@ Expression::Expr deltaDefinition(
   assert(lhsSourceRow.size() <= variables.size());
   for (size_t i = 0; i < lhsSourceRow.size(); ++i) {
     auto deltaVariable =
-        ExprFactory::variable("\\Delta " + variables.at(i).getName());
+        ExprFactory::variable("\\Delta " + variables.at(i).toString());
     terms.emplace_back(
         ExprFactory::product({lhsSourceRow[i], std::move(deltaVariable)}));
   }

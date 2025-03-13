@@ -58,14 +58,14 @@ class Expr {
   std::string toString(bool condensed = false) const;
   std::string toExpressionString() const;
   bool containsSubexpression(const Expr& expr) const;
-  // Expr replaceSubexpression(const Expr& expr, const Expr& replacement) const;
+  Expr replaceSubexpression(const Expr& expr, const Expr& replacement) const;
   const ExprVariant& getImpl() const { return impl_; }
+  Expr getLeadingOrEndingFactor(bool leading) const;
+  Expr factorOut(const Expr& factor, bool leading) const;
+  double complexity() const;
 
  private:
   ExprVariant impl_;
-  Expr getLeadingOrEndingFactor_(bool leading) const;
-  // Expr factorOut(const Expr& factor, bool leading) const;
-  double complexity_() const;
 };
 
 std::strong_ordering operator<=>(const Expr& left, const Expr& right);
