@@ -139,51 +139,42 @@ struct SimplificationVisitor {
     }
     terms = std::move(newTerms);
 
-    // Numerical transformation (1 + x + 2 = 3 + x)
-    if (std::ranges::count_if(terms, is<Number>) > 1) {
-      const auto value = std::accumulate(
-          terms.cbegin(), terms.cend(), 0.0, [](const double s, const auto& t) {
-            return s + match(
-                           t, [](const Number& x) { return x.value; },
-                           [](const auto&) { return 0.0; });
-          });
-      std::erase_if(terms, is<Number>);
-      terms.push_back(ExprFactory::number(value));
-    }
-
     // Distributive transformation (x + y + 1.3x = 2.3x + y)
     for (size_t i = 0; i < terms.size(); ++i) {
-      const auto term = terms.at(i);
-      const auto negTerm = ExprFactory::negate(terms.at(i));
-      const auto isNumberTimesTerm = [&term](const auto& t) -> bool {
-        return match(
-            t,
-            [&term](const Product& x) {
-              return x.terms.size() == 2 && is<Number>(x.terms.front()) &&
-                     x.terms.back() == term;
-            },
-            [](const auto&) { return false; });
-      };
-      const auto isTerm = [&](const auto& t) {
-        return t == term || t == negTerm || isNumberTimesTerm(t);
-      };
-      if (std::ranges::count_if(terms, isTerm) > 1) {
-        const auto value = std::accumulate(
-            terms.cbegin(), terms.cend(), 0.0,
-            [&term, &negTerm, &isNumberTimesTerm](const auto s,
-                                                  const auto& t) -> double {
-              return s + (t == term      ? 1.0
-                          : t == negTerm ? -1.0
-                          : isNumberTimesTerm(t)
-                              ? std::get<Number>(std::get<Product>(t.getImpl())
-                                                     .terms.front()
-                                                     .getImpl())
-                                    .value
-                              : 0.0);
-            });
-        std::erase_if(terms, isTerm);
-        terms.push_back(
-            ExprFactory::product({ExprFactory::number(value), term}));
+      if (terms.at(i) != zero) {
+        const auto term = terms.at(i);
+        const auto negTerm = ExprFactory::negate(terms.at(i));
+        const auto isNumberTimesTerm = [&term](const auto& t) -> bool {
+          return match(
+              t,
+              [&term](const Product& x) {
+                return x.terms.size() == 2 && is<Number>(x.terms.front()) &&
+                       x.terms.back() == term;
+              },
+              [](const auto&) { return false; });
+        };
+        const auto isTerm = [&](const auto& t) {
+          return t == term || t == negTerm || isNumberTimesTerm(t);
+        };
+        if (std::ranges::count_if(terms, isTerm) > 1) {
+          const auto value = std::accumulate(
+              terms.cbegin(), terms.cend(), 0.0,
+              [&term, &negTerm, &isNumberTimesTerm](const auto s,
+                                                    const auto& t) -> double {
+                return s +
+                       (t == term      ? 1.0
+                        : t == negTerm ? -1.0
+                        : isNumberTimesTerm(t)
+                            ? std::get<Number>(std::get<Product>(t.getImpl())
+                                                   .terms.front()
+                                                   .getImpl())
+                                  .value
+                            : 0.0);
+              });
+          std::erase_if(terms, isTerm);
+          terms.push_back(
+              ExprFactory::product({ExprFactory::number(value), term}));
+        }
       }
     }
 
@@ -197,8 +188,27 @@ struct SimplificationVisitor {
     // Canceling transformation (x - x = 0)
     eraseCanceling_<Negate>(terms, zero);
 
+    // Numerical transformation (1 + x + 2 = 3 + x)
+    if (std::ranges::count_if(terms, is<Number>) > 1) {
+      const auto value = std::accumulate(
+          terms.cbegin(), terms.cend(), 0.0, [](const double s, const auto& t) {
+            return s + match(
+                           t, [](const Number& x) { return x.value; },
+                           [](const auto&) { return 0.0; });
+          });
+      std::erase_if(terms, is<Number>);
+      terms.push_back(ExprFactory::number(value));
+    }
     // Commutative transformation (z + y + x = x + y + z)
     std::ranges::sort(terms);
+
+    // -x - y = -(x + y)
+    if (std::ranges::all_of(terms, is<Negate>)) {
+      auto newTerms = transform(terms, [](const auto& t) {
+        return *std::get<Negate>(t.getImpl()).child;
+      });  // Seems necessary for WebAssembly
+      return ExprFactory::negate(ExprFactory::sum(std::move(newTerms)));
+    }
 
     auto simplified = ExprFactory::sum(terms);
 
@@ -285,8 +295,8 @@ struct SimplificationVisitor {
     std::erase_if(terms, [](const auto& t) { return t == unity; });
 
     // x * (-1) * y = -x * y
-    const auto it = std::ranges::find_if(terms, is<Negate>);
-    if (it != terms.end()) {
+    if (const auto it = std::ranges::find_if(terms, is<Negate>);
+        it != terms.end()) {
       auto newTerms = terms;  // Seems to be necessary to make a new copy
       // for this to work in WebAssembly
       newTerms[std::distance(terms.begin(), it)] =
@@ -298,6 +308,9 @@ struct SimplificationVisitor {
     // of inverse) (x * inv(x) = 1)
     eraseCanceling_<Invert>(terms, unity);
 
+    // Commutative transformation (2x3y = 2*3*xy)
+    std::ranges::partition(terms, is<Number>);
+
     // Numerical transformation (2 * x * 3 = 6 * x)
     if (std::ranges::count_if(terms, is<Number>) > 1) {
       const auto value = std::accumulate(
@@ -308,9 +321,6 @@ struct SimplificationVisitor {
       std::erase_if(terms, is<Number>);
       terms.push_back(ExprFactory::number(value));
     }
-
-    // Commutative transformation (2x3y = 2*3*xy)
-    std::ranges::partition(terms, is<Number>);
 
     if (terms.size() == 1) {
       return terms.front();
