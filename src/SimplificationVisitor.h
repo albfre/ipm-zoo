@@ -78,7 +78,9 @@ struct SimplificationVisitor {
                   t, [](const Negate& y) { return *y.child; },
                   [&](const auto&) { return ExprFactory::negate(t); });
             }
-            return ExprFactory::sum(std::move(terms));
+            auto s = ExprFactory::sum(std::move(terms));
+            std::cout << s.toString() << std::endl;
+            return s;
           }
           return ExprFactory::negate(std::move(child));
         },
@@ -199,6 +201,7 @@ struct SimplificationVisitor {
       std::erase_if(terms, is<Number>);
       terms.push_back(ExprFactory::number(value));
     }
+
     // Commutative transformation (z + y + x = x + y + z)
     std::ranges::sort(terms);
 
@@ -301,7 +304,7 @@ struct SimplificationVisitor {
       // for this to work in WebAssembly
       newTerms[std::distance(terms.begin(), it)] =
           *std::get<Negate>(it->getImpl()).child;
-      return ExprFactory::negate(ExprFactory::product(std::move(terms)));
+      return ExprFactory::negate(ExprFactory::product(std::move(newTerms)));
     }
 
     // Canceling transformation (power transformation for the special case
@@ -319,7 +322,7 @@ struct SimplificationVisitor {
                    (is<Number>(t) ? std::get<Number>(t.getImpl()).value : 1.0);
           });
       std::erase_if(terms, is<Number>);
-      terms.push_back(ExprFactory::number(value));
+      terms.insert(terms.begin(), ExprFactory::number(value));
     }
 
     if (terms.size() == 1) {
