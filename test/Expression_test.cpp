@@ -11,9 +11,9 @@ class ExpressionTest : public ::testing::Test {
   Expr x = ExprFactory::variable("x");
   Expr y = ExprFactory::variable("y");
   Expr z = ExprFactory::variable("z");
-  Expr a = ExprFactory::namedConstant("a");
-  Expr b = ExprFactory::namedConstant("b");
-  Expr c = ExprFactory::namedConstant("c");
+  Expr a = ExprFactory::namedVector("a");
+  Expr b = ExprFactory::namedVector("b");
+  Expr c = ExprFactory::namedVector("c");
   Expr zero = ExprFactory::number(0.0);
   Expr one = ExprFactory::number(1.0);
   Expr two = ExprFactory::number(2.0);
@@ -33,7 +33,7 @@ TEST_F(ExpressionTest, BasicConstruction) {
 
   // Test named constant
   EXPECT_EQ(a.toString(), "a");
-  EXPECT_EQ(a.getType(), ExprType::NamedConstant);
+  EXPECT_EQ(a.getType(), ExprType::NamedVector);
 }
 
 // Test basic arithmetic operations
@@ -273,13 +273,13 @@ TEST_F(ExpressionTest, SimplifyRhsExpression) {
       product({invert(diagonalMatrix(variable("z"))),
                diagonalMatrix(variable("\\lambda_{z}")),
                sum({product({invert(diagonalMatrix(variable("\\lambda_{z}"))),
-                             namedConstant("r_{z}")}),
-                    negate(namedConstant("r_{\\lambda_{z}}"))})});
+                             namedVector("r_{z}")}),
+                    negate(namedVector("r_{\\lambda_{z}}"))})});
   auto expr2 = sum(
-      {product({invert(diagonalMatrix(variable("z"))), namedConstant("r_{z}")}),
+      {product({invert(diagonalMatrix(variable("z"))), namedVector("r_{z}")}),
        product({invert(diagonalMatrix(variable("z"))),
                 diagonalMatrix(variable("\\lambda_{z}")),
-                negate(namedConstant("r_{\\lambda_{z}}"))})});
+                negate(namedVector("r_{\\lambda_{z}}"))})});
   auto simplified = expr.simplify();
   auto simplified2 = expr2.simplify();
   std::cout << simplified.toString() << std::endl;
@@ -314,11 +314,11 @@ TEST_F(ExpressionTest, VariableExtraction) {
 TEST_F(ExpressionTest, Lagrangian) {
   using namespace Expression::ExprFactory;
   auto x = variable("x");
-  auto H = namedConstant("H");
-  auto c = namedConstant("c");
-  auto A = namedConstant("A");
-  auto mu = namedConstant("\\mu");
-  auto e = namedConstant("e");
+  auto H = namedVector("H");
+  auto c = namedVector("c");
+  auto A = namedVector("A");
+  auto mu = namedScalar("\\mu");
+  auto e = namedVector("e");
   auto g = variable("g");
   auto t = variable("t");
   auto y = variable("y");
@@ -329,10 +329,10 @@ TEST_F(ExpressionTest, Lagrangian) {
   auto lambda_t = variable("\\lambda_t");
   auto lambda_y = variable("\\lambda_y");
   auto lambda_z = variable("\\lambda_z");
-  auto l_A = namedConstant("l_A");
-  auto u_A = namedConstant("u_A");
-  auto l_x = namedConstant("l_x");
-  auto u_x = namedConstant("u_x");
+  auto l_A = namedVector("l_A");
+  auto u_A = namedVector("u_A");
+  auto l_x = namedVector("l_x");
+  auto u_x = namedVector("u_x");
 
   auto xHx = product({number(0.5), x, H, x});
   auto cx = product({c, x});
