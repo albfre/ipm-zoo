@@ -26,7 +26,7 @@ const A_ineq = "A"; // Inequality constraint matrix
 const l_A = "l_{A}"; // Inequality constraint lower bound
 const u_A = "u_{A}"; // Inequality constraint upper bound
 const A_eq = "C"; // Equality constraint matrix
-const b_eq = "b"; // Equality constraint right-hand side
+const b_eq = "d"; // Equality constraint right-hand side
 const p_eq = "p"; // Equality constraint regularization
 const delta_eq = "\\delta"; // Equality constraint regularization factor
 const l_x = "l_x"; // Primary variable lower bound
@@ -75,14 +75,14 @@ function getOriginalProblem(inequalities, equalities, variableBounds) {
     outputText += "\\text{subject to} \\quad";
   }
 
-  if (hasEqualities) {
-    outputText += "& " + A_eq + x + " = " + b_eq + "\\\\\n"
-  }
-
   if (hasInequalities) {
     if (inequalities === "lower") outputText += "& " + A_ineq + x + " \\geq " + l_A + " \\\\\n";
     if (inequalities === "upper") outputText += "& " + A_ineq + x + " \\leq " + u_A + " \\\\\n";
     if (inequalities === "both") outputText += "& " + l_A + " \\leq " + A_ineq + x + " \\leq " + u_A + " \\\\\n";
+  }
+
+  if (hasEqualities) {
+    outputText += "& " + A_eq + x + " = " + b_eq + "\\\\\n"
   }
 
   if (variableBounds !== "none") {
@@ -97,15 +97,15 @@ function getOriginalProblem(inequalities, equalities, variableBounds) {
 
 function getNonnegativeSlacks(inequalities, equalities, variableBounds) {
   let nonnegativeSlacks = [];
-  if (equalities) {
-    nonnegativeSlacks.push(s_lC);
-    nonnegativeSlacks.push(s_uC);
-  }
   if (inequalities === "lower" || inequalities === "both") {
     nonnegativeSlacks.push(s_lA);
   }
   if (inequalities === "upper" || inequalities === "both") {
     nonnegativeSlacks.push(s_uA);
+  }
+  if (equalities) {
+    nonnegativeSlacks.push(s_lC);
+    nonnegativeSlacks.push(s_uC);
   }
   if (variableBounds === "lower" || variableBounds === "both") {
     nonnegativeSlacks.push(s_lx);
@@ -132,6 +132,20 @@ function getSlackProblem(inequalities, equalities, variableBounds, inequalityHan
     outputText += "\\text{subject to} \\quad";
   }
 
+  if (hasInequalities) {
+    const addLower = inequalities === "lower" || inequalities === "both"
+    const addUpper = inequalities === "upepr" || inequalities === "both"
+    if (inequalityHandling === "slacks") {
+      outputText += "& " + A_ineq + x + " - " + s_A + " = 0 \\\\\n";
+      if (addLower) outputText += "& " + s_A + " - " + s_lA + " = " + l_A + " \\\\\n";
+      if (addUpper) outputText += "& " + s_A + " + " + s_uA + " = " + u_A + " \\\\\n";
+    }
+    else {
+      if (addLower) outputText += "& " + A_ineq + x + " - " + s_lA + " = " + l_A + " \\\\\n";
+      if (addUpper) outputText += "& " + A_ineq + x + " + " + s_uA + " = " + u_A + " \\\\\n";
+    }
+  }
+
   if (hasEqualities && equalityHandling !== "penalty") {
     if (equalityHandling === "slacks") {
       outputText += "& " + A_eq + x + " - " + s_C + " = 0 \\\\\n";
@@ -147,20 +161,6 @@ function getSlackProblem(inequalities, equalities, variableBounds, inequalityHan
     }
     else {
       outputText += "& " + A_eq + x + " = " + b_eq + " \\\\\n";
-    }
-  }
-
-  if (hasInequalities) {
-    const addLower = inequalities === "lower" || inequalities === "both"
-    const addUpper = inequalities === "upepr" || inequalities === "both"
-    if (inequalityHandling === "slacks") {
-      outputText += "& " + A_ineq + x + " - " + s_A + " = 0 \\\\\n";
-      if (addLower) outputText += "& " + s_A + " - " + s_lA + " = " + l_A + " \\\\\n";
-      if (addUpper) outputText += "& " + s_A + " + " + s_uA + " = " + u_A + " \\\\\n";
-    }
-    else {
-      if (addLower) outputText += "& " + A_ineq + x + " - " + s_lA + " = " + l_A + " \\\\\n";
-      if (addUpper) outputText += "& " + A_ineq + x + " + " + s_uA + " = " + u_A + " \\\\\n";
     }
   }
 
