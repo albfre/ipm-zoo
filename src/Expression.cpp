@@ -189,9 +189,9 @@ double Expr::complexity() const {
         return 0.5 + x.child->complexity();
       },
       [](const auto& x) -> std::enable_if_t<is_nary_v<decltype(x)>, double> {
-        return 0.5 + std::transform_reduce(
-                         x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
-                         [](const auto& t) { return t.complexity(); });
+        return std::transform_reduce(
+            x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
+            [](const auto& t) { return t.complexity(); });
       });
 }
 

@@ -30,14 +30,16 @@ struct DifferentiationVisitor {
     return ExprFactory::negate(x.child->differentiate(var));
   }
   // Inverse: Not yet implemented
-  Expr operator()(const Invert&) const {
+  Expr operator()(const Invert& x) const {
     assert(false);  // Not implemented
     return zero;
   }
   // Logarithm: d/dx(log(f(x))) = (1/f(x)) * d/dx(f(x))
   Expr operator()(const Log& x) const {
+    const auto& child = *x.child;
     return ExprFactory::product(
-        {ExprFactory::invert(*x.child), x.child->differentiate(var)});
+        {ExprFactory::invert(ExprFactory::diagonalMatrix(child)),
+         child.differentiate(var)});
   }
   // Sum: d/dx(f(x) + g(x)) = d/dx(f(x)) + d/dx(g(x))
   Expr operator()(const Sum& x) const {
