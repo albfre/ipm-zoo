@@ -672,6 +672,9 @@ Expr Expr::simplify_(const bool distribute) const {
       eraseCanceling(ExprType::Invert, terms, unity);
 
       // Commutative transformation (2x3y = 6xy)
+      std::ranges::partition(terms, [](const auto& t) {
+        return t.type_ == ExprType::NamedScalar;
+      });
       std::ranges::partition(
           terms, [](const auto& t) { return t.type_ == ExprType::Number; });
 
