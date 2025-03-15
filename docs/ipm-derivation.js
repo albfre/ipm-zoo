@@ -27,6 +27,8 @@ const l_A = "l_{A}"; // Inequality constraint lower bound
 const u_A = "u_{A}"; // Inequality constraint upper bound
 const A_eq = "C"; // Equality constraint matrix
 const b_eq = "b"; // Equality constraint right-hand side
+const p_eq = "p"; // Equality constraint regularization
+const delta_eq = "\\delta"; // Equality constraint regularization factor
 const l_x = "l_x"; // Primary variable lower bound
 const u_x = "u_x"; // Primary variable upper bound
 const s_A = "s"; // Slack variable for inequality constraint
@@ -38,10 +40,14 @@ const s_C = "t"; // Slack variable for equality constraints
 const s_lC = "v"; // Slack variable for equality constraint lower bound
 const s_uC = "w"; // Slack variable for equality constraint upper bound
 
-const getObjective = (equalityPenalties, logBarrierVariables = []) => {
+const getObjective = (equalityPenalties = false, equalityRegularization = false, logBarrierVariables = []) => {
   let output = "\\text{minimize} \\quad & 0.5 " + x + "^T Q " + x + " + c^T" + x;
   if (equalityPenalties) {
     output += "+ 0.5 \\mu^{-1}(" + A_eq + x + " - " + b_eq + ")^T(" + A_eq + x + " - " + b_eq + ")";
+  }
+  if (equalityRegularization) {
+    output += "+ 0.5 " + p_eq + "^T" + p_eq;
+
   }
   if (logBarrierVariables.length > 0)
   {
@@ -63,7 +69,7 @@ function getOriginalProblem(inequalities, equalities, variableBounds) {
   const hasVariableBounds = variableBounds !== "none";
   let outputText = "";
   outputText += "\\[ \\begin{align*}\n";
-  outputText += getObjective(false);
+  outputText += getObjective();
 
   if (hasInequalities || hasEqualities || hasVariableBounds) {
     outputText += "\\text{subject to} \\quad";
@@ -118,7 +124,9 @@ function getSlackProblem(inequalities, equalities, variableBounds, inequalityHan
   outputText += "\\[ \\begin{align*}\n";
   const hasSlackedEqualities = hasEqualities && (equalityHandling === "slacks" || equalityHandling === "simple_slacks");
   const nonnegativeSlacks = getNonnegativeSlacks(inequalities, hasSlackedEqualities, variableBounds);
-  outputText += getObjective(equalities && equalityHandling === "penalty", logBarriers ? nonnegativeSlacks : []);
+  const equalityPenalties = equalities && equalityHandling === "penalty";
+  const equalityRegularization = equalities && equalityHandling === "regularization";
+  outputText += getObjective(equalityPenalties, equalityRegularization, logBarriers ? nonnegativeSlacks : []);
 
   if (hasInequalities || hasEqualities || hasVariableBounds) {
     outputText += "\\text{subject to} \\quad";
@@ -133,6 +141,9 @@ function getSlackProblem(inequalities, equalities, variableBounds, inequalityHan
     else if (equalityHandling == "simple_slacks") {
       outputText += "& " + A_eq + x + " - " + s_lC + " = " + b_eq + " \\\\\n";
       outputText += "& " + A_eq + x + " + " + s_uC + " = " + b_eq + " \\\\\n";
+    }
+    else if (equalityHandling == "regularization") {
+      outputText += "& " + A_eq + x + " + " + delta_eq + " " + p_eq + " = " + b_eq + " \\\\\n";
     }
     else {
       outputText += "& " + A_eq + x + " = " + b_eq + " \\\\\n";
@@ -213,6 +224,7 @@ function updateProblem() {
       slacks : wasmModule.EqualityHandling.Slacks,
       simple_slacks: wasmModule.EqualityHandling.SimpleSlacks,
       penalty : wasmModule.EqualityHandling.PenaltyFunction,
+      regularization : wasmModule.EqualityHandling.Regularization,
     };
     try {
       const settings = new wasmModule.Settings();
@@ -290,8 +302,8 @@ function updateProblem() {
   outputText += "<p><s>11. Support for equalities</s></p>";
   outputText += "<p><s>12. Support for direct slacks for inequalities</s></p>";
   outputText += "<p><s>13. Support for different equality handling</s></p>";
-  outputText += "<p>14. LU/LDLT solution methods</p>";
-  outputText += "<p>15. Handling equality constraints via regularization</p>";
+  outputText += "<p><s>14. Handling equality constraints via regularization</s></p>";
+  outputText += "<p>15. LU/LDLT solution methods</p>";
   outputText += "<p>16. Improved vector differentiation</p>";
 
   document.getElementById("output").innerHTML = outputText;

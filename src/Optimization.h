@@ -6,6 +6,8 @@ struct VariableNames {
   std::string x = "x";
   std::string A_eq = "C";
   std::string b_eq = "b";
+  std::string p_eq = "p";
+  std::string delta_eq = "\\delta";
   std::string A_ineq = "A";
   std::string s_A = "s";
   std::string s_Al = "g";
@@ -41,6 +43,7 @@ enum class EqualityHandling {
   SimpleSlacks,
   PenaltyFunction,
   PenaltyFunctionWithExtraVariable,
+  Regularization,
 };
 
 struct Settings {

@@ -84,12 +84,18 @@ std::string addLineBreaks(std::string str,
 
 NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
                                         const auto& variables,
-                                        const auto& variableDefinitions) {
+                                        const auto& variableDefinitions,
+                                        const auto& variableNames) {
   using namespace Expression::ExprFactory;
   const auto unity = number(1);
-  const auto I = namedConstant("I");
-  const auto mu = namedConstant("\\mu");
-  const auto muI = product({mu, I}).simplify();
+  const auto I = namedVector("I");
+  const auto mu = namedScalar("\\mu");
+  const auto muI = product({mu, I});
+  const auto delta = namedScalar(variableNames.delta_eq);
+  const auto delta2 = namedScalar(variableNames.delta_eq + "^2");
+  const auto deltaI = product({delta, I});
+  const auto deltaI2 = product({deltaI, deltaI}).simplify();
+  const auto delta2I = product({delta2, I}).simplify();
   std::string lhsStr = "";
   const auto condensed = true;
   for (const auto& row : lhs) {
@@ -97,6 +103,8 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
       auto rowExpr = row[i];
       rowExpr = rowExpr.replaceSubexpression(unity, I);
       rowExpr = rowExpr.replaceSubexpression(mu, muI);
+      rowExpr = rowExpr.replaceSubexpression(delta, deltaI).simplify();
+      rowExpr = rowExpr.replaceSubexpression(deltaI2, delta2I);
       lhsStr +=
           rowExpr.toString(condensed) + (i + 1 == row.size() ? "" : " & ");
     }
@@ -135,92 +143,11 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
 
 enum class NewtonSystemType { Full, Augmented, Normal };
 
-NewtonSystem getNewtonSystem_(const Optimization::Settings& settingsIn,
-                              const NewtonSystemType type) {
-  const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
-  const auto begin = std::chrono::high_resolution_clock::now();
-  const auto variableNames = Optimization::VariableNames();
-  auto [lagrangian, variables] =
-      Optimization::getLagrangian(variableNames, settings);
-  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
-  const auto endNewton = std::chrono::high_resolution_clock::now();
-
-  const auto augmentedSize = [&]() {
-    const auto zero = Expression::ExprFactory::number(0);
-    const auto unity = Expression::ExprFactory::number(1);
-    const auto negUnity =
-        Expression::ExprFactory::negate(Expression::ExprFactory::number(1));
-    const auto reducibles = std::set{zero, unity, negUnity};
-    size_t i = 0;
-    while (i < lhs.size() && !reducibles.contains(lhs.at(0).at(i))) {
-      ++i;
-    }
-    return i;
-  }();
-  const auto endAugmented = std::chrono::high_resolution_clock::now();
-
-  std::vector<std::pair<Expression::Expr, Expression::Expr>>
-      variableDefinitions;
-  std::chrono::milliseconds gaussianCount =
-      std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
-                                                            endNewton);
-  std::chrono::milliseconds deltaCount =
-      std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
-                                                            endNewton);
-  if (type != NewtonSystemType::Full) {
-    rhs = Optimization::getShorthandRhs(variables);
-    while (lhs.size() > augmentedSize) {
-      auto deltaVariable = Expression::ExprFactory::variable(
-          "\\Delta " + variables.at(lhs.size() - 1).getName());
-      const auto beginDelta = std::chrono::high_resolution_clock::now();
-      auto deltaDefinition =
-          Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
-      const auto endDelta = std::chrono::high_resolution_clock::now();
-      variableDefinitions.push_back({deltaVariable, deltaDefinition});
-      Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-      const auto endGaussian = std::chrono::high_resolution_clock::now();
-      gaussianCount += std::chrono::duration_cast<std::chrono::milliseconds>(
-          endGaussian - endDelta);
-      deltaCount += std::chrono::duration_cast<std::chrono::milliseconds>(
-          endDelta - beginDelta);
-
-      variables.pop_back();
-    }
-
-    if (type == NewtonSystemType::Normal) {
-      auto deltaVariable = Expression::ExprFactory::variable(
-          "\\Delta " + variables.at(0).getName());
-      auto deltaDefinition =
-          Optimization::deltaDefinition(lhs, rhs, variables, 0);
-      variableDefinitions.push_back({deltaVariable, deltaDefinition});
-      Optimization::gaussianElimination(lhs, rhs, 0);
-      variables.erase(variables.begin());
-    }
-  }
-  const auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "time: newton: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
-                                                                     begin)
-                   .count()
-            << ", augmented: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(
-                   endAugmented - endNewton)
-                   .count()
-            << ", delta: " << deltaCount << ", gaussain: " << gaussianCount
-            << ", full: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                     begin)
-                   .count()
-            << std::endl;
-
-  return formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
-}
-
 std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
-    const Optimization::Settings& settingsIn) {
+    const Optimization::Settings& settingsIn,
+    const Optimization::VariableNames& variableNames) {
   const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
   const auto begin = std::chrono::high_resolution_clock::now();
-  const auto variableNames = Optimization::VariableNames();
   auto [lagrangian, variables] =
       Optimization::getLagrangian(variableNames, settings);
   auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
@@ -249,8 +176,8 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
       std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
                                                             endNewton);
 
-  auto newtonSystem =
-      formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
+  auto newtonSystem = formatNewtonSystemStrings_(
+      lhs, rhs, variables, variableDefinitions, variableNames);
 
   rhs = Optimization::getShorthandRhs(variables);
   while (lhs.size() > augmentedSize) {
@@ -270,8 +197,8 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
 
     variables.pop_back();
   }
-  auto augmentedSystem =
-      formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
+  auto augmentedSystem = formatNewtonSystemStrings_(
+      lhs, rhs, variables, variableDefinitions, variableNames);
 
   auto deltaVariable =
       Expression::ExprFactory::variable("\\Delta " + variables.at(0).getName());
@@ -280,8 +207,8 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
   Optimization::gaussianElimination(lhs, rhs, 0);
   variables.erase(variables.begin());
 
-  auto normalEquations =
-      formatNewtonSystemStrings_(lhs, rhs, variables, variableDefinitions);
+  auto normalEquations = formatNewtonSystemStrings_(
+      lhs, rhs, variables, variableDefinitions, variableNames);
   const auto end = std::chrono::high_resolution_clock::now();
   std::cout << "time: newton: "
             << std::chrono::duration_cast<std::chrono::milliseconds>(endNewton -
@@ -300,7 +227,6 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
 
   return {newtonSystem, augmentedSystem, normalEquations};
 }
-
 }  // namespace
 
 std::string getLagrangian(const Optimization::Settings& settings) {
@@ -345,20 +271,9 @@ std::string getFirstOrderOptimalityConditions(
   return str;
 }
 
-NewtonSystem getNewtonSystem(const Optimization::Settings& settings) {
-  return getNewtonSystem_(settings, NewtonSystemType::Full);
-}
-
-NewtonSystem getAugmentedSystem(const Optimization::Settings& settings) {
-  return getNewtonSystem_(settings, NewtonSystemType::Augmented);
-}
-
-NewtonSystem getNormalEquation(const Optimization::Settings& settings) {
-  return getNewtonSystem_(settings, NewtonSystemType::Normal);
-}
-
 NewtonSystemTriplet getNewtonSystems(const Optimization::Settings& settings) {
-  auto [full, augmented, normal] = getNewtonSystems_(settings);
+  const auto variableNames = Optimization::VariableNames();
+  auto [full, augmented, normal] = getNewtonSystems_(settings, variableNames);
   return {full, augmented, normal};
 }
 
@@ -393,8 +308,8 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .value("None", Optimization::EqualityHandling::None)
       .value("Slacks", Optimization::EqualityHandling::Slacks)
       .value("SimpleSlacks", Optimization::EqualityHandling::SimpleSlacks)
-      .value("PenaltyFunction",
-             Optimization::EqualityHandling::PenaltyFunction);
+      .value("PenaltyFunction", Optimization::EqualityHandling::PenaltyFunction)
+      .value("Regularization", Optimization::EqualityHandling::Regularization);
 
   class_<Optimization::Settings>("Settings")
       .constructor<>()
@@ -421,8 +336,5 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
   function("getLagrangian", &getLagrangian);
   function("getFirstOrderOptimalityConditions",
            &getFirstOrderOptimalityConditions);
-  function("getNewtonSystem", &getNewtonSystem);
-  function("getAugmentedSystem", &getAugmentedSystem);
-  function("getNormalEquation", &getNormalEquation);
   function("getNewtonSystems", &getNewtonSystems);
 }

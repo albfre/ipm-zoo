@@ -8,12 +8,14 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     const VariableNames& names, const Settings& settings) {
   using namespace Expression::ExprFactory;
   const auto Q = symmetricMatrix(names.Q);
-  const auto c = namedConstant(names.c);
+  const auto c = namedVector(names.c);
   const auto A_ineq = matrix(names.A_ineq);
   const auto A_eq = matrix(names.A_eq);
   const auto b_eq = matrix(names.b_eq);
-  const auto mu = namedConstant("\\mu");
-  const auto e = namedConstant("e");
+  const auto p_eq = variable(names.p_eq);
+  const auto delta_eq = namedScalar(names.delta_eq);
+  const auto mu = namedVector("\\mu");
+  const auto e = namedVector("e");
   const auto x = variable(names.x);
   const auto s_A = variable(names.s_A);
   const auto s_Al = variable(names.s_Al);
@@ -31,10 +33,10 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   const auto lambda_sAu = variable("\\lambda_{" + names.s_Au + "}");
   const auto lambda_sxl = variable("\\lambda_{" + names.s_xl + "}");
   const auto lambda_sxu = variable("\\lambda_{" + names.s_xu + "}");
-  const auto l_A = namedConstant(names.l_A);
-  const auto u_A = namedConstant(names.u_A);
-  const auto l_x = namedConstant(names.l_x);
-  const auto u_x = namedConstant(names.u_x);
+  const auto l_A = namedVector(names.l_A);
+  const auto u_A = namedVector(names.u_A);
+  const auto l_x = namedVector(names.l_x);
+  const auto u_x = namedVector(names.u_x);
 
   const auto xQx = product({number(0.5), transpose(x), Q, x});
   const auto cx = product({c, x});
@@ -63,6 +65,9 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
       settings.equalityHandling == EqualityHandling::SimpleSlacks;
   const auto hasAnySlackedEqualities =
       hasFullySlackedEqualities || hasSimplySlackedEqualities;
+  const auto hasRegularizedEqualities =
+      settings.equalities &&
+      settings.equalityHandling == EqualityHandling::Regularization;
   const auto hasFullySlackedInequalities =
       settings.inequalities != Bounds::None &&
       settings.inequalityHandling == InequalityHandling::Slacks;
@@ -98,6 +103,13 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
         terms.push_back(
             product({transpose(lambda_sCu), sum({Cx, s_Cu, negate(b_eq)})}));
         break;
+      case EqualityHandling::Regularization: {
+        const auto pterm = product({number(0.5), transpose(p_eq), p_eq});
+        terms.push_back(pterm);
+        terms.push_back(product(
+            {transpose(lambda_C), sum({CxMinusB, product({delta_eq, p_eq})})}));
+        break;
+      }
       case EqualityHandling::None: {
         variables.push_back(lambda_C);
         terms.push_back(product({transpose(lambda_C), CxMinusB}));
@@ -107,7 +119,7 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
         assert(false);
     }
   }
-  if (hasFullySlackedEqualities) {
+  if (hasFullySlackedEqualities || hasRegularizedEqualities) {
     variables.push_back(lambda_C);
   }
 
@@ -150,6 +162,10 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     if (addUpperInequalities) {
       variables.push_back(lambda_sAu);
     }
+  }
+
+  if (hasRegularizedEqualities) {
+    variables.push_back(p_eq);
   }
 
   if (addLowerInequalities) {
@@ -251,7 +267,7 @@ std::vector<Expression::Expr> getShorthandRhs(
   std::vector<Expression::Expr> rhs;
   for (const auto& var : variables) {
     rhs.push_back(Expression::ExprFactory::negate(
-        Expression::ExprFactory::namedConstant("r_{" + var.toString() + "}")));
+        Expression::ExprFactory::namedVector("r_{" + var.toString() + "}")));
   }
   return rhs;
 }

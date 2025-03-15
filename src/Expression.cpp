@@ -53,9 +53,10 @@ Expr::Expr(ExprType type, std::vector<Expr> terms)
 }
 
 Expr::Expr(ExprType type, const std::string& name) : type_(type), name_(name) {
-  assert((std::set{ExprType::NamedConstant, ExprType::Variable,
-                   ExprType::SymmetricMatrix, ExprType::Matrix}
-              .contains(type_)));
+  assert(
+      (std::set{ExprType::NamedScalar, ExprType::NamedVector,
+                ExprType::Variable, ExprType::SymmetricMatrix, ExprType::Matrix}
+           .contains(type_)));
 }
 
 Expr::Expr(const double value) : type_(ExprType::Number), value_(value) {}
@@ -66,7 +67,8 @@ Expr Expr::differentiate(const Expr& var) const {
   }
   switch (type_) {
     case ExprType::Number:
-    case ExprType::NamedConstant:
+    case ExprType::NamedScalar:
+    case ExprType::NamedVector:
     case ExprType::SymmetricMatrix:
     case ExprType::Matrix:
       return zero;
@@ -150,7 +152,8 @@ std::string Expr::toString(const bool condensed) const {
       ss << value_;
       return ss.str();
     }
-    case ExprType::NamedConstant:
+    case ExprType::NamedScalar:
+    case ExprType::NamedVector:
     case ExprType::SymmetricMatrix:
     case ExprType::Matrix:
     case ExprType::Variable:
@@ -245,8 +248,10 @@ std::string Expr::toExpressionString() const {
       ss << "number(" << value_ << ")";
       return ss.str();
     }
-    case ExprType::NamedConstant:
-      return "namedConstant(" + name_ + ")";
+    case ExprType::NamedScalar:
+      return "namedScalar(" + name_ + ")";
+    case ExprType::NamedVector:
+      return "namedVector(" + name_ + ")";
     case ExprType::Matrix:
       return "matrix(" + name_ + ")";
     case ExprType::SymmetricMatrix:
@@ -292,9 +297,10 @@ std::string Expr::toExpressionString() const {
 ExprType Expr::getType() const { return type_; }
 
 const std::string& Expr::getName() const {
-  assert((std::set{ExprType::NamedConstant, ExprType::Variable,
-                   ExprType::Matrix, ExprType::SymmetricMatrix}
-              .contains(type_)));
+  assert(
+      (std::set{ExprType::NamedScalar, ExprType::NamedVector,
+                ExprType::Variable, ExprType::Matrix, ExprType::SymmetricMatrix}
+           .contains(type_)));
   return name_;
 }
 
@@ -369,7 +375,8 @@ Expr Expr::simplify_(const bool distribute) const {
   };
   switch (type_) {
     case ExprType::Number:
-    case ExprType::NamedConstant:
+    case ExprType::NamedScalar:
+    case ExprType::NamedVector:
     case ExprType::Matrix:
     case ExprType::SymmetricMatrix:
     case ExprType::Variable:
@@ -386,7 +393,8 @@ Expr Expr::simplify_(const bool distribute) const {
       if (child.type_ == ExprType::Transpose) {
         // transpose(transpose(x)) = x;
         return child.getSingleChild_();
-      } else if (child == zero || child == unity) {
+      } else if (child == zero || child == unity ||
+                 child.type_ == ExprType::NamedScalar) {
         // 0^T = 0, 1^T = 1
         return child;
       } else if (child.type_ == ExprType::SymmetricMatrix ||
@@ -446,7 +454,9 @@ Expr Expr::simplify_(const bool distribute) const {
     }
     case ExprType::Invert: {
       auto child = getSingleChild_().simplify_(distribute);
-      if (child.type_ == ExprType::Invert) {
+      if (child == unity) {
+        return child;
+      } else if (child.type_ == ExprType::Invert) {
         // invert(invert(x)) = x
         return child.getSingleChild_();
       } else if (child.type_ == ExprType::Negate) {
@@ -724,7 +734,8 @@ const Expr& Expr::getSingleChild_() const {
 Expr Expr::getLeadingOrEndingFactor_(const bool leading) const {
   switch (type_) {
     case ExprType::Number:
-    case ExprType::NamedConstant:
+    case ExprType::NamedScalar:
+    case ExprType::NamedVector:
     case ExprType::Matrix:
     case ExprType::SymmetricMatrix:
     case ExprType::Variable:
@@ -763,7 +774,8 @@ Expr Expr::factorOut(const Expr& factor, const bool leading) const {
 
   switch (type_) {
     case ExprType::Number:
-    case ExprType::NamedConstant:
+    case ExprType::NamedScalar:
+    case ExprType::NamedVector:
     case ExprType::Matrix:
     case ExprType::SymmetricMatrix:
     case ExprType::Variable:
@@ -812,7 +824,8 @@ double Expr::complexity_() const {
   switch (type_) {
     case ExprType::Number:
       return 0.5;
-    case ExprType::NamedConstant:
+    case ExprType::NamedScalar:
+    case ExprType::NamedVector:
     case ExprType::Matrix:
     case ExprType::SymmetricMatrix:
     case ExprType::Variable:
@@ -836,8 +849,11 @@ double Expr::complexity_() const {
 }
 
 Expr ExprFactory::number(const double value) { return Expr(value); }
-Expr ExprFactory::namedConstant(const std::string& name) {
-  return Expr(ExprType::NamedConstant, name);
+Expr ExprFactory::namedScalar(const std::string& name) {
+  return Expr(ExprType::NamedScalar, name);
+}
+Expr ExprFactory::namedVector(const std::string& name) {
+  return Expr(ExprType::NamedVector, name);
 }
 Expr ExprFactory::matrix(const std::string& name) {
   return Expr(ExprType::Matrix, name);
