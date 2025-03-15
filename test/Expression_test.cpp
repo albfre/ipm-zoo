@@ -288,6 +288,19 @@ TEST_F(ExpressionTest, SimplifyRhsExpression) {
   EXPECT_EQ(simplified.toString(), simplified2.toString());
 }
 
+TEST_F(ExpressionTest, SimplifyComplex2) {
+  // Test more complex expression
+  auto complexExpr = ExprFactory::sum(
+      {ExprFactory::product({a, x}),
+       ExprFactory::sum(
+           {ExprFactory::product({b, x}),
+            ExprFactory::product({c, ExprFactory::product({x, c})})})});
+  // a * x + b * x + c * (x * c)
+  // = ((c * x * c) + ((a + b) * x))
+  auto simplified = complexExpr.simplify();
+  EXPECT_EQ(simplified.toString(), "((c * x * c) + ((a + b) * x))");
+}
+
 // Test variable extraction
 TEST_F(ExpressionTest, VariableExtraction) {
   auto expr = ExprFactory::product({a, ExprFactory::sum({x, y, z}), b});

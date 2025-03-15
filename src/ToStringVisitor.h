@@ -15,8 +15,7 @@ struct ToStringVisitor {
   }
 
   std::string operator()(const auto& x) const {
-    if constexpr (std::is_base_of_v<NamedNullaryExpr,
-                                    std::decay_t<decltype(x)>>) {
+    if constexpr (is_named_nullary_v<decltype(x)>) {
       return x.name;
     } else {
       static_assert(always_false_v<decltype(x)>);
