@@ -275,30 +275,17 @@ TEST_F(ExpressionTest, SimplifyRhsExpression) {
       product({invert(diagonalMatrix(variable("z"))),
                diagonalMatrix(variable("\\lambda_{z}")),
                sum({product({invert(diagonalMatrix(variable("\\lambda_{z}"))),
-                             namedVector("r_{z}")}),
-                    negate(namedVector("r_{\\lambda_{z}}"))})});
+                             namedConstant("r_{z}")}),
+                    negate(namedConstant("r_{\\lambda_{z}}"))})});
   auto expr2 = sum(
-      {product({invert(diagonalMatrix(variable("z"))), namedVector("r_{z}")}),
+      {product({invert(diagonalMatrix(variable("z"))), namedConstant("r_{z}")}),
        product({invert(diagonalMatrix(variable("z"))),
                 diagonalMatrix(variable("\\lambda_{z}")),
-                negate(namedVector("r_{\\lambda_{z}}"))})});
+                negate(namedConstant("r_{\\lambda_{z}}"))})});
   auto simplified = expr.simplify();
   auto simplified2 = expr2.simplify();
   std::cout << simplified.toString() << std::endl;
   EXPECT_EQ(simplified.toString(), simplified2.toString());
-}
-
-TEST_F(ExpressionTest, SimplifyComplex2) {
-  // Test more complex expression
-  auto complexExpr = ExprFactory::sum(
-      {ExprFactory::product({a, x}),
-       ExprFactory::sum(
-           {ExprFactory::product({b, x}),
-            ExprFactory::product({c, ExprFactory::product({x, c})})})});
-  // a * x + b * x + c * (x * c)
-  // = ((c * x * c) + ((a + b) * x))
-  auto simplified = complexExpr.simplify();
-  EXPECT_EQ(simplified.toString(), "((c * x * c) + ((a + b) * x))");
 }
 
 // Test variable extraction

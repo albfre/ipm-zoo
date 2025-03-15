@@ -61,7 +61,8 @@ Expr Expr::simplify(const bool distribute) const {
   auto expr = *this;
   auto changed = true;
   while (changed) {
-    auto simplified = std::visit(SimplificationVisitor(distribute), impl_);
+    auto simplified =
+        std::visit(SimplificationVisitor(distribute), expr.getImpl());
     changed = simplified != expr;
     std::swap(expr, simplified);
   }
@@ -188,9 +189,9 @@ double Expr::complexity() const {
         return 0.5 + x.child->complexity();
       },
       [](const auto& x) -> std::enable_if_t<is_nary_v<decltype(x)>, double> {
-        return std::transform_reduce(
-            x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
-            [](const auto& t) { return t.complexity(); });
+        return 0.5 + std::transform_reduce(
+                         x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
+                         [](const auto& t) { return t.complexity(); });
       });
 }
 

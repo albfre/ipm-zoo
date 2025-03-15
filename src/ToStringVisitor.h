@@ -74,7 +74,7 @@ struct ToStringVisitor {
     ss << x.terms.front().toString(condensed);
     for (const auto& t : x.terms | std::views::drop(1)) {
       if (is<Negate>(t)) {
-        ss << " - " << t.toString(condensed);
+        ss << " - " << std::get<Negate>(t.getImpl()).child->toString(condensed);
       } else {
         ss << " + " << t.toString(condensed);
       }
