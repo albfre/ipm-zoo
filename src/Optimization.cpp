@@ -14,7 +14,7 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   const auto b_eq = matrix(names.b_eq);
   const auto p_eq = variable(names.p_eq);
   const auto delta_eq = namedScalar(names.delta_eq);
-  const auto mu = namedVector("\\mu");
+  const auto mu = namedScalar("\\mu");
   const auto e = namedVector("e");
   const auto x = variable(names.x);
   const auto s_A = variable(names.s_A);
