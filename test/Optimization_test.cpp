@@ -1,4 +1,3 @@
-
 #include "Optimization.h"
 
 #include <gtest/gtest.h>
@@ -148,6 +147,61 @@ TEST_F(OptimizationTest, GetNewton) {
   while (lhs.size() > i) {
     auto deltaVariable = Expression::ExprFactory::variable(
         "\\Delta " + variables.at(lhs.size() - 1).getName());
+    auto deltaDefinition =
+        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    variableDefinitions.push_back({deltaVariable, deltaDefinition});
+    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    variables.pop_back();
+  }
+}
+
+TEST_F(OptimizationTest, GaussianElimination) {
+  auto settings = Settings();
+  auto names = VariableNames();
+  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto [lhs, _] = getNewtonSystem(lagrangian, variables);
+  auto rhs = getShorthandRhs(variables);
+  while (lhs.size() > 1) {
+    std::string lhsStr = "";
+    const auto condensed = true;
+    for (const auto& row : lhs) {
+      for (size_t i = 0; i < row.size(); ++i) {
+        lhsStr +=
+            row[i].toString(condensed) + (i + 1 == row.size() ? "" : " & ");
+      }
+      lhsStr += "\\\\\n";
+    }
+
+    std::string rhsStr = "";
+    for (const auto& row : rhs) {
+      rhsStr += row.toString(condensed) + "\\\\\n";
+    }
+    std::cout << lhsStr << std::endl;
+    std::cout << rhsStr << std::endl;
+    std::cout << "\n\n";
+
+    std::cout << "delta def" << std::endl;
+    auto deltaDefinition =
+        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    gaussianElimination(lhs, rhs, lhs.size() - 1);
+  }
+}
+
+TEST_F(OptimizationTest, GetNewton) {
+  const auto variableNames = Optimization::VariableNames();
+  const auto settings = Optimization::Settings();
+  auto [lagrangian, variables] =
+      Optimization::getLagrangian(variableNames, settings);
+  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+
+  auto i = 1;
+  rhs = Optimization::getShorthandRhs(variables);
+
+  std::vector<std::pair<Expression::Expr, Expression::Expr>>
+      variableDefinitions;
+  while (lhs.size() > i) {
+    auto deltaVariable = Expression::ExprFactory::variable(
+        "\\Delta " + variables.at(lhs.size() - 1).toString());
     auto deltaDefinition =
         Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
     variableDefinitions.push_back({deltaVariable, deltaDefinition});
