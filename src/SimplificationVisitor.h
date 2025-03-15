@@ -79,7 +79,6 @@ struct SimplificationVisitor {
                   [&](const auto&) { return ExprFactory::negate(t); });
             }
             auto s = ExprFactory::sum(std::move(terms));
-            std::cout << s.toString() << std::endl;
             return s;
           }
           return ExprFactory::negate(std::move(child));
@@ -352,7 +351,7 @@ struct SimplificationVisitor {
                       });
                   if (auto distributedExpr =
                           ExprFactory::sum(std::move(sumTerms)).simplify(false);
-                      distributedExpr.complexity() < simplified.complexity()) {
+                      distributedExpr.complexity() <= simplified.complexity()) {
                     simplified = std::move(distributedExpr);
                     return true;
                   }
