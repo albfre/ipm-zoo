@@ -23,31 +23,6 @@ std::strong_ordering operator<=>(const Expr& left, const Expr& right) {
   if (left.getImpl().index() != right.getImpl().index()) {
     return left.getImpl().index() <=> right.getImpl().index();
   }
-  /*
-  return match(
-      left,
-      [&](const auto& x)
-        requires is_nary_v<decltype(x)> {
-          const auto& y = std::get<std::decay_t<decltype(x)>>(right.getImpl());
-          if (x.terms.size() != y.terms.size()) {
-            return x.terms.size() <=> y.terms.size();
-          }
-        },
-                 [&](const auto& x)
-                   requires is_unary_v<decltype(x)> {
-                     return *x.child <=> *std::get<std::decay_t<decltype(x)>>(
-                                              right.getImpl())
-                                              .child;
-                   },
-                            [&](const auto& x)
-                              requires is_named_nullary_v<decltype(x)> {
-          return x.name <=>
-                 std::get<std::decay_t<decltype(x)>>(right.getImpl()).name;
-        },
-      [&](const Number& x) {
-        return x.value <=> std::get<Number>(right.getImpl()).value;
-      });
-      */
 
   return left.toExpressionString() <=> right.toExpressionString();
 }
