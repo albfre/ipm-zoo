@@ -29,7 +29,11 @@ struct SimplificationVisitor {
     return match(
         child, [](const Transpose& x) { return *x.child; },  // (x^T)^T = x
         [&](const SymmetricMatrix& x) { return child; },
-        [&](const Invert& x) { return child; },
+        [&](const DiagonalMatrix& x) { return child; },
+        [&](const Invert& x) {
+          assert(is<DiagonalMatrix>(*x.child));
+          return child;
+        },
         [this](const Negate& x) {
           // (-x)^T  = -x^T
           return ExprFactory::negate(ExprFactory::transpose(*x.child));
@@ -50,14 +54,14 @@ struct SimplificationVisitor {
   Expr operator()(const Negate& x) {
     auto child = x.child->simplifyOnce(distribute);
     if (child == zero) {  // -0 = 0
-      return zero;
+      return child;
     }
     return match(
         child, [](const Number& x) { return ExprFactory::number(-x.value); },
         [](const Negate& x) { return *x.child; },  // negate(negate(x)) = x
         [&](const Product& x) {
-          const auto it = std::ranges::find_if(x.terms, is<Negate>);
-          if (it != x.terms.end()) {
+          if (const auto it = std::ranges::find_if(x.terms, is<Negate>);
+              it != x.terms.end()) {
             auto terms = x.terms;
             terms[std::distance(x.terms.begin(), it)] =
                 *std::get<Negate>(it->getImpl()).child;
@@ -68,11 +72,12 @@ struct SimplificationVisitor {
         [&](const Sum& x) {
           if (static_cast<size_t>(std::ranges::count_if(x.terms, is<Negate>)) >
               x.terms.size() / 2) {
-            auto terms = x.terms;
-            for (auto& t : terms) {
-              t = match(
+            auto terms = std::vector<Expr>();
+            terms.reserve(x.terms.size());
+            for (const auto& t : x.terms) {
+              terms.emplace_back(match(
                   t, [](const Negate& y) { return *y.child; },
-                  [&](const auto&) { return ExprFactory::negate(t); });
+                  [&](const auto&) { return ExprFactory::negate(t); }));
             }
             return ExprFactory::sum(std::move(terms));
           }
@@ -83,6 +88,9 @@ struct SimplificationVisitor {
 
   Expr operator()(const Invert& x) const {
     auto child = x.child->simplifyOnce(distribute);
+    if (child == unity) {
+      return child;
+    }
     return match(
         child,
         [](const Invert& y) { return *y.child; },  // invert(invert(x)) = x
@@ -138,7 +146,7 @@ struct SimplificationVisitor {
     // Distributive transformation (x + y + 1.3x = 2.3x + y)
     for (size_t i = 0; i < terms.size(); ++i) {
       if (terms.at(i) != zero) {
-        const auto term = terms.at(i);
+        auto term = terms.at(i);
         const auto negTerm = ExprFactory::negate(term);
         const auto isNumberTimesTerm = [&term](const auto& t) -> bool {
           return match(
@@ -168,8 +176,8 @@ struct SimplificationVisitor {
                             : 0.0);
               });
           std::erase_if(terms, isTerm);
-          terms.push_back(
-              ExprFactory::product({ExprFactory::number(value), term}));
+          terms.push_back(ExprFactory::product(
+              {ExprFactory::number(value), std::move(term)}));
         }
       }
     }
@@ -205,6 +213,10 @@ struct SimplificationVisitor {
         return *std::get<Negate>(t.getImpl()).child;
       });  // Seems necessary for WebAssembly
       return ExprFactory::negate(ExprFactory::sum(std::move(newTerms)));
+    }
+
+    if (terms.size() == 1) {
+      return terms.front();
     }
 
     auto simplified = ExprFactory::sum(terms);
@@ -256,21 +268,15 @@ struct SimplificationVisitor {
                   .simplify(false);
           match(
               factoredExpr,
-              [&](auto& x)
-                requires is_nary_v<decltype(x)> {
-                  associativeTransformation<std::decay_t<decltype(x)>>(x.terms);
-                },
-              [&](const auto&) {});
+              [&](Sum& x) { associativeTransformation_<Sum>(x.terms); },
+              [&](Product& x) { associativeTransformation_<Product>(x.terms); },
+              [&](auto&) {});
           if (factoredExpr.complexity() < simplified.complexity()) {
             return factoredExpr;
           }
           sorted.pop_back();
         }
       }
-    }
-
-    if (terms.size() == 1) {
-      return terms.front();
     }
 
     return simplified;

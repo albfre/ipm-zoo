@@ -385,8 +385,8 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
         ExprFactory::negate(
             ExprFactory::product({targetExpr, ExprFactory::invert(sourceExpr)}))
             .simplify();
-    const auto addRowTimesFactorToRow = [&factor](const Expr& sourceTerm,
-                                                  const Expr& targetTerm) {
+    const auto addRowTimesFactorToRow = [&](const Expr& sourceTerm,
+                                            const Expr& targetTerm) {
       auto sourceTermTimesFactor =
           ExprFactory::product({factor, sourceTerm}).simplify();
       return ExprFactory::sum({targetTerm, std::move(sourceTermTimesFactor)})
