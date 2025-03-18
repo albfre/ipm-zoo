@@ -12,11 +12,7 @@ struct SimplificationVisitor {
   explicit SimplificationVisitor(const bool distribute)
       : distribute(distribute) {}
 
-  Expr operator()(const Number& x) const { return Expr(x); }
-  Expr operator()(const NamedConstant& x) const { return Expr(x); }
-  Expr operator()(const Variable& x) const { return Expr(x); }
-  Expr operator()(const Matrix& x) const { return Expr(x); }
-  Expr operator()(const SymmetricMatrix& x) const { return Expr(x); }
+  Expr operator()(const auto& x) const { return Expr(x); }
   Expr operator()(const DiagonalMatrix& x) {
     auto child = x.child->simplifyOnce(distribute);
     if (child == zero || child == unity) {
@@ -78,8 +74,7 @@ struct SimplificationVisitor {
                   t, [](const Negate& y) { return *y.child; },
                   [&](const auto&) { return ExprFactory::negate(t); });
             }
-            auto s = ExprFactory::sum(std::move(terms));
-            return s;
+            return ExprFactory::sum(std::move(terms));
           }
           return ExprFactory::negate(std::move(child));
         },
@@ -144,7 +139,7 @@ struct SimplificationVisitor {
     for (size_t i = 0; i < terms.size(); ++i) {
       if (terms.at(i) != zero) {
         const auto term = terms.at(i);
-        const auto negTerm = ExprFactory::negate(terms.at(i));
+        const auto negTerm = ExprFactory::negate(term);
         const auto isNumberTimesTerm = [&term](const auto& t) -> bool {
           return match(
               t,
@@ -230,7 +225,7 @@ struct SimplificationVisitor {
         std::ranges::sort(sorted, {}, &std::pair<Expr, size_t>::second);
 
         while (!sorted.empty()) {
-          const auto& [factor, numOccurrences] = sorted.back();
+          auto [factor, numOccurrences] = sorted.back();
           if (numOccurrences < 2) {
             break;
           }
@@ -248,14 +243,16 @@ struct SimplificationVisitor {
 
           auto sumFactored = ExprFactory::sum(std::move(factoredTerms));
           auto factorTimesFactored =
-              leading ? ExprFactory::product({factor, std::move(sumFactored)})
-                      : ExprFactory::product({std::move(sumFactored), factor});
+              leading ? ExprFactory::product(
+                            {std::move(factor), std::move(sumFactored)})
+                      : ExprFactory::product(
+                            {std::move(sumFactored), std::move(factor)});
           auto factoredExpr =
               (unfactoredTerms.empty()
                    ? std::move(factorTimesFactored)
                    : ExprFactory::sum(
                          {ExprFactory::sum(std::move(unfactoredTerms)),
-                          factorTimesFactored}))
+                          std::move(factorTimesFactored)}))
                   .simplify(false);
           match(
               factoredExpr,
