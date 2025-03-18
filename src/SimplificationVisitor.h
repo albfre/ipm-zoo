@@ -18,7 +18,7 @@ struct SimplificationVisitor {
   Expr operator()(const Matrix& x) const { return Expr(x); }
   Expr operator()(const SymmetricMatrix& x) const { return Expr(x); }
   Expr operator()(const DiagonalMatrix& x) {
-    auto child = x.child->simplify(distribute);
+    auto child = x.child->simplifyOnce(distribute);
     if (child == zero || child == unity) {
       return child;
     }
@@ -26,7 +26,7 @@ struct SimplificationVisitor {
   }
 
   Expr operator()(const Transpose& x) const {
-    auto child = x.child->simplify(distribute);
+    auto child = x.child->simplifyOnce(distribute);
     if (child == zero || child == unity) {
       return child;  // 0^T = 0, 1^T = 1
     }
@@ -52,7 +52,7 @@ struct SimplificationVisitor {
   }
 
   Expr operator()(const Negate& x) {
-    auto child = x.child->simplify(distribute);
+    auto child = x.child->simplifyOnce(distribute);
     if (child == zero) {  // -0 = 0
       return zero;
     }
@@ -87,7 +87,7 @@ struct SimplificationVisitor {
   }
 
   Expr operator()(const Invert& x) const {
-    auto child = x.child->simplify(distribute);
+    auto child = x.child->simplifyOnce(distribute);
     return match(
         child,
         [](const Invert& y) { return *y.child; },  // invert(invert(x)) = x
@@ -106,13 +106,13 @@ struct SimplificationVisitor {
   }
 
   Expr operator()(const Log& x) const {
-    return ExprFactory::log(x.child->simplify(distribute));
+    return ExprFactory::log(x.child->simplifyOnce(distribute));
   }
 
   Expr operator()(const Sum& x) const {
     // Recursive simplification
     auto terms = transform(
-        x.terms, [this](const auto& t) { return t.simplify(distribute); });
+        x.terms, [this](const auto& t) { return t.simplifyOnce(distribute); });
 
     // Associative transformation ((x + y) + z = x + y + z)
     std::vector<Expr> newTerms;
@@ -282,7 +282,7 @@ struct SimplificationVisitor {
   Expr operator()(const Product& x) const {
     // Recursive simplification
     auto terms = transform(
-        x.terms, [this](const auto& t) { return t.simplify(distribute); });
+        x.terms, [this](const auto& t) { return t.simplifyOnce(distribute); });
 
     // Associative transformation (x(yz) = xyz)
     associativeTransformation_<Product>(terms);
