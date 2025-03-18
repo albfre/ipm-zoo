@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
+
 using namespace Optimization;
 
 class OptimizationTest : public ::testing::Test {
@@ -103,9 +105,21 @@ TEST_F(OptimizationTest, GetShorthandRhs) {
 TEST_F(OptimizationTest, GaussianElimination) {
   auto settings = Settings();
   auto names = VariableNames();
+  const auto now0 = std::chrono::high_resolution_clock::now();
   auto [lagrangian, variables] = getLagrangian(names, settings);
+  const auto now = std::chrono::high_resolution_clock::now();
   auto [lhs, _] = getNewtonSystem(lagrangian, variables);
+  const auto now2 = std::chrono::high_resolution_clock::now();
   auto rhs = getShorthandRhs(variables);
+  std::chrono::milliseconds lagrangeCount =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now - now0);
+  std::chrono::milliseconds newtonCount =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now2 - now);
+
+  std::chrono::milliseconds gaussianCount =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now - now);
+  std::chrono::milliseconds deltaCount =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now - now);
   while (lhs.size() > 1) {
     std::string lhsStr = "";
     const auto condensed = true;
@@ -126,10 +140,23 @@ TEST_F(OptimizationTest, GaussianElimination) {
     std::cout << "\n\n";
 
     std::cout << "delta def" << std::endl;
+    const auto d1 = std::chrono::high_resolution_clock::now();
     auto deltaDefinition =
         Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    const auto d2 = std::chrono::high_resolution_clock::now();
+    deltaCount +=
+        std::chrono::duration_cast<std::chrono::milliseconds>(d2 - d1);
+    const auto begin = std::chrono::high_resolution_clock::now();
+
     gaussianElimination(lhs, rhs, lhs.size() - 1);
+    const auto end = std::chrono::high_resolution_clock::now();
+    gaussianCount +=
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
   }
+  std::cout << "get lagrange: " << lagrangeCount.count() << std::endl;
+  std::cout << "get newton : " << newtonCount.count() << std::endl;
+  std::cout << "gaussain time: " << gaussianCount.count() << std::endl;
+  std::cout << "delta time: " << deltaCount.count() << std::endl;
 }
 
 TEST_F(OptimizationTest, GetNewton) {

@@ -359,7 +359,8 @@ Expression::Expr deltaDefinition(
 
   return ExprFactory::product(
              {ExprFactory::invert(sourceExpr),
-              ExprFactory::sum({rhs.at(sourceRow), ExprFactory::negate(sum)})})
+              ExprFactory::sum(
+                  {rhs.at(sourceRow), ExprFactory::negate(std::move(sum))})})
       .simplify();
 }
 

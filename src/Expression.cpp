@@ -57,6 +57,10 @@ Expr Expr::differentiate(const Expr& var) const {
   return std::visit(DifferentiationVisitor(var), impl_);
 }
 
+Expr Expr::simplifyOnce(const bool distribute) const {
+  return std::visit(SimplificationVisitor(distribute), impl_);
+}
+
 Expr Expr::simplify(const bool distribute) const {
   auto expr = *this;
   auto changed = true;

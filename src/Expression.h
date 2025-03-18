@@ -54,6 +54,7 @@ class Expr {
   Expr& operator=(const Expr& other);
 
   Expr differentiate(const Expr& var) const;
+  Expr simplifyOnce(bool distribute = true) const;
   Expr simplify(bool distribute = true) const;
   std::string toString(bool condensed = false) const;
   std::string toExpressionString() const;
