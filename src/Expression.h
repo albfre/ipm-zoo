@@ -23,7 +23,8 @@ struct NaryExpr {
 struct Number {
   double value;
 };
-struct NamedConstant : public NamedNullaryExpr {};
+struct NamedScalar : public NamedNullaryExpr {};
+struct NamedVector : public NamedNullaryExpr {};
 struct Variable : public NamedNullaryExpr {};
 struct Matrix : public NamedNullaryExpr {};
 struct SymmetricMatrix : public NamedNullaryExpr {};
@@ -36,9 +37,10 @@ struct Sum : public NaryExpr {};
 struct Product : public NaryExpr {};
 
 class Expr {
-  using ExprVariant = std::variant<Number, NamedConstant, Variable, Matrix,
-                                   SymmetricMatrix, DiagonalMatrix, Transpose,
-                                   Invert, Log, Sum, Product, Negate>;
+  using ExprVariant =
+      std::variant<Number, NamedScalar, NamedVector, Variable, Matrix,
+                   SymmetricMatrix, DiagonalMatrix, Transpose, Invert, Log, Sum,
+                   Product, Negate>;
 
  public:
   template <typename T, typename = std::enable_if_t<
@@ -54,8 +56,8 @@ class Expr {
   Expr& operator=(const Expr& other);
 
   Expr differentiate(const Expr& var) const;
-  Expr simplifyOnce(bool distribute = true) const;
   Expr simplify(bool distribute = true) const;
+  Expr simplifyOnce(bool distribute = true) const;
   std::string toString(bool condensed = false) const;
   std::string toExpressionString() const;
   bool containsSubexpression(const Expr& expr) const;
@@ -75,7 +77,8 @@ bool operator==(const Expr& left, const Expr& right);
 
 namespace ExprFactory {
 Expr number(const double value);
-Expr namedConstant(const std::string& name);
+Expr namedScalar(const std::string& name);
+Expr namedVector(const std::string& name);
 Expr variable(const std::string& name);
 Expr matrix(const std::string& name);
 Expr symmetricMatrix(const std::string& name);

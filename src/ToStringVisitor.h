@@ -111,8 +111,12 @@ struct ToExpressionStringVisitor {
     return ss.str();
   }
 
-  std::string operator()(const NamedConstant& x) const {
-    return "namedConstant(" + x.name + ")";
+  std::string operator()(const NamedScalar& x) const {
+    return "namedScalar(" + x.name + ")";
+  }
+
+  std::string operator()(const NamedVector& x) const {
+    return "namedVector(" + x.name + ")";
   }
 
   std::string operator()(const Variable& x) const {

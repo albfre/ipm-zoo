@@ -58,10 +58,6 @@ Expr Expr::differentiate(const Expr& var) const {
   return std::visit(DifferentiationVisitor(var), impl_);
 }
 
-Expr Expr::simplifyOnce(const bool distribute) const {
-  return std::visit(SimplificationVisitor(distribute), impl_);
-}
-
 Expr Expr::simplify(const bool distribute) const {
   auto expr = *this;
   auto changed = true;
@@ -72,6 +68,10 @@ Expr Expr::simplify(const bool distribute) const {
     std::swap(expr, simplified);
   }
   return expr;
+}
+
+Expr Expr::simplifyOnce(const bool distribute) const {
+  return std::visit(SimplificationVisitor(distribute), impl_);
 }
 
 bool Expr::containsSubexpression(const Expr& expr) const {
@@ -98,22 +98,21 @@ Expr Expr::replaceSubexpression(const Expr& expr,
   }
   return match(
       *this,
-      // Handle n-ary expressions
       ([&](const auto& x)
          requires is_nary_v<decltype(x)> {
+           using ExprType = std::decay_t<decltype(x)>;
            auto terms =
                transform(x.terms, [&expr, &replacement](const auto& t) {
                  return t.replaceSubexpression(expr, replacement);
                });
-           return Expr(std::decay_t<decltype(x)>{std::move(terms)});
+           return Expr(ExprType{std::move(terms)});
          }),
-
-       // Handle unary expressions
        [&expr, &replacement](const auto& x)
-         requires is_unary_v<decltype(x)>
-       { return x.child->replaceSubexpression(expr, replacement); },
-
-       // Handle all other expressions
+         requires is_unary_v<decltype(x)> {
+           using ExprType = std::decay_t<decltype(x)>;
+           auto replaced = x.child->replaceSubexpression(expr, replacement);
+           return Expr(ExprType{std::make_unique<Expr>(std::move(replaced))});
+         },
        [&](const auto& x) { return *this; });
 }
 
@@ -221,8 +220,11 @@ std::set<Expr> Expr::getVariables() const {
 }
 
 Expr ExprFactory::number(const double value) { return Expr(Number{value}); }
-Expr ExprFactory::namedConstant(const std::string& name) {
-  return Expr(NamedConstant{name});
+Expr ExprFactory::namedScalar(const std::string& name) {
+  return Expr(NamedScalar{name});
+}
+Expr ExprFactory::namedVector(const std::string& name) {
+  return Expr(NamedVector{name});
 }
 Expr ExprFactory::variable(const std::string& name) {
   return Expr(Variable{name});

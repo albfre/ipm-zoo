@@ -11,10 +11,8 @@ struct DifferentiationVisitor {
   const Expr& var;
 
   explicit DifferentiationVisitor(const Expr& variable) : var(variable) {}
-  Expr operator()(const Number&) const { return zero; }
-  Expr operator()(const NamedConstant&) const { return zero; }
-  Expr operator()(const Matrix&) const { return zero; }
-  Expr operator()(const SymmetricMatrix&) const { return zero; }
+  Expr operator()(const auto&) const { return zero; }
+
   Expr operator()(const Variable& x) const {
     return Expr(x) == var ? unity : zero;
   }

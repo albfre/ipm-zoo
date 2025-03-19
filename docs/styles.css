@@ -13,22 +13,29 @@ body {
   padding: 30px;
 }
 
+/* Logo Styling */
+.logo {
+  display: block;
+  height: 120px;
+}
+
 /* Layout */
 .container {
   display: flex;
   gap: 40px;
-  max-width: 1200px;
-  margin: auto;
+  max-width: 768px;
+  margin: 0 auto;
 }
 
 /* Input Section */
-.section {
+.input_section {
   flex: 1;
   background: #fff;
   padding: 25px;
   border-radius: 12px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05);
   border: 1px solid #e0e0e0;
+  min-width: 330px;
 }
 
 h2,
@@ -67,6 +74,8 @@ input[type="checkbox"] {
   border-radius: 12px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05);
   border: 1px solid #e0e0e0;
+  max-width: 810px;
+  overflow-wrap: break-word;
 }
 
 .output p {
@@ -74,25 +83,61 @@ input[type="checkbox"] {
   color: #222;
 }
 
-/* Responsiveness */
+/* Desktop Layout */
+@media (min-width: 901px) {
+  .logo {
+    position: fixed;
+    top: 30px;
+    left: 15px;
+    z-index: 1000;
+  }
+
+  body {
+    padding-left: 150px;
+    /* Make space for the fixed logo */
+  }
+
+  .container {
+    flex-direction: row;
+    margin-left: 0;
+    margin-left: 30px;
+    /* Add horizontal margin between logo and container */
+  }
+}
+
+/* Mobile Layout */
 @media (max-width: 900px) {
+  .logo {
+    position: static;
+    margin: 0 auto 20px;
+  }
+
   .container {
     flex-direction: column;
+    margin: 0 auto;
+  }
+
+  body {
+    padding: 20px;
   }
 }
 
-.logo {
-  float: left;
-  display: block;
-  margin-bottom: 10px;
+.MathJax_Display,
+.MJXc-display,
+mjx-container[jax="CHTML"][display="true"],
+mjx-container[jax="SVG"][display="true"] {
+  max-width: 100%;
+  overflow-y: hidden;
+  overflow-x: auto;
+  scroll-padding: 5px;
 }
 
-/* On mobile screens, center the logo on top */
-@media (max-width: 768px) {
-  .logo {
-    float: none;
-    display: block;
-    margin: 0 auto 10px;
-    text-align: center;
-  }
+mjx-container {
+  max-width: 100%;
+}
+
+/* For very complex equations, add a small horizontal scroll */
+.complex-equation {
+  overflow-x: auto;
+  margin: 1em 0;
 }

@@ -12,7 +12,6 @@ struct SimplificationVisitor {
   explicit SimplificationVisitor(const bool distribute)
       : distribute(distribute) {}
 
-  Expr operator()(const auto& x) const { return Expr(x); }
   Expr operator()(const DiagonalMatrix& x) {
     auto child = x.child->simplifyOnce(distribute);
     if (child == zero || child == unity) {
@@ -51,13 +50,15 @@ struct SimplificationVisitor {
         });
   }
 
+  Expr operator()(const auto& x) const { return Expr(x); }
+
   Expr operator()(const Negate& x) {
     auto child = x.child->simplifyOnce(distribute);
     if (child == zero) {  // -0 = 0
       return child;
     }
     return match(
-        child, [](const Number& x) { return ExprFactory::number(-x.value); },
+        child,
         [](const Negate& x) { return *x.child; },  // negate(negate(x)) = x
         [&](const Product& x) {
           if (const auto it = std::ranges::find_if(x.terms, is<Negate>);
