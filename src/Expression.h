@@ -43,13 +43,15 @@ class Expr {
                    Product, Negate>;
 
  public:
-  template <typename T, typename = std::enable_if_t<
-                            std::is_base_of_v<UnaryExpr, std::decay_t<T>>>>
+  template <typename T>
+    requires std::is_base_of_v<UnaryExpr, std::decay_t<T>>
   explicit Expr(const T& value)
       : impl_(T{std::make_unique<Expr>(*value.child)}) {}
-  template <typename T,
-            typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Expr>>>
+
+  template <typename T>
+    requires(!std::is_same_v<Expr, std::decay_t<T>>)
   explicit Expr(T&& value) : impl_(std::forward<T>(value)) {}
+
   Expr(const Expr& other);
   Expr(Expr&& other) noexcept : impl_(std::move(other.impl_)) {}
 

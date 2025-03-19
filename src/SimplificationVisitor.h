@@ -12,6 +12,8 @@ struct SimplificationVisitor {
   explicit SimplificationVisitor(const bool distribute)
       : distribute(distribute) {}
 
+  Expr operator()(const auto& x) const { return Expr(x); }
+
   Expr operator()(const DiagonalMatrix& x) {
     auto child = x.child->simplifyOnce(distribute);
     if (child == zero || child == unity) {
@@ -27,6 +29,7 @@ struct SimplificationVisitor {
     }
     return match(
         child, [](const Transpose& x) { return *x.child; },  // (x^T)^T = x
+        [&](const NamedScalar& x) { return child; },
         [&](const SymmetricMatrix& x) { return child; },
         [&](const DiagonalMatrix& x) { return child; },
         [&](const Invert& x) {
@@ -49,8 +52,6 @@ struct SimplificationVisitor {
           return ExprFactory::transpose(std::move(child));
         });
   }
-
-  Expr operator()(const auto& x) const { return Expr(x); }
 
   Expr operator()(const Negate& x) {
     auto child = x.child->simplifyOnce(distribute);
@@ -315,6 +316,7 @@ struct SimplificationVisitor {
     eraseCanceling_<Invert>(terms, unity);
 
     // Commutative transformation (2x3y = 2*3*xy)
+    std::ranges::partition(terms, is<NamedScalar>);
     std::ranges::partition(terms, is<Number>);
 
     // Numerical transformation (2 * x * 3 = 6 * x)
