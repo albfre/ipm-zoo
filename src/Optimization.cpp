@@ -3,6 +3,8 @@
 #include <cassert>
 #include <iostream>
 
+#include "Helpers.h"
+
 namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     const VariableNames& names, const Settings& settings) {
@@ -247,10 +249,10 @@ getNewtonSystem(const Expression::Expr& lagrangian,
   for (auto& c : firstOrder) {
     lhs.emplace_back();
     auto& row = lhs.back();
-    rhs.push_back(ExprFactory::negate(c).simplify());
     for (auto& v : variables) {
       row.push_back(c.differentiate(v).simplify());
     }
+    rhs.push_back(ExprFactory::negate(c).simplify());
   }
   return {lhs, rhs};
 }
@@ -273,7 +275,6 @@ Expression::Expr deltaDefinition(
   assert(lhs.size() == rhs.size());
   assert(lhs.size() <= variables.size());
   assert(sourceRow < lhs.size());
-  const auto zero = ExprFactory::number(0.0);
 
   const auto& lhsSourceRow = lhs.at(sourceRow);
   const auto& sourceExpr = lhsSourceRow.at(sourceRow);
@@ -281,8 +282,9 @@ Expression::Expr deltaDefinition(
   terms.reserve(lhsSourceRow.size());
   assert(lhsSourceRow.size() <= variables.size());
   for (size_t i = 0; i < lhsSourceRow.size(); ++i) {
+    assert(is<Variable>(variables.at(i)));
     auto deltaVariable =
-        ExprFactory::variable("\\Delta " + variables.at(i).getName());
+        ExprFactory::variable("\\Delta " + variables.at(i).toString());
     terms.emplace_back(
         ExprFactory::product({lhsSourceRow[i], std::move(deltaVariable)}));
   }
@@ -302,7 +304,6 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
   using namespace Expression;
   assert(lhs.size() == rhs.size());
   assert(sourceRow < lhs.size());
-  const auto zero = ExprFactory::number(0.0);
   std::set<size_t> targetRows;
   for (size_t i = 0; i < lhs.size(); ++i) {
     if (i != sourceRow && lhs.at(i).at(sourceRow) != zero) {

@@ -1,4 +1,3 @@
-
 #include "Optimization.h"
 
 #include <gtest/gtest.h>
@@ -147,7 +146,7 @@ TEST_F(OptimizationTest, GetNewton) {
       variableDefinitions;
   while (lhs.size() > i) {
     auto deltaVariable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1).getName());
+        "\\Delta " + variables.at(lhs.size() - 1).toString());
     auto deltaDefinition =
         Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
     variableDefinitions.push_back({deltaVariable, deltaDefinition});
