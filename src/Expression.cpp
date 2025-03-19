@@ -32,16 +32,14 @@ bool operator==(const Expr& left, const Expr& right) {
 }
 
 Expr::Expr(const Expr& other)
-    : impl_(std::visit(
-          [](const auto& val) -> ExprVariant {
-            using T = std::decay_t<decltype(val)>;
-            if constexpr (std::is_base_of_v<UnaryExpr, T>) {
-              return T{std::make_unique<Expr>(*val.child)};
-            } else {
-              return val;
-            }
-          },
-          other.impl_)) {}
+    : impl_(match(
+          other,
+          [](const auto& val) -> ExprVariant
+            requires is_unary_v<decltype(val)> {
+              using ExprType = std::decay_t<decltype(val)>;
+              return ExprType{std::make_unique<Expr>(*val.child)};
+            },
+          [](const auto& val) -> ExprVariant { return val; })) {}
 
 Expr& Expr::operator=(const Expr& other) {
   if (this != &other) {
@@ -62,8 +60,7 @@ Expr Expr::simplify(const bool distribute) const {
   auto expr = *this;
   auto changed = true;
   while (changed) {
-    auto simplified =
-        std::visit(SimplificationVisitor(distribute), expr.getImpl());
+    auto simplified = expr.simplifyOnce(distribute);
     changed = simplified != expr;
     std::swap(expr, simplified);
   }
@@ -185,18 +182,17 @@ Expr Expr::factorOut(const Expr& factor, const bool leading) const {
 double Expr::complexity() const {
   return match(
       *this, [](const Number&) { return 0.5; },
-      [](const auto& x)
-          -> std::enable_if_t<is_named_nullary_v<decltype(x)>, double> {
-        return 1.0;
-      },
-      [](const auto& x) -> std::enable_if_t<is_unary_v<decltype(x)>, double> {
-        return 0.5 + x.child->complexity();
-      },
-      [](const auto& x) -> std::enable_if_t<is_nary_v<decltype(x)>, double> {
-        return std::transform_reduce(
-            x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
-            [](const auto& t) { return t.complexity(); });
-      });
+      ([](const auto& x)
+         requires is_named_nullary_v<decltype(x)> { return 1.0; }),
+       ([](const auto& x)
+          requires is_unary_v<decltype(x)>
+        { return 0.5 + x.child->complexity(); }),
+        [](const auto& x)
+          requires is_nary_v<decltype(x)> {
+            return std::transform_reduce(
+                x.terms.cbegin(), x.terms.cend(), 0.0, std::plus{},
+                [](const auto& t) { return t.complexity(); });
+          });
 }
 
 std::set<Expr> Expr::getVariables() const {
