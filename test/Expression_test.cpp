@@ -35,7 +35,7 @@ TEST_F(ExpressionTest, BasicConstruction) {
 
   // Test named constant
   EXPECT_EQ(a.toString(), "a");
-  EXPECT_TRUE(is<NamedConstant>(a));
+  EXPECT_TRUE(is<NamedVector>(a));
 }
 
 // Test basic arithmetic operations
@@ -275,13 +275,13 @@ TEST_F(ExpressionTest, SimplifyRhsExpression) {
       product({invert(diagonalMatrix(variable("z"))),
                diagonalMatrix(variable("\\lambda_{z}")),
                sum({product({invert(diagonalMatrix(variable("\\lambda_{z}"))),
-                             namedConstant("r_{z}")}),
-                    negate(namedConstant("r_{\\lambda_{z}}"))})});
+                             namedVector("r_{z}")}),
+                    negate(namedVector("r_{\\lambda_{z}}"))})});
   auto expr2 = sum(
-      {product({invert(diagonalMatrix(variable("z"))), namedConstant("r_{z}")}),
+      {product({invert(diagonalMatrix(variable("z"))), namedVector("r_{z}")}),
        product({invert(diagonalMatrix(variable("z"))),
                 diagonalMatrix(variable("\\lambda_{z}")),
-                negate(namedConstant("r_{\\lambda_{z}}"))})});
+                negate(namedVector("r_{\\lambda_{z}}"))})});
   auto simplified = expr.simplify();
   auto simplified2 = expr2.simplify();
   std::cout << simplified.toString() << std::endl;
@@ -316,9 +316,9 @@ TEST_F(ExpressionTest, VariableExtraction) {
 TEST_F(ExpressionTest, Lagrangian) {
   using namespace Expression::ExprFactory;
   auto x = variable("x");
-  auto H = namedVector("H");
+  auto H = symmetricMatrix("H");
   auto c = namedVector("c");
-  auto A = namedVector("A");
+  auto A = matrix("A");
   auto mu = namedScalar("\\mu");
   auto e = namedVector("e");
   auto g = variable("g");

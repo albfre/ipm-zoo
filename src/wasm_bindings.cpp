@@ -171,7 +171,7 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
   rhs = Optimization::getShorthandRhs(variables);
   while (lhs.size() > augmentedSize) {
     auto deltaVariable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1).getName());
+        "\\Delta " + variables.at(lhs.size() - 1).toString());
     const auto beginDelta = std::chrono::high_resolution_clock::now();
     auto deltaDefinition =
         Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
@@ -189,8 +189,8 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
   auto augmentedSystem = formatNewtonSystemStrings_(
       lhs, rhs, variables, variableDefinitions, variableNames);
 
-  auto deltaVariable =
-      Expression::ExprFactory::variable("\\Delta " + variables.at(0).getName());
+  auto deltaVariable = Expression::ExprFactory::variable(
+      "\\Delta " + variables.at(0).toString());
   auto deltaDefinition = Optimization::deltaDefinition(lhs, rhs, variables, 0);
   variableDefinitions.push_back({deltaVariable, deltaDefinition});
   Optimization::gaussianElimination(lhs, rhs, 0);

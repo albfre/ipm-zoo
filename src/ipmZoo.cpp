@@ -9,7 +9,6 @@
 void initialTest() {
   using namespace Expression;
 
-  auto one = ExprFactory::number(1);
   auto A = ExprFactory::variable("A");
   auto X = ExprFactory::variable("X");
   auto B = ExprFactory::variable("B");
@@ -18,13 +17,6 @@ void initialTest() {
   auto y = ExprFactory::variable("y");
   auto z = ExprFactory::variable("z");
   auto a = ExprFactory::variable("a");
-  auto c = ExprFactory::namedConstant("c");
-  auto M = ExprFactory::matrix("M");
-
-  std::cout << "num: " << one.toString() << std::endl;
-  std::cout << "var: " << A.toString() << std::endl;
-  std::cout << "named constand: " << c.toString() << std::endl;
-  std::cout << "matrix: " << M.toString() << std::endl;
 
   {
     std::cout << "x^T a and a^T x" << std::endl;
@@ -47,7 +39,7 @@ void initialTest() {
     std::cout << t3.differentiate(x).simplify().toString() << std::endl;
   }
 
-  if (true) {
+  if (false) {
     auto expr1 = ExprFactory::sum(
         {ExprFactory::product({A, X}),
          ExprFactory::sum(
@@ -70,10 +62,7 @@ void initialTest() {
               << "\n";
 
     std::cout << "Algebraic Expression: " << expr2.toString() << "\n";
-    std::cout << "Algebraic Expression: " << expr2.toExpressionString() << "\n";
     std::cout << "Simplified: " << expr2.simplify().toString() << "\n";
-    std::cout << "Simplified: " << expr2.simplify().toExpressionString()
-              << "\n";
     std::cout << "Diff: "
               << expr2.simplify().differentiate(x).simplify().toString()
               << "\n";
@@ -95,17 +84,6 @@ void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
     }
     std::cout << " \\\\" << std::endl;
   }
-}
-
-void test2() {
-  using namespace Expression;
-  auto one = ExprFactory::number(1.0);
-  auto x = ExprFactory::variable("x");
-  auto y = ExprFactory::variable("y");
-  auto e = ExprFactory::sum({ExprFactory::product({one, one}), one});
-  std::cout << "e.toString(): " << e.toString() << std::endl;
-  std::cout << "e.simplify().toString(): " << e.simplify().toExpressionString()
-            << std::endl;
 }
 
 void printRhs(const std::vector<Expression::Expr>& rhs) {
@@ -172,8 +150,7 @@ void runLagrangianTest() {
 
 int main(int argc, char* argv[]) {
   // Check if we have any command line arguments
-  // test2();
-  initialTest();
+  // initialTest();
 
   if (argc > 1) {
     std::string arg = argv[1];
@@ -184,7 +161,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // runLagrangianTest();
+  runLagrangianTest();
 
   return 0;
 }

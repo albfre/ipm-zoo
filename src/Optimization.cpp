@@ -3,17 +3,21 @@
 #include <cassert>
 #include <iostream>
 
+#include "Helpers.h"
+
 namespace Optimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     const VariableNames& names, const Settings& settings) {
   using namespace Expression::ExprFactory;
   const auto Q = symmetricMatrix(names.Q);
-  const auto c = namedConstant(names.c);
+  const auto c = namedVector(names.c);
   const auto A_ineq = matrix(names.A_ineq);
   const auto A_eq = matrix(names.A_eq);
   const auto b_eq = matrix(names.b_eq);
-  const auto mu = namedConstant("\\mu");
-  const auto e = namedConstant("e");
+  const auto p_eq = variable(names.p_eq);
+  const auto delta_eq = namedScalar(names.delta_eq);
+  const auto mu = namedScalar("\\mu");
+  const auto e = namedVector("e");
   const auto x = variable(names.x);
   const auto s_A = variable(names.s_A);
   const auto s_Al = variable(names.s_Al);
@@ -31,13 +35,13 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   const auto lambda_sAu = variable("\\lambda_{" + names.s_Au + "}");
   const auto lambda_sxl = variable("\\lambda_{" + names.s_xl + "}");
   const auto lambda_sxu = variable("\\lambda_{" + names.s_xu + "}");
-  const auto l_A = namedConstant(names.l_A);
-  const auto u_A = namedConstant(names.u_A);
-  const auto l_x = namedConstant(names.l_x);
-  const auto u_x = namedConstant(names.u_x);
+  const auto l_A = namedVector(names.l_A);
+  const auto u_A = namedVector(names.u_A);
+  const auto l_x = namedVector(names.l_x);
+  const auto u_x = namedVector(names.u_x);
 
   const auto xQx = product({number(0.5), transpose(x), Q, x});
-  const auto cx = product({c, x});
+  const auto cx = product({transpose(c), x});
   const auto Ax = product({A_ineq, x});
   const auto Cx = product({A_eq, x});
   const auto CxMinusB = sum({Cx, negate(b_eq)});
@@ -63,6 +67,9 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
       settings.equalityHandling == EqualityHandling::SimpleSlacks;
   const auto hasAnySlackedEqualities =
       hasFullySlackedEqualities || hasSimplySlackedEqualities;
+  const auto hasRegularizedEqualities =
+      settings.equalities &&
+      settings.equalityHandling == EqualityHandling::Regularization;
   const auto hasFullySlackedInequalities =
       settings.inequalities != Bounds::None &&
       settings.inequalityHandling == InequalityHandling::Slacks;
@@ -70,79 +77,14 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
       settings.inequalities != Bounds::None &&
       settings.inequalityHandling == InequalityHandling::SimpleSlacks;
 
-  if (settings.equalities) {
-    switch (settings.equalityHandling) {
-      case EqualityHandling::PenaltyFunction: {
-        const auto muTerm = product({number(0.5), invert(mu)});
-        terms.push_back(product({muTerm, transpose(CxMinusB), CxMinusB}));
-        break;
-      }
-      case EqualityHandling::PenaltyFunctionWithExtraVariable: {
-        variables.push_back(lambda_C);
-        terms.push_back(product({transpose(lambda_C), CxMinusB}));
-        const auto muTerm = product({number(0.5), mu});
-        terms.push_back(
-            negate(product({muTerm, transpose(lambda_C), lambda_C})));
-        break;
-      }
-      case EqualityHandling::Slacks:
-        terms.push_back(product({transpose(lambda_C), sum({Cx, negate(s_C)})}));
-        terms.push_back(negate(product(
-            {transpose(lambda_sCl), sum({s_C, negate(s_Cl), negate(b_eq)})})));
-        terms.push_back(
-            product({transpose(lambda_sCu), sum({s_C, s_Cu, negate(b_eq)})}));
-        break;
-      case EqualityHandling::SimpleSlacks:
-        terms.push_back(negate(product(
-            {transpose(lambda_sCl), sum({Cx, negate(s_Cl), negate(b_eq)})})));
-        terms.push_back(
-            product({transpose(lambda_sCu), sum({Cx, s_Cu, negate(b_eq)})}));
-        break;
-      case EqualityHandling::None: {
-        variables.push_back(lambda_C);
-        terms.push_back(product({transpose(lambda_C), CxMinusB}));
-        break;
-      }
-      default:
-        assert(false);
-    }
-  }
-  const auto addVariableIf = [&variables, &terms](bool condition,
-                                                  const Expression::Expr& var) {
-    if (condition) {
-      variables.push_back(var);
-    }
-  };
-
-  addVariableIf(hasFullySlackedEqualities, lambda_C);
-  addVariableIf(hasSimplySlackedEqualities, lambda_sCl);
-  addVariableIf(hasSimplySlackedEqualities, lambda_sCu);
-  addVariableIf(hasFullySlackedInequalities, lambda_A);
-  addVariableIf(hasSimplySlackedInequalities && addLowerInequalities,
-                lambda_sAl);
-  addVariableIf(hasSimplySlackedInequalities && addUpperInequalities,
-                lambda_sAu);
-  addVariableIf(hasFullySlackedEqualities, s_C);
-  addVariableIf(hasFullySlackedInequalities, s_A);
-  addVariableIf(hasFullySlackedEqualities, lambda_sCl);
-  addVariableIf(hasFullySlackedEqualities, lambda_sCu);
-  addVariableIf(hasFullySlackedInequalities && addLowerInequalities,
-                lambda_sAl);
-  addVariableIf(hasFullySlackedInequalities && addUpperInequalities,
-                lambda_sAu);
-
   if (hasFullySlackedInequalities) {
+    variables.push_back(lambda_A);
     terms.push_back(product({transpose(lambda_A), sum({Ax, negate(s_A)})}));
-  }
-
-  if (addLowerInequalities) {
-    if (settings.inequalityHandling == InequalityHandling::Slacks) {
+    if (addLowerInequalities) {
       terms.push_back(negate(product(
           {transpose(lambda_sAl), sum({s_A, negate(s_Al), negate(l_A)})})));
     }
-  }
-  if (addUpperInequalities) {
-    if (settings.inequalityHandling == InequalityHandling::Slacks) {
+    if (addUpperInequalities) {
       terms.push_back(
           product({transpose(lambda_sAu), sum({s_A, s_Au, negate(u_A)})}));
     }
@@ -252,13 +194,6 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
   }
 
   // Add log barriers
-  if (hasAnySlackedEqualities) {
-    variables.push_back(s_Cl);
-    terms.push_back(negate(product({mu, transpose(e), log({s_Cl})})));
-    variables.push_back(s_Cu);
-    terms.push_back(negate(product({mu, transpose(e), log({s_Cu})})));
-  }
-
   if (addLowerInequalities) {
     variables.push_back(s_Al);
     terms.push_back(negate(product({mu, transpose(e), log({s_Al})})));
@@ -348,6 +283,7 @@ Expression::Expr deltaDefinition(
   terms.reserve(lhsSourceRow.size());
   assert(lhsSourceRow.size() <= variables.size());
   for (size_t i = 0; i < lhsSourceRow.size(); ++i) {
+    assert(is<Variable>(variables.at(i)));
     auto deltaVariable =
         ExprFactory::variable("\\Delta " + variables.at(i).toString());
     terms.emplace_back(
@@ -359,8 +295,7 @@ Expression::Expr deltaDefinition(
 
   return ExprFactory::product(
              {ExprFactory::invert(sourceExpr),
-              ExprFactory::sum(
-                  {rhs.at(sourceRow), ExprFactory::negate(std::move(sum))})})
+              ExprFactory::sum({rhs.at(sourceRow), ExprFactory::negate(sum)})})
       .simplify();
 }
 
@@ -385,8 +320,8 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
         ExprFactory::negate(
             ExprFactory::product({targetExpr, ExprFactory::invert(sourceExpr)}))
             .simplify();
-    const auto addRowTimesFactorToRow = [&](const Expr& sourceTerm,
-                                            const Expr& targetTerm) {
+    const auto addRowTimesFactorToRow = [&factor](const Expr& sourceTerm,
+                                                  const Expr& targetTerm) {
       auto sourceTermTimesFactor =
           ExprFactory::product({factor, sourceTerm}).simplify();
       return ExprFactory::sum({targetTerm, std::move(sourceTermTimesFactor)})

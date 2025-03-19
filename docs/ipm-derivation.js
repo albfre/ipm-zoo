@@ -1,7 +1,7 @@
 let wasmModule;
 
 // When the page loads, initialize the module
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
   // Initialize the WASM module with debug logging
   console.log("Initializing WASM module...");
   SymbolicOptimizationModule().then(module => {
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }).catch(error => {
     console.error("Failed to initialize WASM module:", error);
   });
-
+  
   // Set up event listeners for inputs
   document.querySelectorAll('input').forEach(input => {
     input.addEventListener('change', updateProblem);
@@ -26,7 +26,9 @@ const A_ineq = "A"; // Inequality constraint matrix
 const l_A = "l_{A}"; // Inequality constraint lower bound
 const u_A = "u_{A}"; // Inequality constraint upper bound
 const A_eq = "C"; // Equality constraint matrix
-const b_eq = "b"; // Equality constraint right-hand side
+const b_eq = "d"; // Equality constraint right-hand side
+const p_eq = "p"; // Equality constraint regularization
+const delta_eq = "\\delta"; // Equality constraint regularization factor
 const l_x = "l_x"; // Primary variable lower bound
 const u_x = "u_x"; // Primary variable upper bound
 const s_A = "s"; // Slack variable for inequality constraint
