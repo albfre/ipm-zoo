@@ -8,6 +8,7 @@ add_library(SymbolicOptimization
     ToStringVisitor.h
     DifferentiationVisitor.h
     SimplificationVisitor.h
+    Timer.h
 )
 
 # Make include directories visible to other targets
