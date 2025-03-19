@@ -2,8 +2,6 @@
 
 #include <gtest/gtest.h>
 
-#include <chrono>
-
 using namespace Optimization;
 
 class OptimizationTest : public ::testing::Test {
@@ -99,86 +97,6 @@ TEST_F(OptimizationTest, GetShorthandRhs) {
   EXPECT_EQ(variables.size(), rhs.size());
   for (size_t i = 0; i < variables.size(); ++i) {
     EXPECT_EQ("-r_{" + variables[i].toString() + "}", rhs[i].toString());
-  }
-}
-
-TEST_F(OptimizationTest, GaussianElimination) {
-  auto settings = Settings();
-  auto names = VariableNames();
-  const auto now0 = std::chrono::high_resolution_clock::now();
-  auto [lagrangian, variables] = getLagrangian(names, settings);
-  const auto now = std::chrono::high_resolution_clock::now();
-  auto [lhs, _] = getNewtonSystem(lagrangian, variables);
-  const auto now2 = std::chrono::high_resolution_clock::now();
-  auto rhs = getShorthandRhs(variables);
-  std::chrono::milliseconds lagrangeCount =
-      std::chrono::duration_cast<std::chrono::milliseconds>(now - now0);
-  std::chrono::milliseconds newtonCount =
-      std::chrono::duration_cast<std::chrono::milliseconds>(now2 - now);
-
-  std::chrono::milliseconds gaussianCount =
-      std::chrono::duration_cast<std::chrono::milliseconds>(now - now);
-  std::chrono::milliseconds deltaCount =
-      std::chrono::duration_cast<std::chrono::milliseconds>(now - now);
-  while (lhs.size() > 1) {
-    std::string lhsStr = "";
-    const auto condensed = true;
-    for (const auto& row : lhs) {
-      for (size_t i = 0; i < row.size(); ++i) {
-        lhsStr +=
-            row[i].toString(condensed) + (i + 1 == row.size() ? "" : " & ");
-      }
-      lhsStr += "\\\\\n";
-    }
-
-    std::string rhsStr = "";
-    for (const auto& row : rhs) {
-      rhsStr += row.toString(condensed) + "\\\\\n";
-    }
-    std::cout << lhsStr << std::endl;
-    std::cout << rhsStr << std::endl;
-    std::cout << "\n\n";
-
-    std::cout << "delta def" << std::endl;
-    const auto d1 = std::chrono::high_resolution_clock::now();
-    auto deltaDefinition =
-        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
-    const auto d2 = std::chrono::high_resolution_clock::now();
-    deltaCount +=
-        std::chrono::duration_cast<std::chrono::milliseconds>(d2 - d1);
-    const auto begin = std::chrono::high_resolution_clock::now();
-
-    gaussianElimination(lhs, rhs, lhs.size() - 1);
-    const auto end = std::chrono::high_resolution_clock::now();
-    gaussianCount +=
-        std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-  }
-  std::cout << "get lagrange: " << lagrangeCount.count() << std::endl;
-  std::cout << "get newton : " << newtonCount.count() << std::endl;
-  std::cout << "gaussain time: " << gaussianCount.count() << std::endl;
-  std::cout << "delta time: " << deltaCount.count() << std::endl;
-}
-
-TEST_F(OptimizationTest, GetNewton) {
-  const auto variableNames = Optimization::VariableNames();
-  const auto settings = Optimization::Settings();
-  auto [lagrangian, variables] =
-      Optimization::getLagrangian(variableNames, settings);
-  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
-
-  auto i = 1;
-  rhs = Optimization::getShorthandRhs(variables);
-
-  std::vector<std::pair<Expression::Expr, Expression::Expr>>
-      variableDefinitions;
-  while (lhs.size() > i) {
-    auto deltaVariable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1).getName());
-    auto deltaDefinition =
-        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
-    variableDefinitions.push_back({deltaVariable, deltaDefinition});
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-    variables.pop_back();
   }
 }
 

@@ -232,9 +232,6 @@ Expr ExprFactory::symmetricMatrix(const std::string& name) {
 Expr ExprFactory::diagonalMatrix(Expr expr) {
   return Expr(DiagonalMatrix{std::make_unique<Expr>(std::move(expr))});
 }
-Expr ExprFactory::diagonalMatrix(Expr expr) {
-  return Expr(ExprType::DiagonalMatrix, {std::move(expr)});
-}
 Expr ExprFactory::transpose(Expr expr) {
   return Expr(Transpose{std::make_unique<Expr>(std::move(expr))});
 }
