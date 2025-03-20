@@ -4,7 +4,8 @@
 #include <memory>
 
 #include "Expression.h"
-#include "Optimization.h"
+#include "Helpers.h"
+#include "SymbolicOptimization.h"
 
 void initialTest() {
   using namespace Expression;
@@ -94,17 +95,19 @@ void printRhs(const std::vector<Expression::Expr>& rhs) {
 
 void runLagrangianTest() {
   using namespace Expression;
-  auto settings = Optimization::Settings();
-  settings.inequalityHandling = Optimization::InequalityHandling::SimpleSlacks;
+  auto settings = SymbolicOptimization::Settings();
+  settings.inequalityHandling =
+      SymbolicOptimization::InequalityHandling::SimpleSlacks;
 
-  const auto [lagrangian, variables] =
-      Optimization::getLagrangian(Optimization::VariableNames(), settings);
+  const auto [lagrangian, variables] = SymbolicOptimization::getLagrangian(
+      SymbolicOptimization::VariableNames(), settings);
   std::cout << "\nLagrangian: " << lagrangian.toString() << "\n";
 
   // Add timing around getNewtonSystem
   auto start = std::chrono::high_resolution_clock::now();
 
-  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+  auto [lhs, rhs] =
+      SymbolicOptimization::getNewtonSystem(lagrangian, variables);
 
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> duration = end - start;
@@ -115,30 +118,32 @@ void runLagrangianTest() {
 
   std::cout << "Rhs: " << std::endl;
   printRhs(rhs);
-  rhs = Optimization::getShorthandRhs(variables);
+  rhs = SymbolicOptimization::getShorthandRhs(variables);
 
   std::cout << "\n\n";
 
-  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  if (settings.inequalityHandling == Optimization::InequalityHandling::Slacks) {
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  if (settings.inequalityHandling ==
+      SymbolicOptimization::InequalityHandling::Slacks) {
+    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
   }
 
   std::cout << "Lhs matrix:" << std::endl;
   printLhs(lhs);
 
-  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-  if (settings.inequalityHandling == Optimization::InequalityHandling::Slacks) {
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+  if (settings.inequalityHandling ==
+      SymbolicOptimization::InequalityHandling::Slacks) {
+    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
   }
 
   while (lhs.size() > 1) {
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
   }
 
   std::cout << "Lhs matrix:" << std::endl;

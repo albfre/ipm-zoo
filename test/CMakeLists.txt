@@ -15,7 +15,8 @@ endif()
 # Define test sources
 set(TEST_SOURCES 
     Expression_test.cpp 
-    Optimization_test.cpp
+    SymbolicOptimization_test.cpp
+    Helpers_test.cpp
 )
 
 # Create test executables in a loop

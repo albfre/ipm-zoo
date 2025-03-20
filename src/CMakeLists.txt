@@ -2,8 +2,8 @@
 add_library(SymbolicOptimization
     Expression.cpp
     Expression.h
-    Optimization.cpp
-    Optimization.h
+    SymbolicOptimization.cpp
+    SymbolicOptimization.h
     Helpers.h
     ToStringVisitor.h
     DifferentiationVisitor.h

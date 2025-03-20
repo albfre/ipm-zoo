@@ -1,8 +1,8 @@
-#include "Optimization.h"
-
 #include <gtest/gtest.h>
 
-using namespace Optimization;
+#include "SymbolicOptimization.h"
+
+using namespace SymbolicOptimization;
 
 class OptimizationTest : public ::testing::Test {
  protected:
@@ -126,31 +126,28 @@ TEST_F(OptimizationTest, GaussianElimination) {
     std::cout << "\n\n";
 
     std::cout << "delta def" << std::endl;
-    auto deltaDefinition =
-        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    auto deltaDef = deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
     gaussianElimination(lhs, rhs, lhs.size() - 1);
   }
 }
 
 TEST_F(OptimizationTest, GetNewton) {
-  const auto variableNames = Optimization::VariableNames();
-  const auto settings = Optimization::Settings();
-  auto [lagrangian, variables] =
-      Optimization::getLagrangian(variableNames, settings);
-  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+  const auto variableNames = VariableNames();
+  const auto settings = Settings();
+  auto [lagrangian, variables] = getLagrangian(variableNames, settings);
+  auto [lhs, rhs] = getNewtonSystem(lagrangian, variables);
 
   auto i = 1;
-  rhs = Optimization::getShorthandRhs(variables);
+  rhs = getShorthandRhs(variables);
 
   std::vector<std::pair<Expression::Expr, Expression::Expr>>
       variableDefinitions;
   while (lhs.size() > i) {
     auto deltaVariable = Expression::ExprFactory::variable(
         "\\Delta " + variables.at(lhs.size() - 1).toString());
-    auto deltaDefinition =
-        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
-    variableDefinitions.push_back({deltaVariable, deltaDefinition});
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    auto deltaDef = deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    variableDefinitions.push_back({deltaVariable, deltaDef});
+    gaussianElimination(lhs, rhs, lhs.size() - 1);
     variables.pop_back();
   }
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include "Expression.h"
 
-namespace Optimization {
+namespace SymbolicOptimization {
 struct VariableNames {
   std::string x = "x";
   std::string A_eq = "C";
@@ -76,4 +76,4 @@ Expression::Expr deltaDefinition(
 
 void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
                          std::vector<Expression::Expr>& rhs, size_t sourceRow);
-}  // namespace Optimization
+}  // namespace SymbolicOptimization

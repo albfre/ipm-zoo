@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "Expression.h"
-#include "Optimization.h"
+#include "SymbolicOptimization.h"
 #include "Timer.h"
 
 using namespace emscripten;
@@ -28,12 +28,12 @@ struct NewtonSystemTriplet {
 };
 
 namespace {
-Optimization::Settings changePenaltyToPenaltyWithExtraVariables(
-    Optimization::Settings settings) {
+SymbolicOptimization::Settings changePenaltyToPenaltyWithExtraVariables(
+    SymbolicOptimization::Settings settings) {
   if (settings.equalityHandling ==
-      Optimization::EqualityHandling::PenaltyFunction) {
-    settings.equalityHandling =
-        Optimization::EqualityHandling::PenaltyFunctionWithExtraVariable;
+      SymbolicOptimization::EqualityHandling::PenaltyFunction) {
+    settings.equalityHandling = SymbolicOptimization::EqualityHandling::
+        PenaltyFunctionWithExtraVariable;
   }
   return settings;
 }
@@ -73,7 +73,7 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
     rhsStr += rowStr + " \\\\\n ";
   }
 
-  const auto rhsShorthand = Optimization::getShorthandRhs(variables);
+  const auto rhsShorthand = SymbolicOptimization::getShorthandRhs(variables);
   std::string rhsShorthandStr = "";
   for (const auto& row : rhsShorthand) {
     rhsShorthandStr += row.toString(condensed) + " \\\\\n ";
@@ -99,17 +99,18 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
 enum class NewtonSystemType { Full, Augmented, Normal };
 
 std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
-    const Optimization::Settings& settingsIn,
-    const Optimization::VariableNames& variableNames) {
+    const SymbolicOptimization::Settings& settingsIn,
+    const SymbolicOptimization::VariableNames& variableNames) {
   Timer timer;
   timer.start("getNewtonSystems");
   const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
   timer.start("getLagrangian");
   auto [lagrangian, variables] =
-      Optimization::getLagrangian(variableNames, settings);
+      SymbolicOptimization::getLagrangian(variableNames, settings);
   timer.stop("getLagrangian");
   timer.start("getNewtonSystem");
-  auto [lhs, rhs] = Optimization::getNewtonSystem(lagrangian, variables);
+  auto [lhs, rhs] =
+      SymbolicOptimization::getNewtonSystem(lagrangian, variables);
   timer.stop("getNewtonSystem");
 
   const auto augmentedSize = [&]() {
@@ -132,17 +133,17 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
   auto newtonSystem = formatNewtonSystemStrings_(
       lhs, rhs, variables, variableDefinitions, variableNames);
 
-  rhs = Optimization::getShorthandRhs(variables);
+  rhs = SymbolicOptimization::getShorthandRhs(variables);
   while (lhs.size() > augmentedSize) {
     auto deltaVariable = Expression::ExprFactory::variable(
         "\\Delta " + variables.at(lhs.size() - 1).toString());
     timer.start("deltaDefinition");
-    auto deltaDefinition =
-        Optimization::deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
+    auto deltaDefinition = SymbolicOptimization::deltaDefinition(
+        lhs, rhs, variables, lhs.size() - 1);
     timer.stop("deltaDefinition");
     variableDefinitions.push_back({deltaVariable, deltaDefinition});
     timer.start("gaussianElimination");
-    Optimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
     timer.stop("gaussianElimination");
     variables.pop_back();
   }
@@ -151,9 +152,10 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
 
   auto deltaVariable = Expression::ExprFactory::variable(
       "\\Delta " + variables.at(0).toString());
-  auto deltaDefinition = Optimization::deltaDefinition(lhs, rhs, variables, 0);
+  auto deltaDefinition =
+      SymbolicOptimization::deltaDefinition(lhs, rhs, variables, 0);
   variableDefinitions.push_back({deltaVariable, deltaDefinition});
-  Optimization::gaussianElimination(lhs, rhs, 0);
+  SymbolicOptimization::gaussianElimination(lhs, rhs, 0);
   variables.erase(variables.begin());
 
   timer.start("formatStrings");
@@ -167,10 +169,10 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
 }
 }  // namespace
 
-std::string getLagrangian(const Optimization::Settings& settings) {
-  const auto variableNames = Optimization::VariableNames();
+std::string getLagrangian(const SymbolicOptimization::Settings& settings) {
+  const auto variableNames = SymbolicOptimization::VariableNames();
   const auto [lagrangian, variables] =
-      Optimization::getLagrangian(variableNames, settings);
+      SymbolicOptimization::getLagrangian(variableNames, settings);
 
   const auto condensed = true;
   auto str = "& " + lagrangian.toString(condensed);
@@ -194,13 +196,13 @@ std::string getLagrangian(const Optimization::Settings& settings) {
 }
 
 std::string getFirstOrderOptimalityConditions(
-    const Optimization::Settings& settingsIn) {
-  const auto variableNames = Optimization::VariableNames();
+    const SymbolicOptimization::Settings& settingsIn) {
+  const auto variableNames = SymbolicOptimization::VariableNames();
   const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
   const auto [lagrangian, variables] =
-      Optimization::getLagrangian(variableNames, settings);
-  auto firstOrder =
-      Optimization::getFirstOrderOptimalityConditions(lagrangian, variables);
+      SymbolicOptimization::getLagrangian(variableNames, settings);
+  auto firstOrder = SymbolicOptimization::getFirstOrderOptimalityConditions(
+      lagrangian, variables);
   const auto condensed = true;
   std::string str = "";
   for (const auto& c : firstOrder) {
@@ -209,54 +211,61 @@ std::string getFirstOrderOptimalityConditions(
   return str;
 }
 
-NewtonSystemTriplet getNewtonSystems(const Optimization::Settings& settings) {
-  const auto variableNames = Optimization::VariableNames();
+NewtonSystemTriplet getNewtonSystems(
+    const SymbolicOptimization::Settings& settings) {
+  const auto variableNames = SymbolicOptimization::VariableNames();
   auto [full, augmented, normal] = getNewtonSystems_(settings, variableNames);
   return {full, augmented, normal};
 }
 
 // Alternatively, use embind for more direct JS-to-C++ bindings
 EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
-  class_<Optimization::VariableNames>("VariableNames")
+  class_<SymbolicOptimization::VariableNames>("VariableNames")
       .constructor<>()
-      .property("x", &Optimization::VariableNames::x)
-      .property("A_eq", &Optimization::VariableNames::A_eq)
-      .property("A_ineq", &Optimization::VariableNames::A_ineq)
-      .property("s_A", &Optimization::VariableNames::s_A)
-      .property("s_Al", &Optimization::VariableNames::s_Al)
-      .property("s_Au", &Optimization::VariableNames::s_Au)
-      .property("s_xl", &Optimization::VariableNames::s_xl)
-      .property("s_xu", &Optimization::VariableNames::s_xu)
-      .property("l_A", &Optimization::VariableNames::l_A)
-      .property("u_A", &Optimization::VariableNames::u_A)
-      .property("l_x", &Optimization::VariableNames::l_x)
-      .property("u_x", &Optimization::VariableNames::u_x);
+      .property("x", &SymbolicOptimization::VariableNames::x)
+      .property("A_eq", &SymbolicOptimization::VariableNames::A_eq)
+      .property("A_ineq", &SymbolicOptimization::VariableNames::A_ineq)
+      .property("s_A", &SymbolicOptimization::VariableNames::s_A)
+      .property("s_Al", &SymbolicOptimization::VariableNames::s_Al)
+      .property("s_Au", &SymbolicOptimization::VariableNames::s_Au)
+      .property("s_xl", &SymbolicOptimization::VariableNames::s_xl)
+      .property("s_xu", &SymbolicOptimization::VariableNames::s_xu)
+      .property("l_A", &SymbolicOptimization::VariableNames::l_A)
+      .property("u_A", &SymbolicOptimization::VariableNames::u_A)
+      .property("l_x", &SymbolicOptimization::VariableNames::l_x)
+      .property("u_x", &SymbolicOptimization::VariableNames::u_x);
 
-  enum_<Optimization::Bounds>("Bounds")
-      .value("None", Optimization::Bounds::None)
-      .value("Lower", Optimization::Bounds::Lower)
-      .value("Upper", Optimization::Bounds::Upper)
-      .value("Both", Optimization::Bounds::Both);
+  enum_<SymbolicOptimization::Bounds>("Bounds")
+      .value("None", SymbolicOptimization::Bounds::None)
+      .value("Lower", SymbolicOptimization::Bounds::Lower)
+      .value("Upper", SymbolicOptimization::Bounds::Upper)
+      .value("Both", SymbolicOptimization::Bounds::Both);
 
-  enum_<Optimization::InequalityHandling>("InequalityHandling")
-      .value("Slacks", Optimization::InequalityHandling::Slacks)
-      .value("SimpleSlacks", Optimization::InequalityHandling::SimpleSlacks);
+  enum_<SymbolicOptimization::InequalityHandling>("InequalityHandling")
+      .value("Slacks", SymbolicOptimization::InequalityHandling::Slacks)
+      .value("SimpleSlacks",
+             SymbolicOptimization::InequalityHandling::SimpleSlacks);
 
-  enum_<Optimization::EqualityHandling>("EqualityHandling")
-      .value("None", Optimization::EqualityHandling::None)
-      .value("Slacks", Optimization::EqualityHandling::Slacks)
-      .value("SimpleSlacks", Optimization::EqualityHandling::SimpleSlacks)
-      .value("PenaltyFunction", Optimization::EqualityHandling::PenaltyFunction)
-      .value("Regularization", Optimization::EqualityHandling::Regularization);
+  enum_<SymbolicOptimization::EqualityHandling>("EqualityHandling")
+      .value("None", SymbolicOptimization::EqualityHandling::None)
+      .value("Slacks", SymbolicOptimization::EqualityHandling::Slacks)
+      .value("SimpleSlacks",
+             SymbolicOptimization::EqualityHandling::SimpleSlacks)
+      .value("PenaltyFunction",
+             SymbolicOptimization::EqualityHandling::PenaltyFunction)
+      .value("Regularization",
+             SymbolicOptimization::EqualityHandling::Regularization);
 
-  class_<Optimization::Settings>("Settings")
+  class_<SymbolicOptimization::Settings>("Settings")
       .constructor<>()
-      .property("inequalities", &Optimization::Settings::inequalities)
-      .property("variableBounds", &Optimization::Settings::variableBounds)
-      .property("equalities", &Optimization::Settings::equalities)
-      .property("equalityHandling", &Optimization::Settings::equalityHandling)
+      .property("inequalities", &SymbolicOptimization::Settings::inequalities)
+      .property("variableBounds",
+                &SymbolicOptimization::Settings::variableBounds)
+      .property("equalities", &SymbolicOptimization::Settings::equalities)
+      .property("equalityHandling",
+                &SymbolicOptimization::Settings::equalityHandling)
       .property("inequalityHandling",
-                &Optimization::Settings::inequalityHandling);
+                &SymbolicOptimization::Settings::inequalityHandling);
 
   value_object<NewtonSystem>("NewtonSystem")
       .field("lhs", &NewtonSystem::lhs)

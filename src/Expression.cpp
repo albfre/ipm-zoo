@@ -31,6 +31,14 @@ bool operator==(const Expr& left, const Expr& right) {
   return (left <=> right) == std::strong_ordering::equal;
 }
 
+size_t ExprHash::operator()(const Expr& expr) const {
+  size_t indexHash = std::hash<size_t>{}(expr.getImpl().index());
+  size_t stringHash = std::hash<std::string>{}(expr.toExpressionString());
+
+  return indexHash ^
+         (stringHash + 0x9e3779b9 + (indexHash << 6) + (indexHash >> 2));
+}
+
 Expr::Expr(const Expr& other)
     : impl_(match(
           other,

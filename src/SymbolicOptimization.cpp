@@ -1,11 +1,11 @@
-#include "Optimization.h"
+#include "SymbolicOptimization.h"
 
 #include <cassert>
 #include <iostream>
 
 #include "Helpers.h"
 
-namespace Optimization {
+namespace SymbolicOptimization {
 std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
     const VariableNames& names, const Settings& settings) {
   using namespace Expression::ExprFactory;
@@ -340,4 +340,4 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
   }
   rhs.erase(rhs.begin() + sourceRow);
 }
-}  // namespace Optimization
+}  // namespace SymbolicOptimization
