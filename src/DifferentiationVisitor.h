@@ -65,16 +65,15 @@ struct DifferentiationVisitor {
 
       // Handle special case for transpose
       if (x.terms.size() > i + 1 &&
-          match(
-              xi,
+          match(xi).with(
               [&](const Transpose& y) {
-                return match(
-                    *y.child, [](const Matrix& z) { return false; },
+                return match(*y.child).with(
+                    [](const Matrix& z) { return false; },
                     [&](const auto& z) {
                       // xi is a transpose with a non-matrix child
-
-                      // d/dx(f(x)^T g(x)) = d/dx(f(x)^T) g(x) + d/dx(g(x))^T
-                      // f(x)
+                      // Its derivative is d/dx(f(x)^T g(x)) = d/dx(f(x)^T) g(x)
+                      // + d/dx(g(x))^T f(x)
+                      // where the first term has already been added above.
                       auto terms =
                           std::vector(x.terms.begin(), x.terms.begin() + i);
                       auto restTerm =

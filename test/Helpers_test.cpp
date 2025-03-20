@@ -30,16 +30,55 @@ TEST_F(HelpersTest, MatchFunction) {
   auto varExpr = ExprFactory::variable("x");
 
   // Test matching with Expr
-  auto matchResult1 = match(
-      numberExpr, [](const Number& n) { return n.value; },
-      [](const auto& _) { return 0.0; });
+  auto matchResult1 = match(numberExpr)
+                          .with([](const Number& n) { return n.value; },
+                                [](const auto& _) { return 0.0; });
   EXPECT_EQ(matchResult1, 42.0);
 
-  auto matchResult2 = match(
-      varExpr, [](const Number& n) { return "number"; },
-      [](const Variable& v) { return "variable"; },
-      [](const auto& _) { return "other"; });
+  auto matchResult2 =
+      match(varExpr).with([](const Number& n) { return "number"; },
+                          [](const Variable& v) { return "variable"; },
+                          [](const auto& _) { return "other"; });
   EXPECT_EQ(matchResult2, "variable");
+}
+
+TEST_F(HelpersTest, VariadicMatchFunction) {
+  // Test variadic match with multiple variants
+  std::variant<int, double> v1 = 10;
+  std::variant<std::string, bool> v2 = "hello";
+  std::variant<char, float> v3 = 'A';
+
+  const auto matcher = [&]() {
+    return match(v1, v2, v3)
+        .with(
+            [](int i, const std::string& s, char c) {
+              return std::string("int-string-char: ") + s + c +
+                     std::to_string(i);
+            },
+            [](double d, bool b, float f) {
+              return std::string("double-bool-float");
+            },
+            [](auto&&, auto&&, auto&&) {
+              return std::string("other combination");
+            });
+  };
+
+  // Match with three variants simultaneously
+  auto result = matcher();
+  EXPECT_EQ(result, "int-string-char: helloA10");
+
+  // Test with different variant values
+  v1 = 3.14;
+  v2 = true;
+  v3 = 2.5f;
+
+  auto result2 = matcher();
+  EXPECT_EQ(result2, "double-bool-float");
+
+  // Test with other combination
+  v3 = 'A';
+  auto result3 = matcher();
+  EXPECT_EQ(result3, "other combination");
 }
 
 TEST_F(HelpersTest, TypeChecking) {
@@ -80,25 +119,25 @@ TEST_F(HelpersTest, Transform) {
                              ExprFactory::number(3.0)};
 
   auto doubleValue = [](const Expr& e) {
-    return match(
-        e, [](const Number& n) { return ExprFactory::number(n.value * 2.0); },
+    return match(e).with(
+        [](const Number& n) { return ExprFactory::number(n.value * 2.0); },
         [&](const auto&) { return e; });
   };
 
   auto transformed = transform(terms, doubleValue);
 
   EXPECT_EQ(transformed.size(), terms.size());
-  EXPECT_EQ(match(
-                transformed[0], [](const Number& n) { return n.value; },
-                [](const auto& _) { return 0.0; }),
+  EXPECT_EQ(match(transformed[0])
+                .with([](const Number& n) { return n.value; },
+                      [](const auto& _) { return 0.0; }),
             2.0);
-  EXPECT_EQ(match(
-                transformed[1], [](const Number& n) { return n.value; },
-                [](const auto& _) { return 0.0; }),
+  EXPECT_EQ(match(transformed[1])
+                .with([](const Number& n) { return n.value; },
+                      [](const auto& _) { return 0.0; }),
             4.0);
-  EXPECT_EQ(match(
-                transformed[2], [](const Number& n) { return n.value; },
-                [](const auto& _) { return 0.0; }),
+  EXPECT_EQ(match(transformed[2])
+                .with([](const Number& n) { return n.value; },
+                      [](const auto& _) { return 0.0; }),
             6.0);
 }
 

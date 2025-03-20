@@ -40,8 +40,7 @@ size_t ExprHash::operator()(const Expr& expr) const {
 }
 
 Expr::Expr(const Expr& other)
-    : impl_(match(
-          other,
+    : impl_(match(other).with(
           [](const auto& val) -> ExprVariant
             requires is_unary_v<decltype(val)> {
               using ExprType = std::decay_t<decltype(val)>;
@@ -83,17 +82,17 @@ bool Expr::containsSubexpression(const Expr& expr) const {
   if (*this == expr) {
     return true;
   }
-  return match(
-      *this, ([&expr](const auto& x)
-                requires is_nary_v<decltype(x)> {
-                  return std::ranges::any_of(x.terms, [&expr](const auto& t) {
-                    return t.containsSubexpression(expr);
-                  });
-                }),
-              [&expr](const auto& x)
-                requires is_unary_v<decltype(x)>
-              { return x.child->containsSubexpression(expr); },
-              [](const auto&) { return false; });
+  return match(*this).with(([&expr](const auto& x)
+                              requires is_nary_v<decltype(x)> {
+                                return std::ranges::any_of(
+                                    x.terms, [&expr](const auto& t) {
+                                      return t.containsSubexpression(expr);
+                                    });
+                              }),
+                            [&expr](const auto& x)
+                              requires is_unary_v<decltype(x)>
+                            { return x.child->containsSubexpression(expr); },
+                            [](const auto&) { return false; });
 }
 
 Expr Expr::replaceSubexpression(const Expr& expr,
@@ -101,24 +100,22 @@ Expr Expr::replaceSubexpression(const Expr& expr,
   if (*this == expr) {
     return replacement;
   }
-  return match(
-      *this,
-      ([&](const auto& x)
-         requires is_nary_v<decltype(x)> {
-           using ExprType = std::decay_t<decltype(x)>;
-           auto terms =
-               transform(x.terms, [&expr, &replacement](const auto& t) {
-                 return t.replaceSubexpression(expr, replacement);
-               });
-           return Expr(ExprType{std::move(terms)});
-         }),
-       [&expr, &replacement](const auto& x)
-         requires is_unary_v<decltype(x)> {
-           using ExprType = std::decay_t<decltype(x)>;
-           auto replaced = x.child->replaceSubexpression(expr, replacement);
-           return Expr(ExprType{std::make_unique<Expr>(std::move(replaced))});
-         },
-       [&](const auto& x) { return *this; });
+  return match(*this).with((
+      [&](const auto& x)
+        requires is_nary_v<decltype(x)> {
+          using ExprType = std::decay_t<decltype(x)>;
+          auto terms = transform(x.terms, [&expr, &replacement](const auto& t) {
+            return t.replaceSubexpression(expr, replacement);
+          });
+          return Expr(ExprType{std::move(terms)});
+        }),
+      [&expr, &replacement](const auto& x)
+        requires is_unary_v<decltype(x)> {
+          using ExprType = std::decay_t<decltype(x)>;
+          auto replaced = x.child->replaceSubexpression(expr, replacement);
+          return Expr(ExprType{std::make_unique<Expr>(std::move(replaced))});
+        },
+      [&](const auto& x) { return *this; });
 }
 
 std::string Expr::toString(const bool condensed) const {
@@ -130,8 +127,7 @@ std::string Expr::toExpressionString() const {
 }
 
 Expr Expr::getLeadingOrEndingFactor(const bool leading) const {
-  return match(
-      *this,
+  return match(*this).with(
       [&](const Negate& x) {
         return x.child->getLeadingOrEndingFactor(leading);
       },
@@ -158,8 +154,7 @@ Expr Expr::factorOut(const Expr& factor, const bool leading) const {
   }
   assert(getLeadingOrEndingFactor(leading) == factor);
 
-  return match(
-      *this,
+  return match(*this).with(
       [&](const Negate& x) {
         return ExprFactory::negate(x.child->factorOut(factor, leading));
       },
@@ -188,8 +183,8 @@ Expr Expr::factorOut(const Expr& factor, const bool leading) const {
 }
 
 double Expr::complexity() const {
-  return match(
-      *this, [](const Number&) { return 0.5; },
+  return match(*this).with(
+      [](const Number&) { return 0.5; },
       ([](const auto& x)
          requires is_named_nullary_v<decltype(x)> { return 1.0; }),
        ([](const auto& x)
@@ -205,21 +200,20 @@ double Expr::complexity() const {
 
 std::set<Expr> Expr::getVariables() const {
   std::set<Expr> variables;
-  match(
-      *this, [&](const Variable& x) { variables.insert(*this); },
-      ([&](const auto& x)
-         requires is_nary_v<decltype(x)> {
-           for (const auto& t : x.terms) {
-             const auto v = t.getVariables();
-             variables.insert(v.begin(), v.end());
-           }
-         }),
-       [&](const auto& x)
-         requires is_unary_v<decltype(x)> {
-           const auto v = x.child->getVariables();
-           variables.insert(v.begin(), v.end());
-         },
-       [](const auto&) {});
+  match(*this).with([&](const Variable& x) { variables.insert(*this); },
+                    ([&](const auto& x)
+                       requires is_nary_v<decltype(x)> {
+                         for (const auto& t : x.terms) {
+                           const auto v = t.getVariables();
+                           variables.insert(v.begin(), v.end());
+                         }
+                       }),
+                     [&](const auto& x)
+                       requires is_unary_v<decltype(x)> {
+                         const auto v = x.child->getVariables();
+                         variables.insert(v.begin(), v.end());
+                       },
+                     [](const auto&) {});
   return variables;
 }
 

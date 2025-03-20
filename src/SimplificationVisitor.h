@@ -27,8 +27,8 @@ struct SimplificationVisitor {
     if (child == zero || child == unity) {
       return child;  // 0^T = 0, 1^T = 1
     }
-    return match(
-        child, [](const Transpose& x) { return *x.child; },  // (x^T)^T = x
+    return match(child).with(
+        [](const Transpose& x) { return *x.child; },  // (x^T)^T = x
         [&](const NamedScalar& x) { return child; },
         [&](const SymmetricMatrix& x) { return child; },
         [&](const DiagonalMatrix& x) { return child; },
@@ -58,8 +58,7 @@ struct SimplificationVisitor {
     if (child == zero) {  // -0 = 0
       return child;
     }
-    return match(
-        child,
+    return match(child).with(
         [](const Negate& x) { return *x.child; },  // negate(negate(x)) = x
         [&](const Product& x) {
           if (const auto it = std::ranges::find_if(x.terms, is<Negate>);
@@ -77,8 +76,8 @@ struct SimplificationVisitor {
             auto terms = std::vector<Expr>();
             terms.reserve(x.terms.size());
             for (const auto& t : x.terms) {
-              terms.emplace_back(match(
-                  t, [](const Negate& y) { return *y.child; },
+              terms.emplace_back(match(t).with(
+                  [](const Negate& y) { return *y.child; },
                   [&](const auto&) { return ExprFactory::negate(t); }));
             }
             return ExprFactory::sum(std::move(terms));
@@ -93,8 +92,7 @@ struct SimplificationVisitor {
     if (child == unity) {
       return child;
     }
-    return match(
-        child,
+    return match(child).with(
         [](const Invert& y) { return *y.child; },  // invert(invert(x)) = x
         [](const Negate& y) {
           // invert(negate(x)) = negate(invert(x))
@@ -123,8 +121,7 @@ struct SimplificationVisitor {
     std::vector<Expr> newTerms;
     newTerms.reserve(terms.size());
     for (auto& t : terms) {
-      match(
-          t,
+      match(t).with(
           [&](const Sum& x) {
             newTerms.insert(newTerms.end(), x.terms.begin(), x.terms.end());
           },
@@ -151,8 +148,7 @@ struct SimplificationVisitor {
         auto term = terms.at(i);
         const auto negTerm = ExprFactory::negate(term);
         const auto isNumberTimesTerm = [&term](const auto& t) -> bool {
-          return match(
-              t,
+          return match(t).with(
               [&term](const Product& x) {
                 return x.terms.size() == 2 && is<Number>(x.terms.front()) &&
                        x.terms.back() == term;
@@ -198,9 +194,8 @@ struct SimplificationVisitor {
     if (std::ranges::count_if(terms, is<Number>) > 1) {
       const auto value = std::accumulate(
           terms.cbegin(), terms.cend(), 0.0, [](const double s, const auto& t) {
-            return s + match(
-                           t, [](const Number& x) { return x.value; },
-                           [](const auto&) { return 0.0; });
+            return s + match(t).with([](const Number& x) { return x.value; },
+                                     [](const auto&) { return 0.0; });
           });
       std::erase_if(terms, is<Number>);
       terms.push_back(ExprFactory::number(value));
@@ -268,11 +263,12 @@ struct SimplificationVisitor {
                          {ExprFactory::sum(std::move(unfactoredTerms)),
                           std::move(factorTimesFactored)}))
                   .simplify(false);
-          match(
-              factoredExpr,
-              [&](Sum& x) { associativeTransformation_<Sum>(x.terms); },
-              [&](Product& x) { associativeTransformation_<Product>(x.terms); },
-              [&](auto&) {});
+          match(factoredExpr)
+              .with([&](Sum& x) { associativeTransformation_<Sum>(x.terms); },
+                    [&](Product& x) {
+                      associativeTransformation_<Product>(x.terms);
+                    },
+                    [&](auto&) {});
           if (factoredExpr.complexity() < simplified.complexity()) {
             return factoredExpr;
           }
@@ -340,8 +336,7 @@ struct SimplificationVisitor {
     // + w) = xy + xz + xw)
     if (distribute && terms.size() > 1) {
       for (size_t i = 0; i < terms.size(); ++i) {
-        if (match(
-                terms[i],
+        if (match(terms[i]).with(
                 [&](const Sum& x) {
                   const auto init =
                       std::vector<Expr>(terms.begin(), terms.begin() + i);
@@ -398,8 +393,7 @@ struct SimplificationVisitor {
     std::vector<Expr> newTerms;
     newTerms.reserve(terms.size());
     for (auto& t : terms) {
-      match(
-          t,
+      match(t).with(
           [&](const T& x) {
             newTerms.insert(newTerms.end(), x.terms.begin(), x.terms.end());
           },

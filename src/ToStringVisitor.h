@@ -24,8 +24,7 @@ struct ToStringVisitor {
 
   std::string operator()(const DiagonalMatrix& x) const {
     const auto& c = *x.child;
-    return match(
-        c,
+    return match(c).with(
         [](const Variable& x) {
           auto name = x.name;
           for (size_t i = 0; i < name.size(); ++i) {

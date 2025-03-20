@@ -21,8 +21,7 @@ template <typename T>
 inline constexpr bool is_variant_v = is_variant<T>::value;
 
 template <typename T>
-concept VariantType =
-    requires { requires is_variant_v<std::remove_cvref_t<T>>; };
+concept VariantType = is_variant_v<std::remove_cvref_t<T>>;
 
 // Helper templates for overloaded visitors
 template <class... Ts>
@@ -32,15 +31,32 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-template <VariantType Variant, typename... Lambdas>
-auto match(const Variant& var, Lambdas&&... lambdas) {
-  return std::visit(overloaded{std::forward<Lambdas>(lambdas)...}, var);
+// Helper that captures variants only
+template <VariantType... Variants>
+class MatchMaker {
+ public:
+  explicit MatchMaker(const Variants&... vars) : variants_(vars...) {}
+
+  template <typename... Lambdas>
+  auto with(Lambdas&&... lambdas) const {
+    return std::apply(
+        [&](const auto&... vars) {
+          return std::visit(overloaded{std::forward<Lambdas>(lambdas)...},
+                            vars...);
+        },
+        variants_);
+  }
+
+ private:
+  std::tuple<const Variants&...> variants_;
+};
+
+template <VariantType... Variants>
+auto match(const Variants&... variants) {
+  return MatchMaker<Variants...>(variants...);
 }
 
-template <typename... Lambdas>
-auto match(const Expr& var, Lambdas&&... lambdas) {
-  return match(var.getImpl(), std::forward<Lambdas>(lambdas)...);
-}
+inline auto match(const Expr& expr) { return match(expr.getImpl()); }
 
 // Helper template for static_assert that depends on a type
 template <typename T>
