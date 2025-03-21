@@ -7,7 +7,9 @@ add_library(SymbolicOptimization
     Helpers.h
     ToStringVisitor.h
     DifferentiationVisitor.h
+    DifferentiationVisitor.cpp
     SimplificationVisitor.h
+    SimplificationVisitor.cpp
     Evaluation.h
     Timer.h
     Timer.cpp
