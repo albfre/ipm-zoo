@@ -9,8 +9,6 @@
 namespace Expression {
 
 DifferentiationVisitor::DifferentiationVisitor(const Expr& var) : var_(var) {
-  std::cout << "test " << var.toString() << " " << is<Variable>(var)
-            << std::endl;
   ASSERT(is<Variable>(var));
 }
 
