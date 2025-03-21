@@ -1,8 +1,18 @@
 #include "DifferentiationVisitor.h"
 
+#include <algorithm>
+#include <iostream>
+#include <ranges>
+
+#include "Assert.h"
+
 namespace Expression {
 
-DifferentiationVisitor::DifferentiationVisitor(const Expr& var) : var_(var) {}
+DifferentiationVisitor::DifferentiationVisitor(const Expr& var) : var_(var) {
+  std::cout << "test " << var.toString() << " " << is<Variable>(var)
+            << std::endl;
+  ASSERT(is<Variable>(var));
+}
 
 Expr DifferentiationVisitor::operator()(const Variable& x) const {
   return Expr(x) == var_ ? unity : zero;
@@ -24,7 +34,7 @@ Expr DifferentiationVisitor::operator()(const Negate& x) const {
 
 // Inverse: Not yet implemented
 Expr DifferentiationVisitor::operator()(const Invert& x) const {
-  assert(false);  // Not implemented
+  ASSERT(false);  // Not implemented
   return zero;
 }
 

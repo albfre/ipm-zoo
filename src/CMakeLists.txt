@@ -20,8 +20,8 @@ target_include_directories(SymbolicOptimization PUBLIC ${CMAKE_CURRENT_SOURCE_DI
 
 # Create main executable for native builds
 if(NOT EMSCRIPTEN)
-    add_executable(ipmZoo ipmZoo.cpp)
-    target_link_libraries(ipmZoo PRIVATE SymbolicOptimization)
+    add_executable(IpmZoo IpmZoo.cpp)
+    target_link_libraries(IpmZoo PRIVATE SymbolicOptimization)
 else()
     # Create the WebAssembly bindings
     add_executable(symbolicOptimizationWasm wasm_bindings.cpp)

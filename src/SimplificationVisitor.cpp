@@ -1,7 +1,11 @@
 #include "SimplificationVisitor.h"
 
-#include <cassert>
+#include <algorithm>
 #include <map>
+#include <numeric>
+#include <ranges>
+
+#include "Assert.h"
 
 namespace Expression {
 
@@ -27,7 +31,7 @@ Expr SimplificationVisitor::operator()(const Transpose& x) const {
       [&](const SymmetricMatrix& x) { return child; },
       [&](const DiagonalMatrix& x) { return child; },
       [&](const Invert& x) {
-        assert(is<DiagonalMatrix>(*x.child));
+        ASSERT(is<DiagonalMatrix>(*x.child));
         return child;
       },
       [this](const Negate& x) {

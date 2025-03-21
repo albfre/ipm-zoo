@@ -1,4 +1,3 @@
-#include <cassert>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -18,11 +17,12 @@ void initialTest() {
   auto y = ExprFactory::variable("y");
   auto z = ExprFactory::variable("z");
   auto a = ExprFactory::variable("a");
+  auto constant = ExprFactory::namedScalar("constant");
 
   {
     std::cout << "x^T a and a^T x" << std::endl;
     auto t1 = ExprFactory::product({ExprFactory::transpose(x), a});
-    auto t2 = ExprFactory::product({ExprFactory::transpose(a), x});
+    auto t2 = ExprFactory::product({ExprFactory::transpose(a), x, constant});
     std::cout << t1.differentiate(x).simplify().toString() << std::endl;
     std::cout << t2.differentiate(x).simplify().toString() << std::endl;
   }
@@ -155,7 +155,7 @@ void runLagrangianTest() {
 
 int main(int argc, char* argv[]) {
   // Check if we have any command line arguments
-  // initialTest();
+  initialTest();
 
   if (argc > 1) {
     std::string arg = argv[1];

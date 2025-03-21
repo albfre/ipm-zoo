@@ -1,7 +1,6 @@
 ﻿#include "Expression.h"
 
 #include <algorithm>
-#include <cassert>
 #include <iostream>
 #include <map>
 #include <numeric>
@@ -9,6 +8,7 @@
 #include <set>
 #include <sstream>
 
+#include "Assert.h"
 #include "DifferentiationVisitor.h"
 #include "Helpers.h"
 #include "SimplificationVisitor.h"
@@ -152,7 +152,7 @@ Expr Expr::factorOut(const Expr& factor, const bool leading) const {
   if (factor == *this) {
     return unity;
   }
-  assert(getLeadingOrEndingFactor(leading) == factor);
+  ASSERT(getLeadingOrEndingFactor(leading) == factor);
 
   return match(*this).with(
       [&](const Negate& x) {
@@ -173,11 +173,11 @@ Expr Expr::factorOut(const Expr& factor, const bool leading) const {
             return ExprFactory::product(std::move(terms));
           }
         }
-        assert(false);  // Should not be reached
+        ASSERT(false);  // Should not be reached
         return *this;
       },
       [&](const auto& x) {
-        assert(false);
+        ASSERT(false);
         return *this;
       });
 }
