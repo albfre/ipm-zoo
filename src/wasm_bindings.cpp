@@ -101,7 +101,7 @@ enum class NewtonSystemType { Full, Augmented, Normal };
 std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
     const SymbolicOptimization::Settings& settingsIn,
     const SymbolicOptimization::VariableNames& variableNames) {
-  Timer timer;
+  Util::Timer timer;
   timer.start("getNewtonSystems");
   const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
   timer.start("getLagrangian");

@@ -31,12 +31,13 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-// Helper that captures variants only
+// Helper that captures variants
 template <VariantType... Variants>
 class MatchMaker {
  public:
   explicit MatchMaker(const Variants&... vars) : variants_(vars...) {}
 
+  // With function to capture the lambdas
   template <typename... Lambdas>
   auto with(Lambdas&&... lambdas) const {
     return std::apply(
