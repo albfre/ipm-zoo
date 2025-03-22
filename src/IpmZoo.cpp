@@ -4,6 +4,7 @@
 #include <memory>
 #include <sstream>
 
+#include "Evaluation.h"
 #include "Expression.h"
 #include "Helpers.h"
 #include "SymbolicOptimization.h"
@@ -203,6 +204,134 @@ void runOptimizationExample() {
             << std::endl;
 }
 
+void runEvaluationExample() {
+  using namespace Expression;
+  using namespace Evaluation;
+
+  printHeader("Numerical Evaluation Example");
+
+  // Create some symbolic expressions
+  auto x = ExprFactory::variable("x");
+  auto y = ExprFactory::variable("y");
+  auto z = ExprFactory::variable("z");
+  auto A = ExprFactory::matrix("A");
+  auto B = ExprFactory::symmetricMatrix("B");
+  auto Q = ExprFactory::symmetricMatrix("Q");
+  auto c = ExprFactory::namedScalar("c");
+
+  printSubHeader("Setting Up Evaluation Environment");
+  std::cout << "Creating an environment with concrete values for variables:"
+            << std::endl;
+
+  // Create evaluation environment and populate with values
+  Environment env;
+
+  // Vector x = [1, 2, 3]
+  env[x] = valVector({1.0, 2.0, 3.0});
+  std::cout << "  x = [1, 2, 3]" << std::endl;
+
+  // Vector y = [4, 5, 6]
+  env[y] = valVector({4.0, 5.0, 6.0});
+  std::cout << "  y = [4, 5, 6]" << std::endl;
+
+  // Scalar c = 2.5
+  env[c] = valScalar(2.5);
+  std::cout << "  c = 2.5" << std::endl;
+
+  // Matrix A = [[1, 2], [3, 4], [5, 6]]
+  ValMatrix matrixA = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
+  env[A] = matrixA;
+  std::cout << "  A = [[1, 2], [3, 4], [5, 6]]" << std::endl;
+
+  // Symmetric matrix Q = [[1, 2, 3], [2, 4, 5], [3, 5, 6]]
+  ValMatrix matrixQ = {{1.0, 2.0, 3.0}, {2.0, 4.0, 5.0}, {3.0, 5.0, 6.0}};
+  env[Q] = matrixQ;
+  std::cout << "  Q = [[1, 2, 3], [2, 4, 5], [3, 5, 6]]" << std::endl;
+
+  // Example 1: Vector dot product x^T y
+  printSubHeader("Example 1: Vector Dot Product");
+  auto dotProduct = ExprFactory::product({ExprFactory::transpose(x), y});
+  std::cout << "Expression: " << dotProduct.toString() << std::endl;
+
+  auto result1 = evaluate(dotProduct, env);
+  std::cout << "Result: ";
+  if (std::holds_alternative<ValScalar>(result1)) {
+    std::cout << std::get<ValScalar>(result1) << std::endl;
+  } else {
+    std::cout << "Error: Expected scalar result" << std::endl;
+  }
+  std::cout << "Expected: 1*4 + 2*5 + 3*6 = 32" << std::endl;
+
+  // Example 2: Scaled vector c * x
+  printSubHeader("Example 2: Scaled Vector");
+  auto scaledVector = ExprFactory::product({c, x});
+  std::cout << "Expression: " << scaledVector.toString() << std::endl;
+
+  auto result2 = evaluate(scaledVector, env);
+  std::cout << "Result: [";
+  if (std::holds_alternative<ValVector>(result2)) {
+    const auto& vec = std::get<ValVector>(result2);
+    for (size_t i = 0; i < vec.size(); ++i) {
+      std::cout << vec[i] << (i < vec.size() - 1 ? ", " : "");
+    }
+  }
+  std::cout << "]" << std::endl;
+  std::cout << "Expected: [2.5*1, 2.5*2, 2.5*3] = [2.5, 5.0, 7.5]" << std::endl;
+
+  // Example 3: Quadratic form x^T Q x
+  printSubHeader("Example 3: Quadratic Form");
+  auto quadraticForm = ExprFactory::product({ExprFactory::transpose(x), Q, x});
+  std::cout << "Expression: " << quadraticForm.toString() << std::endl;
+
+  auto result3 = evaluate(quadraticForm, env);
+  std::cout << "Result: ";
+  if (std::holds_alternative<ValScalar>(result3)) {
+    std::cout << std::get<ValScalar>(result3) << std::endl;
+  } else {
+    std::cout << "Error: Expected scalar result" << std::endl;
+  }
+  std::cout << "Expected: x^T Q x = 1*1*1 + 1*2*2 + 1*3*3 + 2*2*1 + 2*4*2 + "
+               "2*5*3 + 3*3*1 + 3*5*2 + 3*6*3 = 83"
+            << std::endl;
+
+  // Example 4: Matrix-vector product A * y
+  printSubHeader("Example 4: Matrix-Vector Product");
+  auto matrixVectorProduct = ExprFactory::product({A, x});
+  std::cout << "Expression: " << matrixVectorProduct.toString() << std::endl;
+
+  auto result4 = evaluate(matrixVectorProduct, env);
+  std::cout << "Result: [";
+  if (std::holds_alternative<ValVector>(result4)) {
+    const auto& vec = std::get<ValVector>(result4);
+    for (size_t i = 0; i < vec.size(); ++i) {
+      std::cout << vec[i] << (i < vec.size() - 1 ? ", " : "");
+    }
+  }
+  std::cout << "]" << std::endl;
+  std::cout << "Expected: [1*1+2*2, 3*1+4*2, 5*1+6*2] = [5, 11, 17]"
+            << std::endl;
+
+  // Example 5: Complex expression combining multiple operations
+  printSubHeader("Example 5: Complex Expression");
+  // 0.5 * x^T Q x + c * y^T x
+  auto complexExpr = ExprFactory::sum(
+      {ExprFactory::product(
+           {ExprFactory::number(0.5), ExprFactory::transpose(x), Q, x}),
+       ExprFactory::product({c, ExprFactory::transpose(y), x})});
+
+  std::cout << "Expression: " << complexExpr.toString() << std::endl;
+  std::cout << "Simplified: " << complexExpr.simplify().toString() << std::endl;
+
+  auto result5 = evaluate(complexExpr, env);
+  std::cout << "Result: ";
+  if (std::holds_alternative<ValScalar>(result5)) {
+    std::cout << std::get<ValScalar>(result5) << std::endl;
+  } else {
+    std::cout << "Error: Expected scalar result" << std::endl;
+  }
+  std::cout << "Expected: 0.5 * 83 + 2.5 * 32 = 41.5 + 80 = 121.5" << std::endl;
+}
+
 void printUsage() {
   std::cout << "Usage: IpmZoo [option]" << std::endl;
   std::cout << "Options:" << std::endl;
@@ -210,6 +339,7 @@ void printUsage() {
   std::cout << "  -b, --basic    : Run basic expression examples" << std::endl;
   std::cout << "  -o, --optimize : Run symbolic optimization example"
             << std::endl;
+  std::cout << "  -e, --evaluate : Run evaluation example" << std::endl;
   std::cout << "  (no options)   : Run all examples" << std::endl;
 }
 
@@ -224,6 +354,9 @@ int main(int argc, char* argv[]) {
       return 0;
     } else if (arg == "-o" || arg == "--optimize") {
       runOptimizationExample();
+      return 0;
+    } else if (arg == "-e" || arg == "--evaluate") {
+      runEvaluationExample();
       return 0;
     } else {
       std::cout << "Unknown option: " << arg << std::endl;
@@ -247,6 +380,7 @@ int main(int argc, char* argv[]) {
 
   runBasicExamples();
   runOptimizationExample();
+  runEvaluationExample();
 
   std::cout << "\nDone!" << std::endl;
 
