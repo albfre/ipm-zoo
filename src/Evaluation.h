@@ -30,12 +30,11 @@ EvalResult unaryOp(const EvalResult& x,
                    const std::function<double(double)>& lambda);
 
 // Template for element-wise binary operations on evaluation results
-EvalResult elementwiseOp(const EvalResult& a, const EvalResult& b,
+EvalResult elementwiseOp(const EvalResult& x, const EvalResult& y,
                          const std::function<double(double, double)>& lambda);
 
 // Vector and matrix operations
 ValScalar dot(const ValVector& x, const ValVector& y);
-EvalResult matrixVectorProduct(const ValMatrix& m, const ValVector& v);
 EvalResult product(const EvalResult& x, const EvalResult& y,
                    std::vector<EvalResult>& unhandled);
 
