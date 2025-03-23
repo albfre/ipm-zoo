@@ -1,18 +1,10 @@
 # Create SymbolicOptimization library
 add_library(SymbolicOptimization
     Expression.cpp
-    Expression.h
     SymbolicOptimization.cpp
-    SymbolicOptimization.h
-    Helpers.h
-    ToStringVisitor.h
-    DifferentiationVisitor.h
     DifferentiationVisitor.cpp
-    SimplificationVisitor.h
     SimplificationVisitor.cpp
-    Evaluation.h
     Evaluation.cpp
-    Timer.h
     Timer.cpp
 )
 

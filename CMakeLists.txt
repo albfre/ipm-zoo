@@ -48,8 +48,8 @@ if(EMSCRIPTEN)
   string(REPLACE ";" " " EMSCRIPTEN_LINK_FLAGS "${EMSCRIPTEN_COMMON_FLAGS}")
   
   # Set these flags for linking
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${EMSCRIPTEN_LINK_FLAGS}")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${EMSCRIPTEN_LINK_FLAGS}")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " ${EMSCRIPTEN_LINK_FLAGS}")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " ${EMSCRIPTEN_LINK_FLAGS}")
   
   # Disable testing for WebAssembly build
   set(BUILD_TESTING OFF)
@@ -58,6 +58,9 @@ else()
   # Enable testing for native build
   enable_testing()
 endif()
+
+# Add include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Add source directory
 add_subdirectory(src)
