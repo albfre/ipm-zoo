@@ -11,6 +11,7 @@ add_library(SymbolicOptimization
     SimplificationVisitor.h
     SimplificationVisitor.cpp
     Evaluation.h
+    Evaluation.cpp
     Timer.h
     Timer.cpp
 )
