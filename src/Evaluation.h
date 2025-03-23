@@ -27,6 +27,8 @@ using Environment = std::map<Expression::Expr, EvalResult>;
 
 // Forward declarations
 ValScalar dot(const ValVector& x, const ValVector& y);
+EvalResult product(const EvalResult& x, const EvalResult& y,
+                   std::vector<EvalResult>& unhandled);
 EvalResult matrixVectorProduct(const ValMatrix& m, const ValVector& v);
 EvalResult negate(const EvalResult& x);
 EvalResult invert(const EvalResult& x);
@@ -108,36 +110,47 @@ EvalResult evaluate(const Expression::Expr& expr, Environment& env) {
       },
       [&](const Product& x) {
         auto res = evaluate(x.terms.at(0), env);
-        return res;
+        std::vector<EvalResult> unhandled;
         for (const auto& term : x.terms | std::views::drop(1)) {
           const auto next = evaluate(term, env);
-          res = match(res, next).with(
-              [](const ValScalar& a, const auto& b) {
-                return unaryOp(b, [&](const auto& bi) { return a * bi; });
-              },
-              [](const ValVector& a, const ValVector& b) -> EvalResult {
-                return dot(a, b);
-              },
-              [](const auto& a, const auto& b)
-                requires(is_vector_or_diag_v<decltype(a)> &&
-                         is_vector_or_diag_v<decltype(b)>)
-              { return elementwiseMultiply(a, b); },
-              [](const ValMatrix& a, const ValVector& b) {
-                return matrixVectorProduct(a, b);
-              },
-              [](const ValVector& a, const ValMatrix& b) -> EvalResult {
-                ASSERT(false);
-                return a;
-              },
-              [](const auto& a, const auto& b) -> EvalResult {
-                ASSERT(false);
-                return a;
-              });
+          res = product(res, next, unhandled);
         }
+        std::ranges::reverse(unhandled);
+        std::vector<EvalResult> unhandled2;
+        for (auto& init : unhandled) {
+          res = product(init, res, unhandled2);
+        }
+        ASSERT(unhandled2.empty());
         return res;
       });
   env[expr] = res;
   return res;
+}
+
+EvalResult product(const EvalResult& x, const EvalResult& y,
+                   std::vector<EvalResult>& unhandled) {
+  return Expression::match(x, y).with(
+      [](const ValScalar& a, const auto& b) {
+        return unaryOp(b, [&](const auto& bi) { return a * bi; });
+      },
+      [](const ValVector& a, const ValVector& b) -> EvalResult {
+        return dot(a, b);
+      },
+      [](const auto& a, const auto& b)
+        requires(is_vector_or_diag_v<decltype(a)> &&
+                 is_vector_or_diag_v<decltype(b)>)
+      { return elementwiseMultiply(a, b); },
+      [](const ValMatrix& a, const ValVector& b) {
+        return matrixVectorProduct(a, b);
+      },
+      [&](const ValVector& a, const ValMatrix& b) -> EvalResult {
+        unhandled.push_back(a);
+        return b;
+      },
+      [](const auto& a, const auto& b) -> EvalResult {
+        ASSERT(false);
+        return a;
+      });
 }
 
 EvalResult matrixVectorProduct(const ValMatrix& m, const ValVector& v) {

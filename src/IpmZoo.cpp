@@ -238,10 +238,12 @@ void runEvaluationExample() {
   env[c] = valScalar(2.5);
   std::cout << "  c = 2.5" << std::endl;
 
-  // Matrix A = [[1, 2], [3, 4], [5, 6]]
-  ValMatrix matrixA = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
+  // Matrix A = [[1, 2, 3], [3, 4, 5], [5, 6, 7], [7, 8, 9]]
+  ValMatrix matrixA = {
+      {1.0, 2.0, 3.0}, {3.0, 4.0, 5.0}, {5.0, 6.0, 7.0}, {7.0, 8.0, 9.0}};
   env[A] = matrixA;
-  std::cout << "  A = [[1, 2], [3, 4], [5, 6]]" << std::endl;
+  std::cout << "  A = [[1, 2, 3], [3, 4, 5], [5, 6, 7], [7, 8, 9]]"
+            << std::endl;
 
   // Symmetric matrix Q = [[1, 2, 3], [2, 4, 5], [3, 5, 6]]
   ValMatrix matrixQ = {{1.0, 2.0, 3.0}, {2.0, 4.0, 5.0}, {3.0, 5.0, 6.0}};
@@ -255,10 +257,11 @@ void runEvaluationExample() {
 
   auto result1 = evaluate(dotProduct, env);
   std::cout << "Result: ";
-  if (std::holds_alternative<ValScalar>(result1)) {
+  if (is<ValScalar>(result1)) {
     std::cout << std::get<ValScalar>(result1) << std::endl;
   } else {
-    std::cout << "Error: Expected scalar result" << std::endl;
+    std::cout << "Error: Expected scalar result but was " << result1.index()
+              << std::endl;
   }
   std::cout << "Expected: 1*4 + 2*5 + 3*6 = 32" << std::endl;
 
@@ -269,7 +272,7 @@ void runEvaluationExample() {
 
   auto result2 = evaluate(scaledVector, env);
   std::cout << "Result: [";
-  if (std::holds_alternative<ValVector>(result2)) {
+  if (is<ValVector>(result2)) {
     const auto& vec = std::get<ValVector>(result2);
     for (size_t i = 0; i < vec.size(); ++i) {
       std::cout << vec[i] << (i < vec.size() - 1 ? ", " : "");
@@ -285,30 +288,32 @@ void runEvaluationExample() {
 
   auto result3 = evaluate(quadraticForm, env);
   std::cout << "Result: ";
-  if (std::holds_alternative<ValScalar>(result3)) {
+  if (is<ValScalar>(result3)) {
     std::cout << std::get<ValScalar>(result3) << std::endl;
   } else {
     std::cout << "Error: Expected scalar result" << std::endl;
   }
   std::cout << "Expected: x^T Q x = 1*1*1 + 1*2*2 + 1*3*3 + 2*2*1 + 2*4*2 + "
-               "2*5*3 + 3*3*1 + 3*5*2 + 3*6*3 = 83"
+               "2*5*3 + 3*3*1 + 3*5*2 + 3*6*3 = 157"
             << std::endl;
 
-  // Example 4: Matrix-vector product A * y
+  // Example 4: Matrix-vector product A * x
   printSubHeader("Example 4: Matrix-Vector Product");
   auto matrixVectorProduct = ExprFactory::product({A, x});
   std::cout << "Expression: " << matrixVectorProduct.toString() << std::endl;
+  ASSERT(is<ValVector>(env.at(x)));
 
   auto result4 = evaluate(matrixVectorProduct, env);
   std::cout << "Result: [";
-  if (std::holds_alternative<ValVector>(result4)) {
+  if (is<ValVector>(result4)) {
     const auto& vec = std::get<ValVector>(result4);
     for (size_t i = 0; i < vec.size(); ++i) {
       std::cout << vec[i] << (i < vec.size() - 1 ? ", " : "");
     }
   }
   std::cout << "]" << std::endl;
-  std::cout << "Expected: [1*1+2*2, 3*1+4*2, 5*1+6*2] = [5, 11, 17]"
+  std::cout << "Expected: [1*1+2*2+3*3, 3*1+4*2+5*3, 5*1+6*2+7*3, 7*1+8*2+9*3] "
+               "= [14, 26, 38, 50]"
             << std::endl;
 
   // Example 5: Complex expression combining multiple operations
@@ -324,12 +329,13 @@ void runEvaluationExample() {
 
   auto result5 = evaluate(complexExpr, env);
   std::cout << "Result: ";
-  if (std::holds_alternative<ValScalar>(result5)) {
+  if (is<ValScalar>(result5)) {
     std::cout << std::get<ValScalar>(result5) << std::endl;
   } else {
     std::cout << "Error: Expected scalar result" << std::endl;
   }
-  std::cout << "Expected: 0.5 * 83 + 2.5 * 32 = 41.5 + 80 = 121.5" << std::endl;
+  std::cout << "Expected: 0.5 * 157 + 2.5 * 32 = 78.5 + 80 = 158.5"
+            << std::endl;
 }
 
 void printUsage() {
