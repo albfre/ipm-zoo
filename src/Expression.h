@@ -72,7 +72,7 @@ class Expr {
   std::set<Expr> getVariables() const;
 
  private:
-  std::shared_ptr<ExprVariant> impl_;
+  std::shared_ptr<const ExprVariant> impl_;
 };
 
 std::strong_ordering operator<=>(const Expr& left, const Expr& right);
