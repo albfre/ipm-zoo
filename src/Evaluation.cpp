@@ -110,15 +110,16 @@ EvalResult unaryOp(const EvalResult& x,
 
 EvalResult elementwiseOp(const EvalResult& x, const EvalResult& y,
                          const std::function<double(double, double)>& lambda) {
-  const auto elementwiseVecOp = [&lambda](auto& v, const auto& a,
-                                          const auto& b) {
+  constexpr auto elementwiseVecOp = [](auto& v, const auto& a, const auto& b,
+                                       const auto& lambda) {
     ASSERT(a.size() == b.size());
     for (size_t i = 0; i < v.size(); ++i) {
       v[i] = lambda(a[i], b[i]);
     }
     return v;
   };
-  const auto elementwiseDiagMatOp = [&lambda](const auto& m, const auto& d) {
+  constexpr auto elementwiseDiagMatOp = [](const auto& m, const auto& d,
+                                           const auto& lambda) {
     ASSERT(m.size() == d.size());
     auto newMat = m;
     for (size_t i = 0; i < m.size(); ++i) {
@@ -128,28 +129,26 @@ EvalResult elementwiseOp(const EvalResult& x, const EvalResult& y,
   };
 
   return Expression::match(x, y).with(
-      [&](const ValScalar& a, const ValScalar& b) -> EvalResult {
+      [&lambda](const ValScalar& a, const ValScalar& b) -> EvalResult {
         return lambda(a, b);
       },
       [&](const ValDiagMatrix& a, const ValDiagMatrix& b) -> EvalResult {
         auto v = ValDiagMatrix(b.size());
-        return elementwiseVecOp(v, a, b);
+        return elementwiseVecOp(v, a, b, lambda);
       },
-      [&](const ValVector& a, const ValDiagMatrix& b) -> EvalResult {
-        auto v = ValVector(b.size());
-        return elementwiseVecOp(v, a, b);
-      },
-      [&](const ValDiagMatrix& a, const ValVector& b) -> EvalResult {
-        auto v = ValVector(b.size());
-        return elementwiseVecOp(v, a, b);
-      },
+      [&](const auto& a, const auto& b) -> EvalResult
+        requires(is_vector_or_diag_v<decltype(a)> &&
+                 is_vector_or_diag_v<decltype(b)>) {
+          auto v = ValVector(b.size());
+          return elementwiseVecOp(v, a, b, lambda);
+        },
       [&](const ValMatrix& a, const ValDiagMatrix& b) -> EvalResult {
-        return elementwiseDiagMatOp(a, b);
+        return elementwiseDiagMatOp(a, b, lambda);
       },
       [&](const ValDiagMatrix& a, const ValMatrix& b) -> EvalResult {
-        return elementwiseDiagMatOp(b, a);
+        return elementwiseDiagMatOp(b, a, lambda);
       },
-      [&](const ValMatrix& a, const ValMatrix& b) -> EvalResult {
+      [&lambda](const ValMatrix& a, const ValMatrix& b) -> EvalResult {
         ASSERT(a.size() == b.size());
         auto v = ValMatrix(a.size(), ValVector(a.empty() ? 0 : a.at(0).size()));
         for (size_t i = 0; i < a.size(); ++i) {
