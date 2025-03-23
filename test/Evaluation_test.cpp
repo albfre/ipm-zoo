@@ -4,6 +4,7 @@
 
 #include <cmath>
 
+#include "Assert.h"
 #include "Expression.h"
 #include "Helpers.h"
 
@@ -182,7 +183,7 @@ TEST_F(EvaluationTest, EvaluationErrorHandling) {
   env[inconsistent] = valVector({1.0, 2.0});  // Different size than x
 
   auto badDot = ExprFactory::product({ExprFactory::transpose(x), inconsistent});
-  EXPECT_THROW(evaluate(badDot, env), std::logic_error);
+  EXPECT_THROW(evaluate(badDot, env), AssertionError);
 }
 
 TEST_F(EvaluationTest, ElementwiseOperations) {

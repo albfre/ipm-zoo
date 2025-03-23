@@ -76,6 +76,7 @@ class Expr {
 
 std::strong_ordering operator<=>(const Expr& left, const Expr& right);
 bool operator==(const Expr& left, const Expr& right);
+std::ostream& operator<<(std::ostream& os, const Expr& expr);
 struct ExprHash {
   std::size_t operator()(const Expr& expr) const;
 };

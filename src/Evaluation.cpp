@@ -11,9 +11,8 @@ namespace Evaluation {
 
 namespace {
 template <typename T>
-constexpr bool is_vector_or_diag_v =
-    std::is_same_v<std::decay_t<T>, ValVector> ||
-    std::is_same_v<std::decay_t<T>, ValDiagMatrix>;
+concept VectorOrDiagonal = std::is_same_v<std::decay_t<T>, ValVector> ||
+                           std::is_same_v<std::decay_t<T>, ValDiagMatrix>;
 
 ValScalar dot_(const ValVector& x, const ValVector& y) {
   ASSERT(x.size() == y.size());
@@ -30,8 +29,7 @@ EvalResult multiply_(const EvalResult& x, const EvalResult& y,
         return dot_(a, b);
       },
       [](const auto& a, const auto& b)
-        requires(is_vector_or_diag_v<decltype(a)> &&
-                 is_vector_or_diag_v<decltype(b)>)
+        requires VectorOrDiagonal<decltype(a)> && VectorOrDiagonal<decltype(b)>
       { return elementwiseMultiply(a, b); },
       [](const ValMatrix& a, const ValVector& b) -> EvalResult {
         auto r = ValVector(a.size());
@@ -131,14 +129,15 @@ EvalResult unaryOp(const EvalResult& x,
                    const std::function<double(double)>& lambda) {
   return Expression::match(x).with(
       [&](const ValScalar& y) -> EvalResult { return lambda(y); },
-      [&](const auto& y) -> EvalResult {
-        std::decay_t<decltype(y)> r;
-        r.reserve(y.size());
-        std::ranges::transform(
-            y, std::back_inserter(r),
-            [&lambda](const auto& yi) { return lambda(yi); });
-        return r;
-      },
+      [&](const auto& y) -> EvalResult
+        requires VectorOrDiagonal<decltype(y)> {
+          std::decay_t<decltype(y)> r;
+          r.reserve(y.size());
+          std::ranges::transform(
+              y, std::back_inserter(r),
+              [&lambda](const auto& yi) { return lambda(yi); });
+          return r;
+        },
       [&](const ValMatrix& y) -> EvalResult {
         auto m = y;
         for (auto& mRow : m) {
@@ -179,11 +178,11 @@ EvalResult elementwiseOp(const EvalResult& x, const EvalResult& y,
         return elementwiseVecOp(v, a, b, lambda);
       },
       [&](const auto& a, const auto& b) -> EvalResult
-        requires(is_vector_or_diag_v<decltype(a)> &&
-                 is_vector_or_diag_v<decltype(b)>) {
-          auto v = ValVector(b.size());
-          return elementwiseVecOp(v, a, b, lambda);
-        },
+        requires VectorOrDiagonal<decltype(a)> && VectorOrDiagonal<decltype(b)>
+      {
+        auto v = ValVector(b.size());
+        return elementwiseVecOp(v, a, b, lambda);
+      },
       [&](const ValMatrix& a, const ValDiagMatrix& b) -> EvalResult {
         return elementwiseDiagMatOp(a, b, lambda);
       },
