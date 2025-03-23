@@ -17,6 +17,7 @@ set(TEST_SOURCES
     Expression_test.cpp 
     SymbolicOptimization_test.cpp
     Helpers_test.cpp
+    Evaluation_test.cpp
 )
 
 # Create test executables in a loop
