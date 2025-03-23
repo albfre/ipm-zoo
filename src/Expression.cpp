@@ -10,6 +10,7 @@
 
 #include "Assert.h"
 #include "DifferentiationVisitor.h"
+#include "ExprFactory.h"
 #include "Helpers.h"
 #include "SimplificationVisitor.h"
 #include "ToStringVisitor.h"
@@ -204,47 +205,5 @@ std::set<Expr> Expr::getVariables() const {
                        },
                      [](const auto&) {});
   return variables;
-}
-
-Expr ExprFactory::number(const double value) { return Expr(Number(value)); }
-Expr ExprFactory::namedScalar(const std::string& name) {
-  return Expr(NamedScalar(name));
-}
-Expr ExprFactory::namedVector(const std::string& name) {
-  return Expr(NamedVector(name));
-}
-Expr ExprFactory::variable(const std::string& name) {
-  return Expr(Variable(name));
-}
-Expr ExprFactory::matrix(const std::string& name) { return Expr(Matrix(name)); }
-Expr ExprFactory::symmetricMatrix(const std::string& name) {
-  return Expr(SymmetricMatrix(name));
-}
-Expr ExprFactory::diagonalMatrix(Expr expr) {
-  return Expr(DiagonalMatrix(std::make_shared<Expr>(std::move(expr))));
-}
-Expr ExprFactory::transpose(Expr expr) {
-  return Expr(Transpose(std::make_shared<Expr>(std::move(expr))));
-}
-Expr ExprFactory::negate(Expr expr) {
-  return Expr(Negate(std::make_shared<Expr>(std::move(expr))));
-}
-Expr ExprFactory::invert(Expr expr) {
-  return Expr(Invert(std::make_shared<Expr>(std::move(expr))));
-}
-Expr ExprFactory::log(Expr expr) {
-  return Expr(Log(std::make_shared<Expr>(std::move(expr))));
-}
-Expr ExprFactory::sum(std::vector<Expr> terms) {
-  if (terms.empty()) {
-    return zero;
-  }
-  if (terms.size() == 1) {
-    return std::move(terms[0]);
-  }
-  return Expr(Sum(std::move(terms)));
-}
-Expr ExprFactory::product(std::vector<Expr> terms) {
-  return Expr(Product(std::move(terms)));
 }
 }  // namespace Expression

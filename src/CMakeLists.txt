@@ -1,9 +1,11 @@
 # Create SymbolicOptimization library
 set(LIBRARY_SOURCES
     Expression.cpp
-    SymbolicOptimization.cpp
+    ExprFactory.cpp
     DifferentiationVisitor.cpp
     SimplificationVisitor.cpp
+    ToStringVisitor.cpp
+    SymbolicOptimization.cpp
     Evaluation.cpp
     Timer.cpp
 )

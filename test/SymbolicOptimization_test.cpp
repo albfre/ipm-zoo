@@ -1,6 +1,8 @@
+#include "SymbolicOptimization.h"
+
 #include <gtest/gtest.h>
 
-#include "SymbolicOptimization.h"
+#include "ExprFactory.h"
 
 using namespace SymbolicOptimization;
 
