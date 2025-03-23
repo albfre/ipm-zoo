@@ -6,35 +6,23 @@
 #include <vector>
 
 namespace Expression {
-class Expr;
 
-struct NamedNullaryExpr {
-  const std::string name;
-};
-
-struct UnaryExpr {
-  const std::shared_ptr<const Expr> child;
-};
-
-struct NaryExpr {
-  const std::vector<Expr> terms;
-};
-
-struct Number {
-  const double value;
-};
-struct NamedScalar : public NamedNullaryExpr {};
-struct NamedVector : public NamedNullaryExpr {};
-struct Variable : public NamedNullaryExpr {};
-struct Matrix : public NamedNullaryExpr {};
-struct SymmetricMatrix : public NamedNullaryExpr {};
-struct DiagonalMatrix : public UnaryExpr {};
-struct Transpose : public UnaryExpr {};
-struct Invert : public UnaryExpr {};
-struct Log : public UnaryExpr {};
-struct Negate : public UnaryExpr {};
-struct Sum : public NaryExpr {};
-struct Product : public NaryExpr {};
+struct Number;
+struct NamedNullaryExpr;
+struct NamedScalar;
+struct NamedVector;
+struct Variable;
+struct Matrix;
+struct SymmetricMatrix;
+struct UnaryExpr;
+struct DiagonalMatrix;
+struct Transpose;
+struct Invert;
+struct Log;
+struct Negate;
+struct NaryExpr;
+struct Sum;
+struct Product;
 
 class Expr {
   using ExprVariant =
@@ -58,21 +46,81 @@ class Expr {
   Expr(Expr&& other) noexcept = default;
   Expr& operator=(const Expr& other) = default;
 
-  Expr differentiate(const Expr& var) const;
-  Expr simplify(bool distribute = true) const;
-  Expr simplifyOnce(bool distribute = true) const;
-  std::string toString(bool condensed = false) const;
-  std::string toExpressionString() const;
-  bool containsSubexpression(const Expr& expr) const;
-  Expr replaceSubexpression(const Expr& expr, const Expr& replacement) const;
-  const ExprVariant& getImpl() const { return *impl_; }
-  Expr getLeadingOrEndingFactor(bool leading) const;
-  Expr factorOut(const Expr& factor, bool leading) const;
-  double complexity() const;
-  std::set<Expr> getVariables() const;
+  [[nodiscard]] Expr differentiate(const Expr& var) const;
+  [[nodiscard]] Expr simplify(bool distribute = true) const;
+  [[nodiscard]] Expr simplifyOnce(bool distribute = true) const;
+  [[nodiscard]] std::string toString(bool condensed = false) const;
+  [[nodiscard]] std::string toExpressionString() const;
+  [[nodiscard]] bool containsSubexpression(const Expr& expr) const;
+  [[nodiscard]] Expr replaceSubexpression(const Expr& expr,
+                                          const Expr& replacement) const;
+  [[nodiscard]] const ExprVariant& getImpl() const;
+  [[nodiscard]] Expr getLeadingOrEndingFactor(bool leading) const;
+  [[nodiscard]] Expr factorOut(const Expr& factor, bool leading) const;
+  [[nodiscard]] double complexity() const;
+  [[nodiscard]] std::set<Expr> getVariables() const;
 
  private:
   std::shared_ptr<const ExprVariant> impl_;
+};
+
+struct NamedNullaryExpr {
+  const std::string name;
+  explicit NamedNullaryExpr(std::string name) : name(std::move(name)) {}
+  virtual ~NamedNullaryExpr() = default;
+};
+
+struct UnaryExpr {
+  const std::shared_ptr<const Expr> child;
+  explicit UnaryExpr(std::shared_ptr<Expr> expr) : child(std::move(expr)) {}
+  virtual ~UnaryExpr() = default;
+};
+
+struct NaryExpr {
+  const std::vector<Expr> terms;
+  NaryExpr(std::vector<Expr> terms) : terms(std::move(terms)) {}
+  virtual ~NaryExpr() = default;
+};
+
+struct Number {
+  const double value;
+  explicit Number(double val) : value(val) {}
+};
+struct NamedScalar : public NamedNullaryExpr {
+  using NamedNullaryExpr::NamedNullaryExpr;
+};
+struct NamedVector : public NamedNullaryExpr {
+  using NamedNullaryExpr::NamedNullaryExpr;
+};
+struct Variable : public NamedNullaryExpr {
+  using NamedNullaryExpr::NamedNullaryExpr;
+};
+struct Matrix : public NamedNullaryExpr {
+  using NamedNullaryExpr::NamedNullaryExpr;
+};
+struct SymmetricMatrix : public NamedNullaryExpr {
+  using NamedNullaryExpr::NamedNullaryExpr;
+};
+struct DiagonalMatrix : public UnaryExpr {
+  using UnaryExpr::UnaryExpr;
+};
+struct Transpose : public UnaryExpr {
+  using UnaryExpr::UnaryExpr;
+};
+struct Invert : public UnaryExpr {
+  using UnaryExpr::UnaryExpr;
+};
+struct Log : public UnaryExpr {
+  using UnaryExpr::UnaryExpr;
+};
+struct Negate : public UnaryExpr {
+  using UnaryExpr::UnaryExpr;
+};
+struct Sum : public NaryExpr {
+  using NaryExpr::NaryExpr;
+};
+struct Product : public NaryExpr {
+  using NaryExpr::NaryExpr;
 };
 
 std::strong_ordering operator<=>(const Expr& left, const Expr& right);
@@ -83,18 +131,18 @@ struct ExprHash {
 };
 
 namespace ExprFactory {
-Expr number(const double value);
-Expr namedScalar(const std::string& name);
-Expr namedVector(const std::string& name);
-Expr variable(const std::string& name);
-Expr matrix(const std::string& name);
-Expr symmetricMatrix(const std::string& name);
-Expr diagonalMatrix(Expr expr);
-Expr transpose(Expr expr);
-Expr negate(Expr expr);
-Expr invert(Expr expr);
-Expr log(Expr expr);
-Expr sum(std::vector<Expr> terms);
-Expr product(std::vector<Expr> terms);
+[[nodiscard]] Expr number(const double value);
+[[nodiscard]] Expr namedScalar(const std::string& name);
+[[nodiscard]] Expr namedVector(const std::string& name);
+[[nodiscard]] Expr variable(const std::string& name);
+[[nodiscard]] Expr matrix(const std::string& name);
+[[nodiscard]] Expr symmetricMatrix(const std::string& name);
+[[nodiscard]] Expr diagonalMatrix(Expr expr);
+[[nodiscard]] Expr transpose(Expr expr);
+[[nodiscard]] Expr negate(Expr expr);
+[[nodiscard]] Expr invert(Expr expr);
+[[nodiscard]] Expr log(Expr expr);
+[[nodiscard]] Expr sum(std::vector<Expr> terms);
+[[nodiscard]] Expr product(std::vector<Expr> terms);
 }  // namespace ExprFactory
 }  // namespace Expression
