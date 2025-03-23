@@ -4,6 +4,7 @@
 #include <memory>
 #include <sstream>
 
+#include "Assert.h"
 #include "Evaluation.h"
 #include "Expression.h"
 #include "Helpers.h"

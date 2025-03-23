@@ -4,9 +4,7 @@
 #include <variant>
 #include <vector>
 
-#include "Assert.h"
 #include "Expression.h"
-#include "Helpers.h"
 
 namespace Evaluation {
 // Type definitions for evaluation results
