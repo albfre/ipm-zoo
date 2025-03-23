@@ -375,7 +375,7 @@ void SimplificationVisitor::eraseCanceling_(std::vector<Expr>& terms,
 }
 
 template <typename T>
-  requires is_nary_v<T> void SimplificationVisitor::associativeTransformation_(
+  requires NaryType<T> void SimplificationVisitor::associativeTransformation_(
     std::vector<Expr>& terms) const {
   std::vector<Expr> newTerms;
   newTerms.reserve(terms.size());

@@ -12,16 +12,10 @@ inline const auto zero = ExprFactory::number(0.0);
 
 // Template to detect std::variant
 template <typename T>
-struct is_variant : std::false_type {};
-
-template <typename... Types>
-struct is_variant<std::variant<Types...>> : std::true_type {};
-
-template <typename T>
-inline constexpr bool is_variant_v = is_variant<T>::value;
-
-template <typename T>
-concept VariantType = is_variant_v<std::remove_cvref_t<T>>;
+concept VariantType = requires {
+  typename std::variant_size<std::remove_cvref_t<T>>::type;
+  requires std::variant_size_v<std::remove_cvref_t<T>> > 0;
+};
 
 // Helper templates for overloaded visitors
 template <class... Ts>
@@ -65,22 +59,13 @@ inline constexpr bool always_false_v = false;
 
 // Helper templates for type checking
 template <typename T>
-struct is_named_nullary : std::is_base_of<NamedNullaryExpr, std::decay_t<T>> {};
+concept NamedNullaryType = std::is_base_of_v<NamedNullaryExpr, std::decay_t<T>>;
 
 template <typename T>
-inline constexpr bool is_named_nullary_v = is_named_nullary<T>::value;
+concept UnaryType = std::is_base_of_v<UnaryExpr, std::decay_t<T>>;
 
 template <typename T>
-struct is_unary : std::is_base_of<UnaryExpr, std::decay_t<T>> {};
-
-template <typename T>
-inline constexpr bool is_unary_v = is_unary<T>::value;
-
-template <typename T>
-struct is_nary : std::is_base_of<NaryExpr, std::decay_t<T>> {};
-
-template <typename T>
-inline constexpr bool is_nary_v = is_nary<T>::value;
+concept NaryType = std::is_base_of_v<NaryExpr, std::decay_t<T>>;
 
 template <typename T, VariantType Variant>
 bool is(const Variant& v) {

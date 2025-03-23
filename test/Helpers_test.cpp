@@ -17,8 +17,8 @@ TEST_F(HelpersTest, ConstantExprs) {
 }
 
 TEST_F(HelpersTest, VariantTypeCheck) {
-  EXPECT_TRUE((is_variant_v<std::variant<int, double>>));
-  EXPECT_FALSE(is_variant_v<int>);
+  EXPECT_TRUE((VariantType<std::variant<int, double>>));
+  EXPECT_FALSE(VariantType<int>);
 
   // Test the VariantType concept
   auto testVariant = [](VariantType auto var) { return true; };
@@ -83,24 +83,24 @@ TEST_F(HelpersTest, VariadicMatchFunction) {
 
 TEST_F(HelpersTest, TypeChecking) {
   // Test is_named_nullary
-  EXPECT_TRUE((is_named_nullary_v<Variable>));
-  EXPECT_FALSE((is_named_nullary_v<Number>));
+  EXPECT_TRUE((NamedNullaryType<Variable>));
+  EXPECT_FALSE((NamedNullaryType<Number>));
 
   // Test is_unary
   struct MockUnaryExpr : UnaryExpr {
     using UnaryExpr::UnaryExpr;
   };
 
-  EXPECT_TRUE((is_unary_v<MockUnaryExpr>));
-  EXPECT_FALSE((is_unary_v<Number>));
+  EXPECT_TRUE((UnaryType<MockUnaryExpr>));
+  EXPECT_FALSE((UnaryType<Number>));
 
   // Test is_nary
   struct MockNaryExpr : NaryExpr {
     using NaryExpr::NaryExpr;
   };
 
-  EXPECT_TRUE((is_nary_v<MockNaryExpr>));
-  EXPECT_FALSE((is_nary_v<Number>));
+  EXPECT_TRUE((NaryType<MockNaryExpr>));
+  EXPECT_FALSE((NaryType<Number>));
 }
 
 TEST_F(HelpersTest, IsFunction) {

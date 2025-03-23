@@ -22,7 +22,7 @@ struct SimplificationVisitor {
   void eraseCanceling_(std::vector<Expr>& terms, const Expr& replacement) const;
 
   template <typename T>
-    requires is_nary_v<T>
+    requires NaryType<T>
   void associativeTransformation_(std::vector<Expr>& terms) const;
 };
 }  // namespace Expression
