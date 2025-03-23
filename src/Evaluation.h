@@ -24,23 +24,19 @@ using Environment = std::map<Expression::Expr, EvalResult>;
 // Main evaluation function
 EvalResult evaluate(const Expression::Expr& expr, Environment& env);
 
+// Functions for modifying EvalResults
 EvalResult unaryOp(const EvalResult& x,
                    const std::function<double(double)>& lambda);
 
-// Template for element-wise binary operations on evaluation results
 EvalResult elementwiseOp(const EvalResult& x, const EvalResult& y,
                          const std::function<double(double, double)>& lambda);
-
-// Vector and matrix operations
-ValScalar dot(const ValVector& x, const ValVector& y);
-EvalResult product(const EvalResult& x, const EvalResult& y,
-                   std::vector<EvalResult>& unhandled);
 
 // Basic operations
 EvalResult negate(const EvalResult& x);
 EvalResult invert(const EvalResult& x);
 EvalResult add(const EvalResult& x, const EvalResult& y);
 EvalResult subtract(const EvalResult& x, const EvalResult& y);
+EvalResult multiply(const EvalResult& x, const EvalResult& y);
 EvalResult elementwiseMultiply(const EvalResult& x, const EvalResult& y);
 EvalResult elementwiseDivide(const EvalResult& x, const EvalResult& y);
 

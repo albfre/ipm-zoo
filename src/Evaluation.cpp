@@ -9,11 +9,47 @@
 
 namespace Evaluation {
 
-// Helper type trait
+namespace {
 template <typename T>
 constexpr bool is_vector_or_diag_v =
     std::is_same_v<std::decay_t<T>, ValVector> ||
     std::is_same_v<std::decay_t<T>, ValDiagMatrix>;
+
+ValScalar dot_(const ValVector& x, const ValVector& y) {
+  ASSERT(x.size() == y.size());
+  return std::inner_product(x.begin(), x.end(), y.begin(), 0.0);
+}
+
+EvalResult multiply_(const EvalResult& x, const EvalResult& y,
+                     std::vector<EvalResult>& unhandled) {
+  return Expression::match(x, y).with(
+      [](const ValScalar& a, const auto& b) {
+        return unaryOp(b, [&](const auto& bi) { return a * bi; });
+      },
+      [](const ValVector& a, const ValVector& b) -> EvalResult {
+        return dot_(a, b);
+      },
+      [](const auto& a, const auto& b)
+        requires(is_vector_or_diag_v<decltype(a)> &&
+                 is_vector_or_diag_v<decltype(b)>)
+      { return elementwiseMultiply(a, b); },
+      [](const ValMatrix& a, const ValVector& b) -> EvalResult {
+        auto r = ValVector(a.size());
+        for (size_t i = 0; i < a.size(); ++i) {
+          r[i] = dot_(a[i], b);
+        }
+        return r;
+      },
+      [&](const ValVector& a, const ValMatrix& b) -> EvalResult {
+        unhandled.push_back(a);
+        return b;
+      },
+      [&](const auto&, const auto&) {
+        ASSERT(false);
+        return x;
+      });
+}
+}  // namespace
 
 EvalResult evaluate(const Expression::Expr& expr, Environment& env) {
   using namespace Expression;
@@ -66,15 +102,21 @@ EvalResult evaluate(const Expression::Expr& expr, Environment& env) {
       },
       [&](const Product& x) {
         auto res = evaluate(x.terms.at(0), env);
+        // Unhandled is used to avoid computing, e.g., x^T H
+        // when computing x^T H x. Instead, x^T is saved in the "unhandled"
+        // vector and H x is computed first.
         std::vector<EvalResult> unhandled;
         for (const auto& term : x.terms | std::views::drop(1)) {
           const auto next = evaluate(term, env);
-          res = product(res, next, unhandled);
+          res = multiply_(res, next, unhandled);
         }
         std::ranges::reverse(unhandled);
+
+        // Now, multiply the result with the unhandled terms (e.g., x^T
+        // is multiplied with H x).
         std::vector<EvalResult> unhandled2;
         for (auto& init : unhandled) {
-          res = product(init, res, unhandled2);
+          res = multiply_(init, res, unhandled2);
         }
         ASSERT(unhandled2.empty());
         return res;
@@ -164,42 +206,6 @@ EvalResult elementwiseOp(const EvalResult& x, const EvalResult& y,
         return x;
       });
 }
-
-EvalResult product(const EvalResult& x, const EvalResult& y,
-                   std::vector<EvalResult>& unhandled) {
-  return Expression::match(x, y).with(
-      [](const ValScalar& a, const auto& b) {
-        return unaryOp(b, [&](const auto& bi) { return a * bi; });
-      },
-      [](const ValVector& a, const ValVector& b) -> EvalResult {
-        return dot(a, b);
-      },
-      [](const auto& a, const auto& b)
-        requires(is_vector_or_diag_v<decltype(a)> &&
-                 is_vector_or_diag_v<decltype(b)>)
-      { return elementwiseMultiply(a, b); },
-      [](const ValMatrix& a, const ValVector& b) -> EvalResult {
-        auto r = ValVector(a.size());
-        for (size_t i = 0; i < a.size(); ++i) {
-          r[i] = dot(a[i], b);
-        }
-        return r;
-      },
-      [&](const ValVector& a, const ValMatrix& b) -> EvalResult {
-        unhandled.push_back(a);
-        return b;
-      },
-      [&](const auto&, const auto&) {
-        ASSERT(false);
-        return x;
-      });
-}
-
-ValScalar dot(const ValVector& x, const ValVector& y) {
-  ASSERT(x.size() == y.size());
-  return std::inner_product(x.begin(), x.end(), y.begin(), 0.0);
-}
-
 EvalResult negate(const EvalResult& x) {
   return unaryOp(x, [](const auto& xi) { return -xi; });
 }
@@ -214,6 +220,13 @@ EvalResult add(const EvalResult& x, const EvalResult& y) {
 
 EvalResult subtract(const EvalResult& x, const EvalResult& y) {
   return elementwiseOp(x, y, [](const auto a, const auto b) { return a - b; });
+}
+
+EvalResult multiply(const EvalResult& x, const EvalResult& y) {
+  std::vector<EvalResult> unhandled;
+  auto res = multiply_(x, y, unhandled);
+  ASSERT(unhandled.empty());
+  return res;
 }
 
 EvalResult elementwiseMultiply(const EvalResult& x, const EvalResult& y) {
