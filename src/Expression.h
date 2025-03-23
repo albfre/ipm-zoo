@@ -9,19 +9,19 @@ namespace Expression {
 class Expr;
 
 struct NamedNullaryExpr {
-  std::string name;
+  const std::string name;
 };
 
 struct UnaryExpr {
-  std::unique_ptr<Expr> child;
+  const std::shared_ptr<const Expr> child;
 };
 
 struct NaryExpr {
-  std::vector<Expr> terms;
+  const std::vector<Expr> terms;
 };
 
 struct Number {
-  double value;
+  const double value;
 };
 struct NamedScalar : public NamedNullaryExpr {};
 struct NamedVector : public NamedNullaryExpr {};
@@ -45,17 +45,18 @@ class Expr {
  public:
   template <typename T>
     requires std::is_base_of_v<UnaryExpr, std::decay_t<T>>
-  explicit Expr(const T& value)
-      : impl_(T{std::make_unique<Expr>(*value.child)}) {}
+  explicit Expr(T value)
+      : impl_(std::make_shared<ExprVariant>(std::move(value))) {}
 
   template <typename T>
-    requires(!std::is_same_v<Expr, std::decay_t<T>>)
-  explicit Expr(T&& value) : impl_(std::forward<T>(value)) {}
+    requires(!std::is_same_v<Expr, std::decay_t<T>> &&
+             !std::is_base_of_v<UnaryExpr, std::decay_t<T>>)
+  explicit Expr(T&& value)
+      : impl_(std::make_shared<ExprVariant>(std::forward<T>(value))) {}
 
-  Expr(const Expr& other);
-  Expr(Expr&& other) noexcept : impl_(std::move(other.impl_)) {}
-
-  Expr& operator=(const Expr& other);
+  Expr(const Expr& other) = default;
+  Expr(Expr&& other) noexcept = default;
+  Expr& operator=(const Expr& other) = default;
 
   Expr differentiate(const Expr& var) const;
   Expr simplify(bool distribute = true) const;
@@ -64,14 +65,14 @@ class Expr {
   std::string toExpressionString() const;
   bool containsSubexpression(const Expr& expr) const;
   Expr replaceSubexpression(const Expr& expr, const Expr& replacement) const;
-  const ExprVariant& getImpl() const { return impl_; }
+  const ExprVariant& getImpl() const { return *impl_; }
   Expr getLeadingOrEndingFactor(bool leading) const;
   Expr factorOut(const Expr& factor, bool leading) const;
   double complexity() const;
   std::set<Expr> getVariables() const;
 
  private:
-  ExprVariant impl_;
+  std::shared_ptr<ExprVariant> impl_;
 };
 
 std::strong_ordering operator<=>(const Expr& left, const Expr& right);

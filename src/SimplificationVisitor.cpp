@@ -258,12 +258,6 @@ Expr SimplificationVisitor::operator()(const Sum& x) const {
                        {ExprFactory::sum(std::move(unfactoredTerms)),
                         std::move(factorTimesFactored)}))
                 .simplify(false);
-        match(factoredExpr)
-            .with([&](Sum& x) { associativeTransformation_<Sum>(x.terms); },
-                  [&](Product& x) {
-                    associativeTransformation_<Product>(x.terms);
-                  },
-                  [&](auto&) {});
         if (factoredExpr.complexity() < simplified.complexity()) {
           return factoredExpr;
         }

@@ -43,28 +43,11 @@ size_t ExprHash::operator()(const Expr& expr) const {
          (stringHash + 0x9e3779b9 + (indexHash << 6) + (indexHash >> 2));
 }
 
-Expr::Expr(const Expr& other)
-    : impl_(match(other).with(
-          [](const auto& val) -> ExprVariant
-            requires is_unary_v<decltype(val)> {
-              using ExprType = std::decay_t<decltype(val)>;
-              return ExprType{std::make_unique<Expr>(*val.child)};
-            },
-          [](const auto& val) -> ExprVariant { return val; })) {}
-
-Expr& Expr::operator=(const Expr& other) {
-  if (this != &other) {
-    Expr temp(other);
-    std::swap(impl_, temp.impl_);
-  }
-  return *this;
-}
-
 Expr Expr::differentiate(const Expr& var) const {
   if (!containsSubexpression(var)) {
     return zero;
   }
-  return std::visit(DifferentiationVisitor(var), impl_);
+  return std::visit(DifferentiationVisitor(var), getImpl());
 }
 
 Expr Expr::simplify(const bool distribute) const {
@@ -79,7 +62,7 @@ Expr Expr::simplify(const bool distribute) const {
 }
 
 Expr Expr::simplifyOnce(const bool distribute) const {
-  return std::visit(SimplificationVisitor(distribute), impl_);
+  return std::visit(SimplificationVisitor(distribute), getImpl());
 }
 
 bool Expr::containsSubexpression(const Expr& expr) const {
@@ -115,19 +98,19 @@ Expr Expr::replaceSubexpression(const Expr& expr,
         }),
       [&expr, &replacement](const auto& x)
         requires is_unary_v<decltype(x)> {
-          using ExprType = std::decay_t<decltype(x)>;
           auto replaced = x.child->replaceSubexpression(expr, replacement);
-          return Expr(ExprType{std::make_unique<Expr>(std::move(replaced))});
+          using ExprType = std::decay_t<decltype(x)>;
+          return Expr(ExprType{std::make_shared<Expr>(std::move(replaced))});
         },
       [&](const auto& x) { return *this; });
 }
 
 std::string Expr::toString(const bool condensed) const {
-  return std::visit(ToStringVisitor{condensed}, impl_);
+  return std::visit(ToStringVisitor{condensed}, getImpl());
 }
 
 std::string Expr::toExpressionString() const {
-  return std::visit(ToExpressionStringVisitor{}, impl_);
+  return std::visit(ToExpressionStringVisitor{}, getImpl());
 }
 
 Expr Expr::getLeadingOrEndingFactor(const bool leading) const {
@@ -236,19 +219,19 @@ Expr ExprFactory::symmetricMatrix(const std::string& name) {
   return Expr(SymmetricMatrix{name});
 }
 Expr ExprFactory::diagonalMatrix(Expr expr) {
-  return Expr(DiagonalMatrix{std::make_unique<Expr>(std::move(expr))});
+  return Expr(DiagonalMatrix{std::make_shared<Expr>(std::move(expr))});
 }
 Expr ExprFactory::transpose(Expr expr) {
-  return Expr(Transpose{std::make_unique<Expr>(std::move(expr))});
+  return Expr(Transpose{std::make_shared<Expr>(std::move(expr))});
 }
 Expr ExprFactory::negate(Expr expr) {
-  return Expr(Negate{std::make_unique<Expr>(std::move(expr))});
+  return Expr(Negate{std::make_shared<Expr>(std::move(expr))});
 }
 Expr ExprFactory::invert(Expr expr) {
-  return Expr(Invert{std::make_unique<Expr>(std::move(expr))});
+  return Expr(Invert{std::make_shared<Expr>(std::move(expr))});
 }
 Expr ExprFactory::log(Expr expr) {
-  return Expr(Log{std::make_unique<Expr>(std::move(expr))});
+  return Expr(Log{std::make_shared<Expr>(std::move(expr))});
 }
 Expr ExprFactory::sum(std::vector<Expr> terms) {
   return Expr(Sum{std::move(terms)});
