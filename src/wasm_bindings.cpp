@@ -7,7 +7,8 @@
 #include <string>
 #include <vector>
 
-#include "Expression.h"
+#include "Expr.h"
+#include "ExprFactory.h"
 #include "SymbolicOptimization.h"
 #include "Timer.h"
 

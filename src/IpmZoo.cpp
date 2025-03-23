@@ -6,7 +6,8 @@
 
 #include "Assert.h"
 #include "Evaluation.h"
-#include "Expression.h"
+#include "Expr.h"
+#include "ExprFactory.h"
 #include "Helpers.h"
 #include "SymbolicOptimization.h"
 

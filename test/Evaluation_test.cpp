@@ -6,7 +6,6 @@
 
 #include "Assert.h"
 #include "ExprFactory.h"
-#include "Expression.h"
 #include "Helpers.h"
 
 using namespace Expression;

@@ -14,7 +14,7 @@ endif()
 
 # Define test sources
 set(TEST_SOURCES 
-    Expression_test.cpp 
+    Expr_test.cpp 
     SymbolicOptimization_test.cpp
     Helpers_test.cpp
     Evaluation_test.cpp

@@ -1,6 +1,6 @@
 # Create SymbolicOptimization library
 set(LIBRARY_SOURCES
-    Expression.cpp
+    Expr.cpp
     ExprFactory.cpp
     DifferentiationVisitor.cpp
     SimplificationVisitor.cpp
