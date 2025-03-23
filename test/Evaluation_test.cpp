@@ -44,29 +44,29 @@ TEST_F(EvaluationTest, EvaluateScalars) {
   // Test number evaluation
   auto two = ExprFactory::number(2.0);
   auto result = evaluate(two, env);
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   EXPECT_DOUBLE_EQ(std::get<ValScalar>(result), 2.0);
 
   // Test scalar from environment
   result = evaluate(scalar_c, env);
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   EXPECT_DOUBLE_EQ(std::get<ValScalar>(result), 2.5);
 
   // Test scalar arithmetic
   auto sum = ExprFactory::sum({scalar_c, ExprFactory::number(3.5)});
   result = evaluate(sum, env);
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   EXPECT_DOUBLE_EQ(std::get<ValScalar>(result), 6.0);
 
   auto product = ExprFactory::product({scalar_c, ExprFactory::number(2.0)});
   result = evaluate(product, env);
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   EXPECT_DOUBLE_EQ(std::get<ValScalar>(result), 5.0);
 
   // Test negation
   auto negated = ExprFactory::negate(scalar_c);
   result = evaluate(negated, env);
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   EXPECT_DOUBLE_EQ(std::get<ValScalar>(result), -2.5);
 }
 
@@ -74,7 +74,7 @@ TEST_F(EvaluationTest, EvaluateScalars) {
 TEST_F(EvaluationTest, EvaluateVectors) {
   // Test vector from environment
   auto result = evaluate(x, env);
-  ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+  ASSERT_TRUE(is<ValVector>(result));
   auto vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
   EXPECT_DOUBLE_EQ(vec[0], 1.0);
@@ -84,7 +84,7 @@ TEST_F(EvaluationTest, EvaluateVectors) {
   // Test scalar-vector multiplication
   auto scaled = ExprFactory::product({scalar_c, x});
   result = evaluate(scaled, env);
-  ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+  ASSERT_TRUE(is<ValVector>(result));
   vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
   EXPECT_DOUBLE_EQ(vec[0], 2.5);
@@ -94,7 +94,7 @@ TEST_F(EvaluationTest, EvaluateVectors) {
   // Test vector negation
   auto negated = ExprFactory::negate(x);
   result = evaluate(negated, env);
-  ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+  ASSERT_TRUE(is<ValVector>(result));
   vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
   EXPECT_DOUBLE_EQ(vec[0], -1.0);
@@ -106,7 +106,7 @@ TEST_F(EvaluationTest, EvaluateVectors) {
 TEST_F(EvaluationTest, EvaluateMatrices) {
   // Test matrix from environment
   auto result = evaluate(A, env);
-  ASSERT_TRUE(std::holds_alternative<ValMatrix>(result));
+  ASSERT_TRUE(is<ValMatrix>(result));
   auto mat = std::get<ValMatrix>(result);
   ASSERT_EQ(mat.size(), 3);
   ASSERT_EQ(mat[0].size(), 3);
@@ -117,7 +117,7 @@ TEST_F(EvaluationTest, EvaluateMatrices) {
   // Test matrix-vector multiplication
   auto mv_product = ExprFactory::product({A, x});
   result = evaluate(mv_product, env);
-  ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+  ASSERT_TRUE(is<ValVector>(result));
   auto vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
   // [1,2,3] * [1,2,3] = 1*1 + 2*2 + 3*3 = 14
@@ -130,7 +130,7 @@ TEST_F(EvaluationTest, EvaluateMatrices) {
   // Test matrix transpose
   auto transposed = ExprFactory::transpose(A);
   result = evaluate(transposed, env);
-  ASSERT_TRUE(std::holds_alternative<ValMatrix>(result));
+  ASSERT_TRUE(is<ValMatrix>(result));
   mat = std::get<ValMatrix>(result);
   ASSERT_EQ(mat.size(), 3);
   ASSERT_EQ(mat[0].size(), 3);
@@ -144,14 +144,14 @@ TEST_F(EvaluationTest, EvaluateComplexExpressions) {
   // Test dot product: x^T * y
   auto dotProd = ExprFactory::product({ExprFactory::transpose(x), y});
   auto result = evaluate(dotProd, env);
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   // 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
   EXPECT_DOUBLE_EQ(std::get<ValScalar>(result), 32.0);
 
   // Test quadratic form: x^T * Q * x
   auto quadForm = ExprFactory::product({ExprFactory::transpose(x), Q, x});
   result = evaluate(quadForm, env);
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   // Expected computation:
   // [1,2,3] * [[1,2,3],[2,4,5],[3,5,6]] * [1,2,3]
   // = [1*1 + 2*2 + 3*3, 1*2 + 2*4 + 3*5, 1*3 + 2*5 + 3*6] * [1,2,3]
@@ -169,7 +169,7 @@ TEST_F(EvaluationTest, EvaluateComplexExpressions) {
        ExprFactory::product({scalar_c, ExprFactory::transpose(y), x})});
 
   result = evaluate(complexExpr, env);
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   // 0.5 * 157 + 2.5 * 32 = 78.5 + 80 = 158.5
   EXPECT_NEAR(std::get<ValScalar>(result), 158.5, 1e-10);
 }
@@ -191,7 +191,7 @@ TEST_F(EvaluationTest, EvaluationErrorHandling) {
 TEST_F(EvaluationTest, ElementwiseOperations) {
   // Add vector elementwise
   auto result = add(valVector({1.0, 2.0, 3.0}), valVector({4.0, 5.0, 6.0}));
-  ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+  ASSERT_TRUE(is<ValVector>(result));
   auto vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
   EXPECT_DOUBLE_EQ(vec[0], 5.0);
@@ -201,7 +201,7 @@ TEST_F(EvaluationTest, ElementwiseOperations) {
   // Multiply vector elementwise
   result = elementwiseMultiply(valVector({1.0, 2.0, 3.0}),
                                valVector({4.0, 5.0, 6.0}));
-  ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+  ASSERT_TRUE(is<ValVector>(result));
   vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
   EXPECT_DOUBLE_EQ(vec[0], 4.0);
@@ -215,32 +215,34 @@ TEST_F(EvaluationTest, ElementwiseVecAndDiagOperations) {
 
   constexpr auto eval = [](const auto& vec) {
     ASSERT_EQ(vec.size(), 3);
-    EXPECT_DOUBLE_EQ(vec[0], 2.0);
+    EXPECT_DOUBLE_EQ(vec[0], 1.0);
     EXPECT_DOUBLE_EQ(vec[1], 4.0);
-    EXPECT_DOUBLE_EQ(vec[2], 6.0);
+    EXPECT_DOUBLE_EQ(vec[2], 9.0);
   };
 
+  // Test that multiplyong two diagonal matrices results in a new diagonal
+  // matrix, whereas operations involving vectors results in a vector
   {
-    auto result = add(a, a);
-    ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+    auto result = elementwiseMultiply(a, a);
+    ASSERT_TRUE(is<ValVector>(result));
     auto vec = std::get<ValVector>(result);
     eval(vec);
   }
   {
-    auto result = add(a, b);
-    ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+    auto result = elementwiseMultiply(a, b);
+    ASSERT_TRUE(is<ValVector>(result));
     auto vec = std::get<ValVector>(result);
     eval(vec);
   }
   {
-    auto result = add(b, a);
-    ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+    auto result = elementwiseMultiply(b, a);
+    ASSERT_TRUE(is<ValVector>(result));
     auto vec = std::get<ValVector>(result);
     eval(vec);
   }
   {
-    auto result = add(b, b);
-    ASSERT_TRUE(std::holds_alternative<ValDiagMatrix>(result));
+    auto result = elementwiseMultiply(b, b);
+    ASSERT_TRUE(is<ValDiagMatrix>(result));
     auto vec = std::get<ValDiagMatrix>(result);
     eval(vec);
   }
@@ -249,11 +251,11 @@ TEST_F(EvaluationTest, ElementwiseVecAndDiagOperations) {
 TEST_F(EvaluationTest, UnaryOperations) {
   // Test unary operations on different types
   auto result = unaryOp(valScalar(5.0), [](double x) { return x * x; });
-  ASSERT_TRUE(std::holds_alternative<ValScalar>(result));
+  ASSERT_TRUE(is<ValScalar>(result));
   EXPECT_DOUBLE_EQ(std::get<ValScalar>(result), 25.0);
 
   result = unaryOp(valVector({1.0, 2.0, 3.0}), [](double x) { return x * x; });
-  ASSERT_TRUE(std::holds_alternative<ValVector>(result));
+  ASSERT_TRUE(is<ValVector>(result));
   auto vec = std::get<ValVector>(result);
   EXPECT_DOUBLE_EQ(vec[0], 1.0);
   EXPECT_DOUBLE_EQ(vec[1], 4.0);
