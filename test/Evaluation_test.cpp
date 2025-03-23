@@ -155,11 +155,8 @@ TEST_F(EvaluationTest, EvaluateComplexExpressions) {
   // Expected computation:
   // [1,2,3] * [[1,2,3],[2,4,5],[3,5,6]] * [1,2,3]
   // = [1*1 + 2*2 + 3*3, 1*2 + 2*4 + 3*5, 1*3 + 2*5 + 3*6] * [1,2,3]
-  // = [14, 30, 40] * [1,2,3]
-  // = 14*1 + 30*2 + 40*3 = 14 + 60 + 120 = 194
-  // However, the current implementation may give a different result
-  // due to how it handles matrix multiplication.
-  // We'll verify against what the implementation should produce:
+  // = [14, 25, 31] * [1,2,3]
+  // = 14*1 + 25*2 + 31*3 = 14 + 50 + 93 = 157
   EXPECT_NEAR(std::get<ValScalar>(result), 157.0, 1e-10);
 
   // Test complex combined expression: 0.5 * x^T * Q * x + c * y^T * x
@@ -200,7 +197,7 @@ TEST_F(EvaluationTest, ElementwiseOperations) {
 
   // Multiply vector elementwise
   result = elementwiseMultiply(valVector({1.0, 2.0, 3.0}),
-                               valVector({4.0, 5.0, 6.0}));
+                               valDiagMatrix({4.0, 5.0, 6.0}));
   ASSERT_TRUE(is<ValVector>(result));
   vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
