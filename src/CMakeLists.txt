@@ -1,5 +1,5 @@
 # Create SymbolicOptimization library
-add_library(SymbolicOptimization
+set(LIBRARY_SOURCES
     Expression.cpp
     SymbolicOptimization.cpp
     DifferentiationVisitor.cpp
@@ -8,8 +8,17 @@ add_library(SymbolicOptimization
     Timer.cpp
 )
 
-# Make include directories visible to other targets
-target_include_directories(SymbolicOptimization PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# Create SymbolicOptimization library
+add_library(SymbolicOptimization ${LIBRARY_SOURCES})
+
+# Make include directories visible
+target_include_directories(SymbolicOptimization 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 # Create main executable for native builds
 if(NOT EMSCRIPTEN)
@@ -31,5 +40,20 @@ else()
     # Set output file names
     set_target_properties(symbolicOptimizationWasm PROPERTIES
         OUTPUT_NAME "symbolic-optimization-wasm"
+    )
+endif()
+
+# Add install targets for better distribution support
+install(TARGETS SymbolicOptimization
+    EXPORT SymbolicOptimizationTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+)
+
+if(NOT EMSCRIPTEN)
+    install(TARGETS IpmZoo
+        RUNTIME DESTINATION bin
     )
 endif()
