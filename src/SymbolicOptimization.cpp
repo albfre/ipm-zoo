@@ -1,8 +1,6 @@
 #include "SymbolicOptimization.h"
 
-#include <cassert>
-#include <iostream>
-
+#include "Assert.h"
 #include "Helpers.h"
 
 namespace SymbolicOptimization {
@@ -140,7 +138,7 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
         break;
       }
       default:
-        assert(false);
+        ASSERT(false);
     }
   }
   if (settings.equalities &&
@@ -272,17 +270,17 @@ Expression::Expr deltaDefinition(
     const std::vector<Expression::Expr>& rhs,
     const std::vector<Expression::Expr>& variables, const size_t sourceRow) {
   using namespace Expression;
-  assert(lhs.size() == rhs.size());
-  assert(lhs.size() <= variables.size());
-  assert(sourceRow < lhs.size());
+  ASSERT(lhs.size() == rhs.size());
+  ASSERT(lhs.size() <= variables.size());
+  ASSERT(sourceRow < lhs.size());
 
   const auto& lhsSourceRow = lhs.at(sourceRow);
   const auto& sourceExpr = lhsSourceRow.at(sourceRow);
   auto terms = std::vector<Expr>();
   terms.reserve(lhsSourceRow.size());
-  assert(lhsSourceRow.size() <= variables.size());
+  ASSERT(lhsSourceRow.size() <= variables.size());
   for (size_t i = 0; i < lhsSourceRow.size(); ++i) {
-    assert(is<Variable>(variables.at(i)));
+    ASSERT(is<Variable>(variables.at(i)));
     auto deltaVariable =
         ExprFactory::variable("\\Delta " + variables.at(i).toString());
     terms.emplace_back(
@@ -302,15 +300,15 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
                          std::vector<Expression::Expr>& rhs,
                          const size_t sourceRow) {
   using namespace Expression;
-  assert(lhs.size() == rhs.size());
-  assert(sourceRow < lhs.size());
+  ASSERT(lhs.size() == rhs.size());
+  ASSERT(sourceRow < lhs.size());
   std::set<size_t> targetRows;
   for (size_t i = 0; i < lhs.size(); ++i) {
     if (i != sourceRow && lhs.at(i).at(sourceRow) != zero) {
       targetRows.insert(i);
     }
   }
-  assert(!targetRows.empty());
+  ASSERT(!targetRows.empty());
   for (auto& targetRow : targetRows) {
     const auto& targetExpr = lhs.at(targetRow).at(sourceRow);
     const auto& sourceExpr = lhs.at(sourceRow).at(sourceRow);

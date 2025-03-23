@@ -8,7 +8,6 @@
 #include "Assert.h"
 
 namespace Expression {
-
 SimplificationVisitor::SimplificationVisitor(const bool distribute)
     : distribute_(distribute) {}
 
