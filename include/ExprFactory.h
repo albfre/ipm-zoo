@@ -29,5 +29,6 @@ class ExprFactory {
   ExprPtr getExpr_(Expr::ExprVariant&& variant);
   std::unordered_map<std::string, std::weak_ptr<const Expr>> cache_;
   std::unique_ptr<std::mutex> mutex_;
+  size_t cleanupCounter_ = 0;
 };
 }  // namespace Expression

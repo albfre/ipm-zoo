@@ -26,8 +26,7 @@ ExprPtr ExprFactory::getExpr_(Expr::ExprVariant&& variant) {
   cache_[key] = expr;
 
   // Clean cache
-  static size_t counter = 0;
-  if (++counter % 100 == 0) {
+  if (++cleanupCounter_ % 1000 == 0) {
     for (auto it = cache_.begin(); it != cache_.end();) {
       if (it->second.expired()) {
         it = cache_.erase(it);
