@@ -288,11 +288,9 @@ ExprPtr SimplificationVisitor::operator()(const Product& x) const {
   // x * (-1) * y = -x * y
   if (const auto it = std::ranges::find_if(terms, is<Negate>);
       it != terms.end()) {
-    auto newTerms = terms;  // Seems to be necessary to make a new copy
-    // for this to work in WebAssembly
-    newTerms[std::distance(terms.begin(), it)] =
+    terms[std::distance(terms.begin(), it)] =
         std::get<Negate>((*it)->getImpl()).child;
-    return ExprFactory::negate(ExprFactory::product(std::move(newTerms)));
+    return ExprFactory::negate(ExprFactory::product(std::move(terms)));
   }
 
   // Canceling transformation (power transformation for the special case

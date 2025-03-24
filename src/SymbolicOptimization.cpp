@@ -298,7 +298,7 @@ void gaussianElimination(std::vector<std::vector<Expression::ExprPtr>>& lhs,
                          std::vector<Expression::ExprPtr>& rhs,
                          const size_t sourceRow) {
   using EF = Expression::ExprFactory;
-  using Expression::zero;
+  using namespace Expression;
 
   ASSERT(lhs.size() == rhs.size());
   ASSERT(sourceRow < lhs.size());
@@ -312,24 +312,15 @@ void gaussianElimination(std::vector<std::vector<Expression::ExprPtr>>& lhs,
   for (auto& targetRow : targetRows) {
     const auto& targetExpr = lhs.at(targetRow).at(sourceRow);
     const auto& sourceExpr = lhs.at(sourceRow).at(sourceRow);
-    const auto factor =
-        EF::negate(EF::product({targetExpr, EF::invert(sourceExpr)}))
-            ->simplify();
-    const auto addRowTimesFactorToRow =
-        [&factor](const Expression::ExprPtr& sourceTerm,
-                  const Expression::ExprPtr& targetTerm) {
-          auto sourceTermTimesFactor =
-              EF::product({factor, sourceTerm})->simplify();
-          return EF::sum({targetTerm, std::move(sourceTermTimesFactor)})
-              ->simplify();
-        };
-    for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
-      lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
-                                                       lhs.at(targetRow).at(i));
+    const auto factor = (targetExpr * EF::invert(sourceExpr))->simplify();
+    const auto& source = lhs.at(sourceRow);
+    auto& target = lhs.at(targetRow);
+    for (size_t i = 0; i < source.size(); ++i) {
+      target.at(i) = (target.at(i) - factor * source.at(i))->simplify();
     }
 
     rhs.at(targetRow) =
-        addRowTimesFactorToRow(rhs.at(sourceRow), rhs.at(targetRow));
+        (rhs.at(targetRow) - factor * rhs.at(sourceRow))->simplify();
   }
 
   lhs.erase(lhs.begin() + sourceRow);
