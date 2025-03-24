@@ -15,7 +15,7 @@ TEST_F(OptimizationTest, GetLagrangian) {
   auto settings = Settings();
   auto names = VariableNames();
   auto [lagrangian, variables] = getLagrangian(names, settings);
-  const auto str = lagrangian.toString();
+  const auto str = lagrangian->toString();
   EXPECT_NE(str.find(names.s_A), std::string::npos);
   EXPECT_NE(str.find(names.s_Al), std::string::npos);
   EXPECT_NE(str.find(names.s_Au), std::string::npos);
@@ -30,7 +30,7 @@ TEST_F(OptimizationTest, GetLagrangianLower) {
   auto names = VariableNames();
   names.s_Au = "t123";
   auto [lagrangian, variables] = getLagrangian(names, settings);
-  const auto str = lagrangian.toString();
+  const auto str = lagrangian->toString();
   EXPECT_NE(str.find(names.s_A), std::string::npos);
   EXPECT_NE(str.find(names.s_Al), std::string::npos);
   EXPECT_EQ(str.find(names.s_Au), std::string::npos);
@@ -45,7 +45,7 @@ TEST_F(OptimizationTest, GetLagrangianUpper) {
   auto names = VariableNames();
   names.s_Al = "g123";
   auto [lagrangian, variables] = getLagrangian(names, settings);
-  const auto str = lagrangian.toString();
+  const auto str = lagrangian->toString();
   EXPECT_NE(str.find(names.s_A), std::string::npos);
   EXPECT_EQ(str.find(names.s_Al), std::string::npos);
   EXPECT_NE(str.find(names.s_Au), std::string::npos);
@@ -63,7 +63,7 @@ TEST_F(OptimizationTest, GetLagrangianNoBounds) {
   names.s_xl = "y123";
   names.s_xu = "z123";
   auto [lagrangian, variables] = getLagrangian(names, settings);
-  const auto str = lagrangian.toString();
+  const auto str = lagrangian->toString();
   EXPECT_EQ(str.find(names.s_A), std::string::npos);
   EXPECT_EQ(str.find(names.s_Al), std::string::npos);
   EXPECT_EQ(str.find(names.s_Au), std::string::npos);
@@ -98,7 +98,7 @@ TEST_F(OptimizationTest, GetShorthandRhs) {
   auto rhs = getShorthandRhs(variables);
   EXPECT_EQ(variables.size(), rhs.size());
   for (size_t i = 0; i < variables.size(); ++i) {
-    EXPECT_EQ("-r_{" + variables[i].toString() + "}", rhs[i].toString());
+    EXPECT_EQ("-r_{" + variables[i]->toString() + "}", rhs[i]->toString());
   }
 }
 
@@ -114,14 +114,14 @@ TEST_F(OptimizationTest, GaussianElimination) {
     for (const auto& row : lhs) {
       for (size_t i = 0; i < row.size(); ++i) {
         lhsStr +=
-            row[i].toString(condensed) + (i + 1 == row.size() ? "" : " & ");
+            row[i]->toString(condensed) + (i + 1 == row.size() ? "" : " & ");
       }
       lhsStr += "\\\\\n";
     }
 
     std::string rhsStr = "";
     for (const auto& row : rhs) {
-      rhsStr += row.toString(condensed) + "\\\\\n";
+      rhsStr += row->toString(condensed) + "\\\\\n";
     }
     std::cout << lhsStr << std::endl;
     std::cout << rhsStr << std::endl;
@@ -142,11 +142,11 @@ TEST_F(OptimizationTest, GetNewton) {
   auto i = 1;
   rhs = getShorthandRhs(variables);
 
-  std::vector<std::pair<Expression::Expr, Expression::Expr>>
+  std::vector<std::pair<Expression::ExprPtr, Expression::ExprPtr>>
       variableDefinitions;
   while (lhs.size() > i) {
     auto deltaVariable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1).toString());
+        "\\Delta " + variables.at(lhs.size() - 1)->toString());
     auto deltaDef = deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
     variableDefinitions.push_back({deltaVariable, deltaDef});
     gaussianElimination(lhs, rhs, lhs.size() - 1);

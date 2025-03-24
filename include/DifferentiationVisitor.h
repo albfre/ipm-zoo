@@ -4,20 +4,20 @@
 
 namespace Expression {
 struct DifferentiationVisitor {
-  explicit DifferentiationVisitor(const Expr& var);
+  explicit DifferentiationVisitor(const ExprPtr& var);
 
-  Expr operator()(const auto& x) const { return zero; }
-  Expr operator()(const Variable& x) const;
-  Expr operator()(const DiagonalMatrix& x) const;
-  Expr operator()(const Transpose& x) const;
-  Expr operator()(const Negate& x) const;
-  Expr operator()(const Invert& x) const;
-  Expr operator()(const Log& x) const;
-  Expr operator()(const Sum& x) const;
-  Expr operator()(const Product& x) const;
+  ExprPtr operator()(const auto& x) const { return zero; }
+  ExprPtr operator()(const Variable& x) const;
+  ExprPtr operator()(const DiagonalMatrix& x) const;
+  ExprPtr operator()(const Transpose& x) const;
+  ExprPtr operator()(const Negate& x) const;
+  ExprPtr operator()(const Invert& x) const;
+  ExprPtr operator()(const Log& x) const;
+  ExprPtr operator()(const Sum& x) const;
+  ExprPtr operator()(const Product& x) const;
 
  private:
-  const Expr& var_;
+  const ExprPtr& var_;
 };
 
 }  // namespace Expression

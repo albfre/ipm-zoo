@@ -54,26 +54,27 @@ struct Settings {
   InequalityHandling inequalityHandling = InequalityHandling::Slacks;
 };
 
-std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
+std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
     const VariableNames& names, const Settings& settings);
 
-std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
-    const Expression::Expr& lagrangian,
-    const std::vector<Expression::Expr>& variables);
+std::vector<Expression::ExprPtr> getFirstOrderOptimalityConditions(
+    const Expression::ExprPtr& lagrangian,
+    const std::vector<Expression::ExprPtr>& variables);
 
-std::pair<std::vector<std::vector<Expression::Expr>>,
-          std::vector<Expression::Expr>>
-getNewtonSystem(const Expression::Expr& lagrangian,
-                const std::vector<Expression::Expr>& variables);
+std::pair<std::vector<std::vector<Expression::ExprPtr>>,
+          std::vector<Expression::ExprPtr>>
+getNewtonSystem(const Expression::ExprPtr& lagrangian,
+                const std::vector<Expression::ExprPtr>& variables);
 
-std::vector<Expression::Expr> getShorthandRhs(
-    const std::vector<Expression::Expr>& variables);
+std::vector<Expression::ExprPtr> getShorthandRhs(
+    const std::vector<Expression::ExprPtr>& variables);
 
-Expression::Expr deltaDefinition(
-    const std::vector<std::vector<Expression::Expr>>& lhs,
-    const std::vector<Expression::Expr>& rhs,
-    const std::vector<Expression::Expr>& variables, size_t sourceRow);
+Expression::ExprPtr deltaDefinition(
+    const std::vector<std::vector<Expression::ExprPtr>>& lhs,
+    const std::vector<Expression::ExprPtr>& rhs,
+    const std::vector<Expression::ExprPtr>& variables, size_t sourceRow);
 
-void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
-                         std::vector<Expression::Expr>& rhs, size_t sourceRow);
+void gaussianElimination(std::vector<std::vector<Expression::ExprPtr>>& lhs,
+                         std::vector<Expression::ExprPtr>& rhs,
+                         size_t sourceRow);
 }  // namespace SymbolicOptimization

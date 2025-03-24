@@ -13,8 +13,8 @@ class HelpersTest : public ::testing::Test {
 };
 
 TEST_F(HelpersTest, ConstantExprs) {
-  EXPECT_EQ(unity.toString(), "1");
-  EXPECT_EQ(zero.toString(), "0");
+  EXPECT_EQ(unity->toString(), "1");
+  EXPECT_EQ(zero->toString(), "0");
 }
 
 TEST_F(HelpersTest, VariantTypeCheck) {
@@ -116,10 +116,10 @@ TEST_F(HelpersTest, IsFunction) {
 }
 
 TEST_F(HelpersTest, Transform) {
-  std::vector<Expr> terms = {ExprFactory::number(1.0), ExprFactory::number(2.0),
-                             ExprFactory::number(3.0)};
+  auto terms = std::vector{ExprFactory::number(1.0), ExprFactory::number(2.0),
+                           ExprFactory::number(3.0)};
 
-  auto doubleValue = [](const Expr& e) {
+  auto doubleValue = [](const ExprPtr& e) {
     return match(e).with(
         [](const Number& n) { return ExprFactory::number(n.value * 2.0); },
         [&](const auto&) { return e; });

@@ -29,12 +29,12 @@ class EvaluationTest : public ::testing::Test {
   }
 
   // Define test variables
-  Expr x = ExprFactory::variable("x");
-  Expr y = ExprFactory::variable("y");
-  Expr z = ExprFactory::variable("z");
-  Expr scalar_c = ExprFactory::namedScalar("c");
-  Expr A = ExprFactory::matrix("A");
-  Expr Q = ExprFactory::symmetricMatrix("Q");
+  ExprPtr x = ExprFactory::variable("x");
+  ExprPtr y = ExprFactory::variable("y");
+  ExprPtr z = ExprFactory::variable("z");
+  ExprPtr scalar_c = ExprFactory::namedScalar("c");
+  ExprPtr A = ExprFactory::matrix("A");
+  ExprPtr Q = ExprFactory::symmetricMatrix("Q");
 
   // Set up evaluation environment
   Environment env;

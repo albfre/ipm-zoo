@@ -1,48 +1,53 @@
 #include "SymbolicOptimization.h"
 
 #include "Assert.h"
+#include "ExprFactory.h"
 #include "Helpers.h"
+#include "SymbolicOperators.h"
 
 namespace SymbolicOptimization {
-std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
+std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
     const VariableNames& names, const Settings& settings) {
-  using namespace Expression::ExprFactory;
-  const auto Q = symmetricMatrix(names.Q);
-  const auto c = namedVector(names.c);
-  const auto A_ineq = matrix(names.A_ineq);
-  const auto A_eq = matrix(names.A_eq);
-  const auto b_eq = matrix(names.b_eq);
-  const auto p_eq = variable(names.p_eq);
-  const auto delta_eq = namedScalar(names.delta_eq);
-  const auto mu = namedScalar("\\mu");
-  const auto e = namedVector("e");
-  const auto x = variable(names.x);
-  const auto s_A = variable(names.s_A);
-  const auto s_Al = variable(names.s_Al);
-  const auto s_Au = variable(names.s_Au);
-  const auto s_xl = variable(names.s_xl);
-  const auto s_xu = variable(names.s_xu);
-  const auto s_C = variable(names.s_C);
-  const auto s_Cl = variable(names.s_Cl);
-  const auto s_Cu = variable(names.s_Cu);
-  const auto lambda_C = variable("\\lambda_{" + names.A_eq + "}");
-  const auto lambda_sCl = variable("\\lambda_{" + names.s_Cl + "}");
-  const auto lambda_sCu = variable("\\lambda_{" + names.s_Cu + "}");
-  const auto lambda_A = variable("\\lambda_{" + names.A_ineq + "}");
-  const auto lambda_sAl = variable("\\lambda_{" + names.s_Al + "}");
-  const auto lambda_sAu = variable("\\lambda_{" + names.s_Au + "}");
-  const auto lambda_sxl = variable("\\lambda_{" + names.s_xl + "}");
-  const auto lambda_sxu = variable("\\lambda_{" + names.s_xu + "}");
-  const auto l_A = namedVector(names.l_A);
-  const auto u_A = namedVector(names.u_A);
-  const auto l_x = namedVector(names.l_x);
-  const auto u_x = namedVector(names.u_x);
+  using EF = Expression::ExprFactory;
+  using namespace Expression;
 
-  const auto xQx = product({number(0.5), transpose(x), Q, x});
-  const auto cx = product({transpose(c), x});
-  const auto Ax = product({A_ineq, x});
-  const auto Cx = product({A_eq, x});
-  const auto CxMinusB = sum({Cx, negate(b_eq)});
+  const auto Q = EF::symmetricMatrix(names.Q);
+  const auto c = EF::namedVector(names.c);
+  const auto A_ineq = EF::matrix(names.A_ineq);
+  const auto A_eq = EF::matrix(names.A_eq);
+  const auto b_eq = EF::matrix(names.b_eq);
+  const auto p_eq = EF::variable(names.p_eq);
+  const auto delta_eq = EF::namedScalar(names.delta_eq);
+  const auto mu = EF::namedScalar("\\mu");
+  const auto e = EF::namedVector("e");
+  const auto x = EF::variable(names.x);
+  const auto s_A = EF::variable(names.s_A);
+  const auto s_Al = EF::variable(names.s_Al);
+  const auto s_Au = EF::variable(names.s_Au);
+  const auto s_xl = EF::variable(names.s_xl);
+  const auto s_xu = EF::variable(names.s_xu);
+  const auto s_C = EF::variable(names.s_C);
+  const auto s_Cl = EF::variable(names.s_Cl);
+  const auto s_Cu = EF::variable(names.s_Cu);
+  const auto lambda_C = EF::variable("\\lambda_{" + names.A_eq + "}");
+  const auto lambda_sCl = EF::variable("\\lambda_{" + names.s_Cl + "}");
+  const auto lambda_sCu = EF::variable("\\lambda_{" + names.s_Cu + "}");
+  const auto lambda_A = EF::variable("\\lambda_{" + names.A_ineq + "}");
+  const auto lambda_sAl = EF::variable("\\lambda_{" + names.s_Al + "}");
+  const auto lambda_sAu = EF::variable("\\lambda_{" + names.s_Au + "}");
+  const auto lambda_sxl = EF::variable("\\lambda_{" + names.s_xl + "}");
+  const auto lambda_sxu = EF::variable("\\lambda_{" + names.s_xu + "}");
+  const auto l_A = EF::namedVector(names.l_A);
+  const auto u_A = EF::namedVector(names.u_A);
+  const auto l_x = EF::namedVector(names.l_x);
+  const auto u_x = EF::namedVector(names.u_x);
+
+  const auto xQx = EF::number(0.5) * EF::transpose(x) * Q * x;
+  const auto cx = EF::transpose(c) * x;
+  const auto eT = EF::transpose(e);
+  const auto Ax = A_ineq * x;
+  const auto Cx = A_eq * x;
+  const auto CxMinusB = Cx - b_eq;
 
   auto terms = std::vector{xQx, cx};
   auto variables = std::vector{x};
@@ -77,64 +82,55 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
 
   if (hasFullySlackedInequalities) {
     variables.push_back(lambda_A);
-    terms.push_back(product({transpose(lambda_A), sum({Ax, negate(s_A)})}));
+    terms.push_back(EF::transpose(lambda_A) * (Ax - s_A));
     if (addLowerInequalities) {
-      terms.push_back(negate(product(
-          {transpose(lambda_sAl), sum({s_A, negate(s_Al), negate(l_A)})})));
+      terms.push_back(-EF::transpose(lambda_sAl) * (s_A - s_Al - l_A));
     }
     if (addUpperInequalities) {
-      terms.push_back(
-          product({transpose(lambda_sAu), sum({s_A, s_Au, negate(u_A)})}));
+      terms.push_back(EF::transpose(lambda_sAu) * (s_A + s_Au - u_A));
     }
   }
 
   if (hasSimplySlackedInequalities && addLowerInequalities) {
     variables.push_back(lambda_sAl);
-    terms.push_back(negate(product(
-        {transpose(lambda_sAl), sum({Ax, negate(s_Al), negate(l_A)})})));
+    terms.push_back(-EF::transpose(lambda_sAl) * (Ax - s_Al - l_A));
   }
   if (hasSimplySlackedInequalities && addUpperInequalities) {
     variables.push_back(lambda_sAu);
-    terms.push_back(
-        product({transpose(lambda_sAu), sum({Ax, s_Au, negate(u_A)})}));
+    terms.push_back(EF::transpose(lambda_sAu) * (Ax + s_Au - u_A));
   }
 
   if (settings.equalities) {
     switch (settings.equalityHandling) {
       case EqualityHandling::PenaltyFunction: {
-        const auto muTerm = product({number(0.5), invert(mu)});
-        terms.push_back(product({muTerm, transpose(CxMinusB), CxMinusB}));
+        const auto muTerm = EF::number(0.5) * EF::invert(mu);
+        terms.push_back(muTerm * EF::transpose(CxMinusB) * CxMinusB);
         break;
       }
       case EqualityHandling::PenaltyFunctionWithExtraVariable: {
-        terms.push_back(product({transpose(lambda_C), CxMinusB}));
-        const auto muTerm = product({number(0.5), mu});
-        terms.push_back(
-            negate(product({muTerm, transpose(lambda_C), lambda_C})));
+        terms.push_back(EF::transpose(lambda_C) * CxMinusB);
+        const auto muTerm = EF::number(0.5) * mu;
+        terms.push_back(-muTerm * EF::transpose(lambda_C) * lambda_C);
         break;
       }
       case EqualityHandling::Slacks:
-        terms.push_back(product({transpose(lambda_C), sum({Cx, negate(s_C)})}));
-        terms.push_back(negate(product(
-            {transpose(lambda_sCl), sum({s_C, negate(s_Cl), negate(b_eq)})})));
-        terms.push_back(
-            product({transpose(lambda_sCu), sum({s_C, s_Cu, negate(b_eq)})}));
+        terms.push_back(EF::transpose(lambda_C) * (Cx - s_C));
+        terms.push_back(-EF::transpose(lambda_sCl) * (s_C - s_Cl - b_eq));
+        terms.push_back(EF::transpose(lambda_sCu) * (s_C + s_Cu - b_eq));
         break;
       case EqualityHandling::SimpleSlacks:
-        terms.push_back(negate(product(
-            {transpose(lambda_sCl), sum({Cx, negate(s_Cl), negate(b_eq)})})));
-        terms.push_back(
-            product({transpose(lambda_sCu), sum({Cx, s_Cu, negate(b_eq)})}));
+        terms.push_back(-EF::transpose(lambda_sCl) * (Cx - s_Cl - b_eq));
+        terms.push_back(EF::transpose(lambda_sCu) * (Cx + s_Cu - b_eq));
         break;
       case EqualityHandling::Regularization: {
-        const auto pterm = product({number(0.5), transpose(p_eq), p_eq});
+        const auto pterm = EF::number(0.5) * EF::transpose(p_eq) * p_eq;
         terms.push_back(pterm);
-        terms.push_back(product(
-            {transpose(lambda_C), sum({CxMinusB, product({delta_eq, p_eq})})}));
+        terms.push_back(EF::transpose(lambda_C) *
+                        (CxMinusB + (delta_eq * p_eq)));
         break;
       }
       case EqualityHandling::None: {
-        terms.push_back(product({transpose(lambda_C), CxMinusB}));
+        terms.push_back(EF::transpose(lambda_C) * CxMinusB);
         break;
       }
       default:
@@ -182,124 +178,128 @@ std::pair<Expression::Expr, std::vector<Expression::Expr>> getLagrangian(
 
   if (addLowerVariableBounds) {
     variables.push_back(lambda_sxl);
-    terms.push_back(negate(
-        product({transpose(lambda_sxl), sum({x, negate(s_xl), negate(l_x)})})));
+    terms.push_back(-EF::transpose(lambda_sxl) * (x - s_xl - l_x));
   }
   if (addUpperVariableBounds) {
     variables.push_back(lambda_sxu);
-    terms.push_back(
-        product({transpose(lambda_sxu), sum({x, s_xu, negate(u_x)})}));
+    terms.push_back(EF::transpose(lambda_sxu) * (x + s_xu - u_x));
   }
 
   // Add log barriers
   if (addLowerInequalities) {
     variables.push_back(s_Al);
-    terms.push_back(negate(product({mu, transpose(e), log({s_Al})})));
+    terms.push_back(-mu * eT * EF::log(s_Al));
   }
   if (addUpperInequalities) {
     variables.push_back(s_Au);
-    terms.push_back(negate(product({mu, transpose(e), log({s_Au})})));
+    terms.push_back(-mu * eT * EF::log(s_Au));
   }
   if (hasAnySlackedEqualities) {
     variables.push_back(s_Cl);
-    terms.push_back(negate(product({mu, transpose(e), log({s_Cl})})));
+    terms.push_back(-mu * eT * EF::log(s_Cl));
     variables.push_back(s_Cu);
-    terms.push_back(negate(product({mu, transpose(e), log({s_Cu})})));
+    terms.push_back(-mu * eT * EF::log(s_Cu));
   }
   if (addLowerVariableBounds) {
     variables.push_back(s_xl);
-    terms.push_back(negate(product({mu, transpose(e), log({s_xl})})));
+    terms.push_back(-mu * eT * EF::log(s_xl));
   }
   if (addUpperVariableBounds) {
     variables.push_back(s_xu);
-    terms.push_back(negate(product({mu, transpose(e), log({s_xu})})));
+    terms.push_back(-mu * eT * EF::log(s_xu));
   }
-  auto lagrangian = sum(terms);
+  terms = transform(terms, [](const auto& t) { return t->simplify(); });
+  auto lagrangian = EF::sum(terms);
   return {lagrangian, variables};
 }
 
-std::vector<Expression::Expr> getFirstOrderOptimalityConditions(
-    const Expression::Expr& lagrangian,
-    const std::vector<Expression::Expr>& variables) {
-  using namespace Expression;
-  std::vector<Expression::Expr> firstOrder;
+std::vector<Expression::ExprPtr> getFirstOrderOptimalityConditions(
+    const Expression::ExprPtr& lagrangian,
+    const std::vector<Expression::ExprPtr>& variables) {
+  using EF = Expression::ExprFactory;
+
+  std::vector<Expression::ExprPtr> firstOrder;
   firstOrder.reserve(variables.size());
   for (const auto& v : variables) {
-    auto diff = lagrangian.differentiate(v).simplify();
-    if (const auto invV = ExprFactory::invert(ExprFactory::diagonalMatrix(v));
-        diff.containsSubexpression(invV)) {
-      diff = ExprFactory::product({ExprFactory::diagonalMatrix(v), diff})
-                 .simplify();
+    auto diff = lagrangian->differentiate(v)->simplify();
+    if (const auto invV = EF::invert(EF::diagonalMatrix(v));
+        diff->containsSubexpression(invV)) {
+      diff = EF::product({EF::diagonalMatrix(v), diff})->simplify();
     }
     firstOrder.push_back(diff);
   }
   return firstOrder;
 }
 
-std::pair<std::vector<std::vector<Expression::Expr>>,
-          std::vector<Expression::Expr>>
-getNewtonSystem(const Expression::Expr& lagrangian,
-                const std::vector<Expression::Expr>& variables) {
-  using namespace Expression;
-  auto lhs = std::vector<std::vector<Expr>>();
-  auto rhs = std::vector<Expr>();
+std::pair<std::vector<std::vector<Expression::ExprPtr>>,
+          std::vector<Expression::ExprPtr>>
+getNewtonSystem(const Expression::ExprPtr& lagrangian,
+                const std::vector<Expression::ExprPtr>& variables) {
+  using EF = Expression::ExprFactory;
+
+  auto lhs = std::vector<std::vector<Expression::ExprPtr>>();
+  auto rhs = std::vector<Expression::ExprPtr>();
   auto firstOrder = getFirstOrderOptimalityConditions(lagrangian, variables);
   for (auto& c : firstOrder) {
     lhs.emplace_back();
     auto& row = lhs.back();
     for (auto& v : variables) {
-      row.push_back(c.differentiate(v).simplify());
+      row.push_back(c->differentiate(v)->simplify());
     }
-    rhs.push_back(ExprFactory::negate(c).simplify());
+    rhs.push_back(EF::negate(c)->simplify());
   }
   return {lhs, rhs};
 }
 
-std::vector<Expression::Expr> getShorthandRhs(
-    const std::vector<Expression::Expr>& variables) {
-  std::vector<Expression::Expr> rhs;
+std::vector<Expression::ExprPtr> getShorthandRhs(
+    const std::vector<Expression::ExprPtr>& variables) {
+  using EF = Expression::ExprFactory;
+
+  std::vector<Expression::ExprPtr> rhs;
   for (const auto& var : variables) {
-    rhs.push_back(Expression::ExprFactory::negate(
-        Expression::ExprFactory::namedVector("r_{" + var.toString() + "}")));
+    rhs.push_back(EF::negate(EF::namedVector("r_{" + var->toString() + "}")));
   }
   return rhs;
 }
 
-Expression::Expr deltaDefinition(
-    const std::vector<std::vector<Expression::Expr>>& lhs,
-    const std::vector<Expression::Expr>& rhs,
-    const std::vector<Expression::Expr>& variables, const size_t sourceRow) {
-  using namespace Expression;
+Expression::ExprPtr deltaDefinition(
+    const std::vector<std::vector<Expression::ExprPtr>>& lhs,
+    const std::vector<Expression::ExprPtr>& rhs,
+    const std::vector<Expression::ExprPtr>& variables, const size_t sourceRow) {
+  using EF = Expression::ExprFactory;
+  using Expression::is;
+  using Expression::Variable;
+
   ASSERT(lhs.size() == rhs.size());
   ASSERT(lhs.size() <= variables.size());
   ASSERT(sourceRow < lhs.size());
 
   const auto& lhsSourceRow = lhs.at(sourceRow);
   const auto& sourceExpr = lhsSourceRow.at(sourceRow);
-  auto terms = std::vector<Expr>();
+  auto terms = std::vector<Expression::ExprPtr>();
   terms.reserve(lhsSourceRow.size());
   ASSERT(lhsSourceRow.size() <= variables.size());
   for (size_t i = 0; i < lhsSourceRow.size(); ++i) {
     ASSERT(is<Variable>(variables.at(i)));
-    auto deltaVariable =
-        ExprFactory::variable("\\Delta " + variables.at(i).toString());
+    auto deltaVariable = EF::variable("\\Delta " + variables.at(i)->toString());
     terms.emplace_back(
-        ExprFactory::product({lhsSourceRow[i], std::move(deltaVariable)}));
+        EF::product({lhsSourceRow[i], std::move(deltaVariable)}));
   }
 
   terms.erase(terms.begin() + sourceRow);
-  auto sum = ExprFactory::sum(std::move(terms));
+  auto sum = EF::sum(std::move(terms));
 
-  return ExprFactory::product(
-             {ExprFactory::invert(sourceExpr),
-              ExprFactory::sum({rhs.at(sourceRow), ExprFactory::negate(sum)})})
-      .simplify();
+  return EF::product({EF::invert(sourceExpr),
+                      EF::sum({rhs.at(sourceRow), EF::negate(sum)})})
+      ->simplify();
 }
 
-void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
-                         std::vector<Expression::Expr>& rhs,
+void gaussianElimination(std::vector<std::vector<Expression::ExprPtr>>& lhs,
+                         std::vector<Expression::ExprPtr>& rhs,
                          const size_t sourceRow) {
-  using namespace Expression;
+  using EF = Expression::ExprFactory;
+  using Expression::zero;
+
   ASSERT(lhs.size() == rhs.size());
   ASSERT(sourceRow < lhs.size());
   std::set<size_t> targetRows;
@@ -313,16 +313,16 @@ void gaussianElimination(std::vector<std::vector<Expression::Expr>>& lhs,
     const auto& targetExpr = lhs.at(targetRow).at(sourceRow);
     const auto& sourceExpr = lhs.at(sourceRow).at(sourceRow);
     const auto factor =
-        ExprFactory::negate(
-            ExprFactory::product({targetExpr, ExprFactory::invert(sourceExpr)}))
-            .simplify();
-    const auto addRowTimesFactorToRow = [&factor](const Expr& sourceTerm,
-                                                  const Expr& targetTerm) {
-      auto sourceTermTimesFactor =
-          ExprFactory::product({factor, sourceTerm}).simplify();
-      return ExprFactory::sum({targetTerm, std::move(sourceTermTimesFactor)})
-          .simplify();
-    };
+        EF::negate(EF::product({targetExpr, EF::invert(sourceExpr)}))
+            ->simplify();
+    const auto addRowTimesFactorToRow =
+        [&factor](const Expression::ExprPtr& sourceTerm,
+                  const Expression::ExprPtr& targetTerm) {
+          auto sourceTermTimesFactor =
+              EF::product({factor, sourceTerm})->simplify();
+          return EF::sum({targetTerm, std::move(sourceTermTimesFactor)})
+              ->simplify();
+        };
     for (size_t i = 0; i < lhs.at(sourceRow).size(); ++i) {
       lhs.at(targetRow).at(i) = addRowTimesFactorToRow(lhs.at(sourceRow).at(i),
                                                        lhs.at(targetRow).at(i));

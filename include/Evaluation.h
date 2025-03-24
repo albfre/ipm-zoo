@@ -19,10 +19,10 @@ using ValMatrix = std::vector<ValVector>;
 using EvalResult = std::variant<ValScalar, ValVector, ValDiagMatrix, ValMatrix>;
 
 // Environment mapping expressions to their evaluation results
-using Environment = std::map<Expression::Expr, EvalResult>;
+using Environment = std::map<Expression::ExprPtr, EvalResult>;
 
 // Main evaluation function
-EvalResult evaluate(const Expression::Expr& expr, Environment& env);
+EvalResult evaluate(const Expression::ExprPtr& expr, Environment& env);
 
 // Functions for modifying EvalResults
 EvalResult unaryOp(const EvalResult& x,

@@ -1,65 +1,114 @@
 #include "ExprFactory.h"
 
 #include "Helpers.h"
+#include "ToStringVisitor.h"
 
 namespace Expression {
-Expr ExprFactory::number(const double value) { return Expr(Number(value)); }
+ExprFactory::ExprFactory() : mutex_(std::make_unique<std::mutex>()) {}
 
-Expr ExprFactory::namedScalar(std::string_view name) {
-  return Expr(NamedScalar(name));
+ExprFactory& ExprFactory::instance_() {
+  static ExprFactory factory;
+  return factory;
 }
 
-Expr ExprFactory::namedVector(std::string_view name) {
-  return Expr(NamedVector(name));
+ExprPtr ExprFactory::getExpr_(Expr::ExprVariant&& variant) {
+  std::scoped_lock<std::mutex> lock(*mutex_);
+
+  const auto key = std::visit(ToExpressionStringVisitor{}, variant);
+  auto it = cache_.find(key);
+  if (it != cache_.end()) {
+    if (auto expr = it->second.lock()) {
+      return expr;
+    }
+    cache_.erase(it);
+  }
+  auto expr = ExprPtr(new Expr(std::move(variant), key));
+  cache_[key] = expr;
+
+  // Clean cache
+  static size_t counter = 0;
+  if (++counter % 100 == 0) {
+    for (auto it = cache_.begin(); it != cache_.end();) {
+      if (it->second.expired()) {
+        it = cache_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+  return expr;
 }
 
-Expr ExprFactory::variable(std::string_view name) {
-  return Expr(Variable(name));
+ExprPtr ExprFactory::number(const double value) {
+  return instance_().getExpr_(Number(value));
 }
 
-Expr ExprFactory::matrix(std::string_view name) { return Expr(Matrix(name)); }
-
-Expr ExprFactory::symmetricMatrix(std::string_view name) {
-  return Expr(SymmetricMatrix(name));
+ExprPtr ExprFactory::namedScalar(std::string_view name) {
+  return instance_().getExpr_(NamedScalar(name));
 }
 
-Expr ExprFactory::diagonalMatrix(Expr expr) {
-  return Expr(DiagonalMatrix(std::make_shared<Expr>(std::move(expr))));
+ExprPtr ExprFactory::namedVector(std::string_view name) {
+  return instance_().getExpr_(NamedVector(name));
 }
 
-Expr ExprFactory::transpose(Expr expr) {
-  return Expr(Transpose(std::make_shared<Expr>(std::move(expr))));
+ExprPtr ExprFactory::variable(std::string_view name) {
+  return instance_().getExpr_(Variable(name));
 }
 
-Expr ExprFactory::negate(Expr expr) {
-  return Expr(Negate(std::make_shared<Expr>(std::move(expr))));
+ExprPtr ExprFactory::matrix(std::string_view name) {
+  return instance_().getExpr_(Matrix(name));
 }
 
-Expr ExprFactory::invert(Expr expr) {
-  return Expr(Invert(std::make_shared<Expr>(std::move(expr))));
+ExprPtr ExprFactory::symmetricMatrix(std::string_view name) {
+  return instance_().getExpr_(SymmetricMatrix(name));
 }
 
-Expr ExprFactory::log(Expr expr) {
-  return Expr(Log(std::make_shared<Expr>(std::move(expr))));
+ExprPtr ExprFactory::diagonalMatrix(ExprPtr expr) {
+  return instance_().getExpr_(DiagonalMatrix(std::move(expr)));
 }
 
-Expr ExprFactory::sum(std::vector<Expr> terms) {
+ExprPtr ExprFactory::transpose(ExprPtr expr) {
+  return instance_().getExpr_(Transpose(std::move(expr)));
+}
+
+ExprPtr ExprFactory::negate(ExprPtr expr) {
+  return instance_().getExpr_(Negate(std::move(expr)));
+}
+
+ExprPtr ExprFactory::invert(ExprPtr expr) {
+  return instance_().getExpr_(Invert(std::move(expr)));
+}
+
+ExprPtr ExprFactory::log(ExprPtr expr) {
+  return instance_().getExpr_(Log(std::move(expr)));
+}
+
+ExprPtr ExprFactory::sum(std::vector<ExprPtr> terms) {
   if (terms.empty()) {
     return zero;
   }
   if (terms.size() == 1) {
     return std::move(terms[0]);
   }
-  return Expr(Sum(std::move(terms)));
+  return instance_().getExpr_(Sum(std::move(terms)));
 }
 
-Expr ExprFactory::product(std::vector<Expr> terms) {
+ExprPtr ExprFactory::product(std::vector<ExprPtr> terms) {
   if (terms.empty()) {
     return zero;
   }
   if (terms.size() == 1) {
     return std::move(terms[0]);
   }
-  return Expr(Product(std::move(terms)));
+  return instance_().getExpr_(Product(std::move(terms)));
+}
+
+ExprPtr ExprFactory::asPtr(const Expr& expr) {
+  auto variant = expr.getImpl();
+  return instance_().getExpr_(std::move(variant));
+}
+
+ExprPtr ExprFactory::getExpr(Expr::ExprVariant&& variant) {
+  return instance_().getExpr_(std::move(variant));
 }
 }  // namespace Expression
