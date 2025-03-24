@@ -49,7 +49,7 @@ EvalResult multiply_(const EvalResult& x, const EvalResult& y,
 }
 }  // namespace
 
-EvalResult evaluate(const Expression::Expr& expr, Environment& env) {
+EvalResult evaluate(const Expression::ExprPtr& expr, Environment& env) {
   using namespace Expression;
 
   // Return cached result if available
@@ -62,7 +62,7 @@ EvalResult evaluate(const Expression::Expr& expr, Environment& env) {
       [&](const auto&) { return env.at(expr); },
       [&](const Number& x) { return valScalar(x.value); },
       [&](const DiagonalMatrix& x) {
-        const auto vec = evaluate(*x.child, env);
+        const auto vec = evaluate(x.child, env);
         return match(vec).with(
             [](const ValVector& v) { return valDiagMatrix(v); },
             [](const auto&) {
@@ -71,7 +71,7 @@ EvalResult evaluate(const Expression::Expr& expr, Environment& env) {
             });
       },
       [&](const Transpose& x) {
-        const auto r = evaluate(*x.child, env);
+        const auto r = evaluate(x.child, env);
         return match(r).with([](const auto& y) -> EvalResult { return y; },
                              [](const ValMatrix& y) -> EvalResult {
                                const auto m = y.size();
@@ -85,12 +85,12 @@ EvalResult evaluate(const Expression::Expr& expr, Environment& env) {
                                return xT;
                              });
       },
-      [&](const Invert& x) { return invert(evaluate(*x.child, env)); },
+      [&](const Invert& x) { return invert(evaluate(x.child, env)); },
       [&](const Log& x) {
         ASSERT(false);
-        return evaluate(*x.child, env);
+        return evaluate(x.child, env);
       },
-      [&env](const Negate& x) { return negate(evaluate(*x.child, env)); },
+      [&env](const Negate& x) { return negate(evaluate(x.child, env)); },
       [&](const Sum& x) {
         auto res = evaluate(x.terms.at(0), env);
         for (auto& term : x.terms | std::views::drop(1)) {

@@ -24,15 +24,15 @@ void printSubHeader(const std::string& title) {
 }
 
 void printExample(
-    const std::string& description, const Expression::Expr& expr,
-    const Expression::Expr& var = Expression::ExprFactory::variable("")) {
+    const std::string& description, const Expression::ExprPtr& expr,
+    const Expression::ExprPtr& var = Expression::ExprFactory::variable("")) {
   std::cout << "\n" << description << ":" << std::endl;
-  std::cout << "  Expression: " << expr.toString() << std::endl;
-  std::cout << "  Simplified: " << expr.simplify().toString() << std::endl;
+  std::cout << "  Expression: " << expr->toString() << std::endl;
+  std::cout << "  Simplified: " << expr->simplify()->toString() << std::endl;
 
-  if (var.toString() != "") {
-    std::cout << "  Derivative wrt " << var.toString() << ": "
-              << expr.differentiate(var).simplify().toString() << std::endl;
+  if (var->toString() != "") {
+    std::cout << "  Derivative wrt " << var->toString() << ": "
+              << expr->differentiate(var)->simplify()->toString() << std::endl;
   }
 }
 
@@ -99,13 +99,13 @@ void runBasicExamples() {
   printExample("Double negation example", expr3, A);
 }
 
-void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
+void printLhs(const std::vector<std::vector<Expression::ExprPtr>>& lhs) {
   std::stringstream ss;
   size_t maxRowSize = 0;
   for (const auto& row : lhs) {
     size_t currentRowSize = 0;
     for (size_t i = 0; i < row.size(); ++i) {
-      const auto rowStr = row[i].toString();
+      const auto rowStr = row[i]->toString();
       currentRowSize += rowStr.size() + (i + 1 == row.size() ? 0 : 1);
       ss << (i == 0 ? " " : "") << rowStr << ((i + 1 < row.size()) ? " " : "");
     }
@@ -117,11 +117,11 @@ void printLhs(const std::vector<std::vector<Expression::Expr>>& lhs) {
   std::cout << "└" << std::string(maxRowSize, '-') << "┘" << std::endl;
 }
 
-void printRhs(const std::vector<Expression::Expr>& rhs) {
+void printRhs(const std::vector<Expression::ExprPtr>& rhs) {
   std::stringstream ss;
   size_t maxSize = 0;
   for (const auto& c : rhs) {
-    const auto cStr = c.toString();
+    const auto cStr = c->toString();
     ss << cStr << std::endl;
     maxSize = std::max(maxSize, cStr.size() + 1);
   }
@@ -146,10 +146,10 @@ void runOptimizationExample() {
   const auto [lagrangian, variables] = SymbolicOptimization::getLagrangian(
       SymbolicOptimization::VariableNames(), settings);
 
-  std::cout << "Lagrangian function: " << lagrangian.toString() << std::endl;
+  std::cout << "Lagrangian function: " << lagrangian->toString() << std::endl;
   std::cout << "\nOptimization variables:" << std::endl;
   for (const auto& var : variables) {
-    std::cout << "  - " << var.toString() << std::endl;
+    std::cout << "  - " << var->toString() << std::endl;
   }
 
   // Add timing around getNewtonSystem
@@ -255,7 +255,7 @@ void runEvaluationExample() {
   // Example 1: Vector dot product x^T y
   printSubHeader("Example 1: Vector Dot Product");
   auto dotProduct = ExprFactory::product({ExprFactory::transpose(x), y});
-  std::cout << "Expression: " << dotProduct.toString() << std::endl;
+  std::cout << "Expression: " << dotProduct->toString() << std::endl;
 
   auto result1 = evaluate(dotProduct, env);
   std::cout << "Result: ";
@@ -270,7 +270,7 @@ void runEvaluationExample() {
   // Example 2: Scaled vector c * x
   printSubHeader("Example 2: Scaled Vector");
   auto scaledVector = ExprFactory::product({c, x});
-  std::cout << "Expression: " << scaledVector.toString() << std::endl;
+  std::cout << "Expression: " << scaledVector->toString() << std::endl;
 
   auto result2 = evaluate(scaledVector, env);
   std::cout << "Result: [";
@@ -286,7 +286,7 @@ void runEvaluationExample() {
   // Example 3: Quadratic form x^T Q x
   printSubHeader("Example 3: Quadratic Form");
   auto quadraticForm = ExprFactory::product({ExprFactory::transpose(x), Q, x});
-  std::cout << "Expression: " << quadraticForm.toString() << std::endl;
+  std::cout << "Expression: " << quadraticForm->toString() << std::endl;
 
   auto result3 = evaluate(quadraticForm, env);
   std::cout << "Result: ";
@@ -302,7 +302,7 @@ void runEvaluationExample() {
   // Example 4: Matrix-vector product A * x
   printSubHeader("Example 4: Matrix-Vector Product");
   auto matrixVectorProduct = ExprFactory::product({A, x});
-  std::cout << "Expression: " << matrixVectorProduct.toString() << std::endl;
+  std::cout << "Expression: " << matrixVectorProduct->toString() << std::endl;
   ASSERT(is<ValVector>(env.at(x)));
 
   auto result4 = evaluate(matrixVectorProduct, env);
@@ -326,8 +326,9 @@ void runEvaluationExample() {
            {ExprFactory::number(0.5), ExprFactory::transpose(x), Q, x}),
        ExprFactory::product({c, ExprFactory::transpose(y), x})});
 
-  std::cout << "Expression: " << complexExpr.toString() << std::endl;
-  std::cout << "Simplified: " << complexExpr.simplify().toString() << std::endl;
+  std::cout << "Expression: " << complexExpr->toString() << std::endl;
+  std::cout << "Simplified: " << complexExpr->simplify()->toString()
+            << std::endl;
 
   auto result5 = evaluate(complexExpr, env);
   std::cout << "Result: ";

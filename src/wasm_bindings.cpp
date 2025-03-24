@@ -43,54 +43,54 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
                                         const auto& variables,
                                         const auto& variableDefinitions,
                                         const auto& variableNames) {
-  using namespace Expression::ExprFactory;
-  const auto unity = number(1);
-  const auto I = namedVector("I");
-  const auto mu = namedScalar("\\mu");
-  const auto muI = product({mu, I});
-  const auto delta = namedScalar(variableNames.delta_eq);
-  const auto delta2 = namedScalar(variableNames.delta_eq + "^2");
-  const auto deltaI = product({delta, I});
-  const auto deltaI2 = product({deltaI, deltaI}).simplify();
-  const auto delta2I = product({delta2, I}).simplify();
+  using EF = Expression::ExprFactory;
+  const auto unity = EF::number(1);
+  const auto I = EF::namedVector("I");
+  const auto mu = EF::namedScalar("\\mu");
+  const auto muI = EF::product({mu, I});
+  const auto delta = EF::namedScalar(variableNames.delta_eq);
+  const auto delta2 = EF::namedScalar(variableNames.delta_eq + "^2");
+  const auto deltaI = EF::product({delta, I});
+  const auto deltaI2 = EF::product({deltaI, deltaI})->simplify();
+  const auto delta2I = EF::product({delta2, I})->simplify();
   std::string lhsStr = "";
   const auto condensed = true;
   for (const auto& row : lhs) {
     for (size_t i = 0; i < row.size(); ++i) {
       auto rowExpr = row[i];
-      rowExpr = rowExpr.replaceSubexpression(unity, I);
-      rowExpr = rowExpr.replaceSubexpression(mu, muI);
-      rowExpr = rowExpr.replaceSubexpression(delta, deltaI).simplify();
-      rowExpr = rowExpr.replaceSubexpression(deltaI2, delta2I);
+      rowExpr = rowExpr->replaceSubexpression(unity, I);
+      rowExpr = rowExpr->replaceSubexpression(mu, muI);
+      rowExpr = rowExpr->replaceSubexpression(delta, deltaI)->simplify();
+      rowExpr = rowExpr->replaceSubexpression(deltaI2, delta2I);
       lhsStr +=
-          rowExpr.toString(condensed) + (i + 1 == row.size() ? "" : " & ");
+          rowExpr->toString(condensed) + (i + 1 == row.size() ? "" : " & ");
     }
     lhsStr += " \\\\\n ";
   }
 
   std::string rhsStr = "";
   for (const auto& row : rhs) {
-    auto rowStr = row.toString(condensed);
+    auto rowStr = row->toString(condensed);
     rhsStr += rowStr + " \\\\\n ";
   }
 
   const auto rhsShorthand = SymbolicOptimization::getShorthandRhs(variables);
   std::string rhsShorthandStr = "";
   for (const auto& row : rhsShorthand) {
-    rhsShorthandStr += row.toString(condensed) + " \\\\\n ";
+    rhsShorthandStr += row->toString(condensed) + " \\\\\n ";
   }
 
   std::string variablesStr = "";
   for (size_t i = 0; i < variables.size(); ++i) {
-    variablesStr += "\\Delta " + variables[i].toString(condensed) +
+    variablesStr += "\\Delta " + variables[i]->toString(condensed) +
                     (i + 1 == variables.size() ? "\n" : " \\\\\n ");
   }
 
   std::string definitionsStr = "";
   for (size_t i = variableDefinitions.size(); i > 0; --i) {
     definitionsStr +=
-        variableDefinitions.at(i - 1).first.toString(condensed) +
-        " &= " + variableDefinitions.at(i - 1).second.toString(condensed) +
+        variableDefinitions.at(i - 1).first->toString(condensed) +
+        " &= " + variableDefinitions.at(i - 1).second->toString(condensed) +
         (i - 1 == 0 ? "\n" : " \\\\\n ");
   }
 
@@ -128,7 +128,7 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
   }();
   const auto endAugmented = std::chrono::high_resolution_clock::now();
 
-  std::vector<std::pair<Expression::Expr, Expression::Expr>>
+  std::vector<std::pair<Expression::ExprPtr, Expression::ExprPtr>>
       variableDefinitions;
 
   auto newtonSystem = formatNewtonSystemStrings_(
@@ -137,7 +137,7 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
   rhs = SymbolicOptimization::getShorthandRhs(variables);
   while (lhs.size() > augmentedSize) {
     auto deltaVariable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1).toString());
+        "\\Delta " + variables.at(lhs.size() - 1)->toString());
     timer.start("deltaDefinition");
     auto deltaDefinition = SymbolicOptimization::deltaDefinition(
         lhs, rhs, variables, lhs.size() - 1);
@@ -152,7 +152,7 @@ std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
       lhs, rhs, variables, variableDefinitions, variableNames);
 
   auto deltaVariable = Expression::ExprFactory::variable(
-      "\\Delta " + variables.at(0).toString());
+      "\\Delta " + variables.at(0)->toString());
   auto deltaDefinition =
       SymbolicOptimization::deltaDefinition(lhs, rhs, variables, 0);
   variableDefinitions.push_back({deltaVariable, deltaDefinition});
@@ -176,7 +176,7 @@ std::string getLagrangian(const SymbolicOptimization::Settings& settings) {
       SymbolicOptimization::getLagrangian(variableNames, settings);
 
   const auto condensed = true;
-  auto str = "& " + lagrangian.toString(condensed);
+  auto str = "& " + lagrangian->toString(condensed);
   auto pos = 0;
   const auto addNewlines = [&](const auto& term) {
     pos = str.find(term);
@@ -207,7 +207,7 @@ std::string getFirstOrderOptimalityConditions(
   const auto condensed = true;
   std::string str = "";
   for (const auto& c : firstOrder) {
-    str += c.toString(condensed) + " &= 0 \\\\";
+    str += c->toString(condensed) + " &= 0 \\\\";
   }
   return str;
 }

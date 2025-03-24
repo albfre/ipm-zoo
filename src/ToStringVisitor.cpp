@@ -18,7 +18,7 @@ std::string ToStringVisitor::operator()(const Number& x) const {
 }
 
 std::string ToStringVisitor::operator()(const DiagonalMatrix& x) const {
-  const auto& c = *x.child;
+  const auto& c = x.child;
   return match(c).with(
       [](const Variable& x) {
         auto name = x.name;
@@ -30,31 +30,31 @@ std::string ToStringVisitor::operator()(const DiagonalMatrix& x) const {
         }
         return "\\diag(" + name + ")";
       },
-      [&](const auto&) { return "\\diag(" + c.toString(condensed_) + ")"; });
+      [&](const auto&) { return "\\diag(" + c->toString(condensed_) + ")"; });
 }
 
 std::string ToStringVisitor::operator()(const Transpose& x) const {
-  const auto& c = *x.child;
+  const auto& c = x.child;
   if (condensed_ && (is<Sum>(c) || is<Product>(c) || is<Invert>(c))) {
-    return "(" + c.toString(condensed_) + ")^T";
+    return "(" + c->toString(condensed_) + ")^T";
   }
-  return c.toString(condensed_) + "^T";
+  return c->toString(condensed_) + "^T";
 }
 
 std::string ToStringVisitor::operator()(const Negate& x) const {
-  const auto& c = *x.child;
+  const auto& c = x.child;
   if (condensed_ && is<Sum>(c)) {
-    return "-(" + c.toString(condensed_) + ")";
+    return "-(" + c->toString(condensed_) + ")";
   }
-  return "-" + c.toString(condensed_);
+  return "-" + c->toString(condensed_);
 }
 
 std::string ToStringVisitor::operator()(const Invert& x) const {
-  const auto& c = *x.child;
+  const auto& c = x.child;
   if (condensed_ && (is<Sum>(c) || is<Product>(c) || is<Transpose>(c))) {
-    return "(" + c.toString(condensed_) + ")^{-1}";
+    return "(" + c->toString(condensed_) + ")^{-1}";
   }
-  return c.toString(condensed_) + "^{-1}";
+  return c->toString(condensed_) + "^{-1}";
 }
 
 std::string ToStringVisitor::operator()(const Log& x) const {
@@ -64,12 +64,12 @@ std::string ToStringVisitor::operator()(const Log& x) const {
 std::string ToStringVisitor::operator()(const Sum& x) const {
   std::stringstream ss;
   ss << (condensed_ ? "" : "(");
-  ss << x.terms.front().toString(condensed_);
+  ss << x.terms.front()->toString(condensed_);
   for (const auto& t : x.terms | std::views::drop(1)) {
     if (is<Negate>(t)) {
-      ss << " - " << std::get<Negate>(t.getImpl()).child->toString(condensed_);
+      ss << " - " << std::get<Negate>(t->getImpl()).child->toString(condensed_);
     } else {
-      ss << " + " << t.toString(condensed_);
+      ss << " + " << t->toString(condensed_);
     }
   }
   ss << (condensed_ ? "" : ")");
@@ -81,16 +81,16 @@ std::string ToStringVisitor::operator()(const Product& x) const {
   ss << (condensed_ ? "" : "(");
   const auto& front = x.terms.front();
   if (condensed_ && is<Sum>(front)) {
-    ss << "(" << front.toString(condensed_) << ")";
+    ss << "(" << front->toString(condensed_) << ")";
   } else {
-    ss << front.toString(condensed_);
+    ss << front->toString(condensed_);
   }
   const auto symbol = condensed_ ? " " : " * ";
   for (const auto& t : x.terms | std::views::drop(1)) {
     if (is<Negate>(t) || (condensed_ && is<Sum>(t))) {
-      ss << symbol << "(" << t.toString(condensed_) << ")";
+      ss << symbol << "(" << t->toString(condensed_) << ")";
     } else {
-      ss << symbol << t.toString(condensed_);
+      ss << symbol << t->toString(condensed_);
     }
   }
   ss << (condensed_ ? "" : ")");
@@ -156,11 +156,11 @@ std::string ToExpressionStringVisitor::operator()(const Product& x) const {
 }
 
 std::string ToExpressionStringVisitor::termsToString_(
-    const std::vector<Expr>& terms) const {
+    const std::vector<ExprPtr>& terms) const {
   std::stringstream ss;
-  ss << terms.front().toExpressionString();
+  ss << terms.front()->toExpressionString();
   for (const auto& t : terms | std::views::drop(1)) {
-    ss << ", " << t.toExpressionString();
+    ss << ", " << t->toExpressionString();
   }
   return ss.str();
 }

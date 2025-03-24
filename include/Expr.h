@@ -23,45 +23,43 @@ struct Negate;
 struct NaryExpr;
 struct Sum;
 struct Product;
+class Expr;
+
+using ExprPtr = std::shared_ptr<const Expr>;
 
 class Expr {
+ public:
   using ExprVariant =
       std::variant<Number, NamedScalar, NamedVector, Variable, Matrix,
                    SymmetricMatrix, DiagonalMatrix, Transpose, Invert, Log, Sum,
                    Product, Negate>;
 
- public:
-  template <typename T>
-    requires std::is_base_of_v<UnaryExpr, std::decay_t<T>>
-  explicit Expr(T value)
-      : impl_(std::make_shared<ExprVariant>(std::move(value))) {}
+  Expr(const Expr& other) = delete;
+  Expr(Expr&& other) noexcept = delete;
+  Expr& operator=(const Expr& other) = delete;
 
-  template <typename T>
-    requires(!std::is_same_v<Expr, std::decay_t<T>> &&
-             !std::is_base_of_v<UnaryExpr, std::decay_t<T>>)
-  explicit Expr(T&& value)
-      : impl_(std::make_shared<ExprVariant>(std::forward<T>(value))) {}
-
-  Expr(const Expr& other) = default;
-  Expr(Expr&& other) noexcept = default;
-  Expr& operator=(const Expr& other) = default;
-
-  [[nodiscard]] Expr differentiate(const Expr& var) const;
-  [[nodiscard]] Expr simplify(bool distribute = true) const;
-  [[nodiscard]] Expr simplifyOnce(bool distribute = true) const;
+  [[nodiscard]] ExprPtr differentiate(const ExprPtr& var) const;
+  [[nodiscard]] ExprPtr simplify(bool distribute = true) const;
+  [[nodiscard]] ExprPtr simplifyOnce(bool distribute = true) const;
   [[nodiscard]] std::string toString(bool condensed = false) const;
-  [[nodiscard]] std::string toExpressionString() const;
-  [[nodiscard]] bool containsSubexpression(const Expr& expr) const;
-  [[nodiscard]] Expr replaceSubexpression(const Expr& expr,
-                                          const Expr& replacement) const;
+  [[nodiscard]] const std::string& toExpressionString() const;
+  [[nodiscard]] bool containsSubexpression(const ExprPtr& expr) const;
+  [[nodiscard]] ExprPtr replaceSubexpression(const ExprPtr& expr,
+                                             const ExprPtr& replacement) const;
   [[nodiscard]] const ExprVariant& getImpl() const;
-  [[nodiscard]] Expr getLeadingOrEndingFactor(bool leading) const;
-  [[nodiscard]] Expr factorOut(const Expr& factor, bool leading) const;
+  [[nodiscard]] ExprPtr getLeadingOrEndingFactor(bool leading) const;
+  [[nodiscard]] ExprPtr factorOut(const ExprPtr& factor, bool leading) const;
   [[nodiscard]] double complexity() const;
-  [[nodiscard]] std::set<Expr> getVariables() const;
+  [[nodiscard]] std::set<ExprPtr> getVariables() const;
+  friend class ExprFactory;
 
  private:
-  std::shared_ptr<const ExprVariant> impl_;
+  template <typename T>
+  explicit Expr(T value, std::string_view expressionString)
+      : impl_(std::make_shared<ExprVariant>(std::move(value))),
+        expressionString_(std::string(expressionString)) {}
+  const std::shared_ptr<const ExprVariant> impl_;
+  const std::string expressionString_;
 };
 
 struct NamedNullaryExpr {
@@ -71,14 +69,14 @@ struct NamedNullaryExpr {
 };
 
 struct UnaryExpr {
-  const std::shared_ptr<const Expr> child;
-  explicit UnaryExpr(std::shared_ptr<Expr> expr) : child(std::move(expr)) {}
+  const ExprPtr child;
+  explicit UnaryExpr(ExprPtr expr) : child(std::move(expr)) {}
   virtual ~UnaryExpr() = default;
 };
 
 struct NaryExpr {
-  const std::vector<Expr> terms;
-  NaryExpr(std::vector<Expr> terms) : terms(std::move(terms)) {}
+  const std::vector<ExprPtr> terms;
+  NaryExpr(std::vector<ExprPtr> terms) : terms(std::move(terms)) {}
   virtual ~NaryExpr() = default;
 };
 
@@ -123,7 +121,9 @@ struct Product : public NaryExpr {
   using NaryExpr::NaryExpr;
 };
 
+std::strong_ordering operator<=>(const ExprPtr& left, const ExprPtr& right);
 std::strong_ordering operator<=>(const Expr& left, const Expr& right);
+bool operator==(const ExprPtr& left, const ExprPtr& right);
 bool operator==(const Expr& left, const Expr& right);
 std::ostream& operator<<(std::ostream& os, const Expr& expr);
 struct ExprHash {
