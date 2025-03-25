@@ -54,6 +54,14 @@ struct Settings {
   InequalityHandling inequalityHandling = InequalityHandling::Slacks;
 };
 
+struct NewtonSystem {
+  std::vector<std::vector<Expression::ExprPtr>> lhs;
+  std::vector<Expression::ExprPtr> rhs;
+  std::vector<Expression::ExprPtr> variables;
+  std::vector<std::pair<Expression::ExprPtr, Expression::ExprPtr>>
+      deltaDefinitions;
+};
+
 std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
     const VariableNames& names, const Settings& settings);
 
@@ -61,10 +69,10 @@ std::vector<Expression::ExprPtr> getFirstOrderOptimalityConditions(
     const Expression::ExprPtr& lagrangian,
     const std::vector<Expression::ExprPtr>& variables);
 
-std::pair<std::vector<std::vector<Expression::ExprPtr>>,
-          std::vector<Expression::ExprPtr>>
-getNewtonSystem(const Expression::ExprPtr& lagrangian,
-                const std::vector<Expression::ExprPtr>& variables);
+NewtonSystem getNewtonSystem(const Expression::ExprPtr& lagrangian,
+                             const std::vector<Expression::ExprPtr>& variables);
+NewtonSystem getAugmentedSystem(NewtonSystem newtonSystem);
+NewtonSystem getNormalEquations(NewtonSystem newtonSystem);
 
 std::vector<Expression::ExprPtr> getShorthandRhs(
     const std::vector<Expression::ExprPtr>& variables);

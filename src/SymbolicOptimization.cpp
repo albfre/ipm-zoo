@@ -231,10 +231,9 @@ std::vector<Expression::ExprPtr> getFirstOrderOptimalityConditions(
   return firstOrder;
 }
 
-std::pair<std::vector<std::vector<Expression::ExprPtr>>,
-          std::vector<Expression::ExprPtr>>
-getNewtonSystem(const Expression::ExprPtr& lagrangian,
-                const std::vector<Expression::ExprPtr>& variables) {
+NewtonSystem getNewtonSystem(
+    const Expression::ExprPtr& lagrangian,
+    const std::vector<Expression::ExprPtr>& variables) {
   using EF = Expression::ExprFactory;
 
   auto lhs = std::vector<std::vector<Expression::ExprPtr>>();
@@ -248,7 +247,51 @@ getNewtonSystem(const Expression::ExprPtr& lagrangian,
     }
     rhs.push_back(EF::negate(c)->simplify());
   }
-  return {lhs, rhs};
+  return {lhs, rhs, variables};
+}
+
+namespace {
+const auto getAugmentedSystemSize(
+    const std::vector<std::vector<Expression::ExprPtr>>& lhs) {
+  const auto zero = Expression::zero;
+  const auto unity = Expression::unity;
+  const auto negUnity = -unity;
+  const auto reducibles = std::set{zero, unity, negUnity};
+  size_t i = 0;
+  while (i < lhs.size() && !reducibles.contains(lhs.at(0).at(i))) {
+    ++i;
+  }
+  return i;
+}
+
+}  // namespace
+
+NewtonSystem getAugmentedSystem(NewtonSystem newtonSystem) {
+  auto& [lhs, rhs, variables, deltaDefinitions] = newtonSystem;
+  const auto augmentedSystemSize = getAugmentedSystemSize(lhs);
+  while (lhs.size() > augmentedSystemSize) {
+    auto deltaVariable = Expression::ExprFactory::variable(
+        "\\Delta " + variables.at(lhs.size() - 1)->toString());
+    auto deltaDefinition = SymbolicOptimization::deltaDefinition(
+        lhs, rhs, variables, lhs.size() - 1);
+    deltaDefinitions.push_back({deltaVariable, deltaDefinition});
+    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    variables.pop_back();
+  }
+  return std::move(newtonSystem);
+}
+
+NewtonSystem getNormalEquations(NewtonSystem newtonSystem) {
+  newtonSystem = getAugmentedSystem(std::move(newtonSystem));
+  auto& [lhs, rhs, variables, deltaDefinitions] = newtonSystem;
+  auto deltaVariable = Expression::ExprFactory::variable(
+      "\\Delta " + variables.at(0)->toString());
+  auto deltaDefinition =
+      SymbolicOptimization::deltaDefinition(lhs, rhs, variables, 0);
+  deltaDefinitions.push_back({deltaVariable, deltaDefinition});
+  SymbolicOptimization::gaussianElimination(lhs, rhs, 0);
+  variables.erase(variables.begin());
+  return std::move(newtonSystem);
 }
 
 std::vector<Expression::ExprPtr> getShorthandRhs(

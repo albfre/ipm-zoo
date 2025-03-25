@@ -14,18 +14,18 @@
 
 using namespace emscripten;
 
-struct NewtonSystem {
+struct NewtonSystemStr {
   std::string lhs;
   std::string rhs;
   std::string rhsShorthand;
   std::string variables;
-  std::string variableDefinitions;
+  std::string deltaDefinitions;
 };
 
 struct NewtonSystemTriplet {
-  NewtonSystem full;
-  NewtonSystem augmented;
-  NewtonSystem normal;
+  NewtonSystemStr full;
+  NewtonSystemStr augmented;
+  NewtonSystemStr normal;
 };
 
 namespace {
@@ -39,10 +39,9 @@ SymbolicOptimization::Settings changePenaltyToPenaltyWithExtraVariables(
   return settings;
 }
 
-NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
-                                        const auto& variables,
-                                        const auto& variableDefinitions,
-                                        const auto& variableNames) {
+NewtonSystemStr formatNewtonSystemStrings_(const auto& newtonSystem,
+                                           const auto& variableNames) {
+  const auto& [lhs, rhs, variables, deltaDefinitions] = newtonSystem;
   using EF = Expression::ExprFactory;
   const auto unity = EF::number(1);
   const auto I = EF::namedVector("I");
@@ -87,10 +86,10 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
   }
 
   std::string definitionsStr = "";
-  for (size_t i = variableDefinitions.size(); i > 0; --i) {
+  for (size_t i = deltaDefinitions.size(); i > 0; --i) {
     definitionsStr +=
-        variableDefinitions.at(i - 1).first->toString(condensed) +
-        " &= " + variableDefinitions.at(i - 1).second->toString(condensed) +
+        deltaDefinitions.at(i - 1).first->toString(condensed) +
+        " &= " + deltaDefinitions.at(i - 1).second->toString(condensed) +
         (i - 1 == 0 ? "\n" : " \\\\\n ");
   }
 
@@ -99,74 +98,41 @@ NewtonSystem formatNewtonSystemStrings_(const auto& lhs, const auto& rhs,
 
 enum class NewtonSystemType { Full, Augmented, Normal };
 
-std::tuple<NewtonSystem, NewtonSystem, NewtonSystem> getNewtonSystems_(
+std::tuple<NewtonSystemStr, NewtonSystemStr, NewtonSystemStr> getNewtonSystems_(
     const SymbolicOptimization::Settings& settingsIn,
     const SymbolicOptimization::VariableNames& variableNames) {
   Util::Timer timer;
   timer.start("getNewtonSystems");
+
+  // Get correct Lagrangian
   const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
-  timer.start("getLagrangian");
   auto [lagrangian, variables] =
       SymbolicOptimization::getLagrangian(variableNames, settings);
-  timer.stop("getLagrangian");
-  timer.start("getNewtonSystem");
-  auto [lhs, rhs] =
+
+  // Full Newton system
+  auto newtonSystem =
       SymbolicOptimization::getNewtonSystem(lagrangian, variables);
-  timer.stop("getNewtonSystem");
+  auto newtonSystemStr =
+      formatNewtonSystemStrings_(newtonSystem, variableNames);
 
-  const auto augmentedSize = [&]() {
-    const auto zero = Expression::ExprFactory::number(0);
-    const auto unity = Expression::ExprFactory::number(1);
-    const auto negUnity =
-        Expression::ExprFactory::negate(Expression::ExprFactory::number(1));
-    const auto reducibles = std::set{zero, unity, negUnity};
-    size_t i = 0;
-    while (i < lhs.size() && !reducibles.contains(lhs.at(0).at(i))) {
-      ++i;
-    }
-    return i;
-  }();
-  const auto endAugmented = std::chrono::high_resolution_clock::now();
+  // Use shorthand for right-hand side
+  newtonSystem.rhs = SymbolicOptimization::getShorthandRhs(variables);
 
-  std::vector<std::pair<Expression::ExprPtr, Expression::ExprPtr>>
-      variableDefinitions;
+  // Augmented system
+  auto augmentedSystem = SymbolicOptimization::getAugmentedSystem(newtonSystem);
+  auto augmentedSystemStr =
+      formatNewtonSystemStrings_(augmentedSystem, variableNames);
 
-  auto newtonSystem = formatNewtonSystemStrings_(
-      lhs, rhs, variables, variableDefinitions, variableNames);
+  // Normal equations
+  auto normalEquations =
+      SymbolicOptimization::getNormalEquations(augmentedSystem);
+  auto normalEquationsStr =
+      formatNewtonSystemStrings_(normalEquations, variableNames);
 
-  rhs = SymbolicOptimization::getShorthandRhs(variables);
-  while (lhs.size() > augmentedSize) {
-    auto deltaVariable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1)->toString());
-    timer.start("deltaDefinition");
-    auto deltaDefinition = SymbolicOptimization::deltaDefinition(
-        lhs, rhs, variables, lhs.size() - 1);
-    timer.stop("deltaDefinition");
-    variableDefinitions.push_back({deltaVariable, deltaDefinition});
-    timer.start("gaussianElimination");
-    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
-    timer.stop("gaussianElimination");
-    variables.pop_back();
-  }
-  auto augmentedSystem = formatNewtonSystemStrings_(
-      lhs, rhs, variables, variableDefinitions, variableNames);
-
-  auto deltaVariable = Expression::ExprFactory::variable(
-      "\\Delta " + variables.at(0)->toString());
-  auto deltaDefinition =
-      SymbolicOptimization::deltaDefinition(lhs, rhs, variables, 0);
-  variableDefinitions.push_back({deltaVariable, deltaDefinition});
-  SymbolicOptimization::gaussianElimination(lhs, rhs, 0);
-  variables.erase(variables.begin());
-
-  timer.start("formatStrings");
-  auto normalEquations = formatNewtonSystemStrings_(
-      lhs, rhs, variables, variableDefinitions, variableNames);
-  timer.stop("formatStrings");
   timer.stop("getNewtonSystems");
   timer.report();
 
-  return {newtonSystem, augmentedSystem, normalEquations};
+  return {newtonSystemStr, augmentedSystemStr, normalEquationsStr};
 }
 }  // namespace
 
@@ -268,12 +234,12 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .property("inequalityHandling",
                 &SymbolicOptimization::Settings::inequalityHandling);
 
-  value_object<NewtonSystem>("NewtonSystem")
-      .field("lhs", &NewtonSystem::lhs)
-      .field("rhs", &NewtonSystem::rhs)
-      .field("rhsShorthand", &NewtonSystem::rhsShorthand)
-      .field("variables", &NewtonSystem::variables)
-      .field("variableDefinitions", &NewtonSystem::variableDefinitions);
+  value_object<NewtonSystemStr>("NewtonSystem")
+      .field("lhs", &NewtonSystemStr::lhs)
+      .field("rhs", &NewtonSystemStr::rhs)
+      .field("rhsShorthand", &NewtonSystemStr::rhsShorthand)
+      .field("variables", &NewtonSystemStr::variables)
+      .field("deltaDefinitions", &NewtonSystemStr::deltaDefinitions);
 
   value_object<NewtonSystemTriplet>("NewtonSystemTriplet")
       .field("full", &NewtonSystemTriplet::full)

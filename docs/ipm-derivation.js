@@ -244,7 +244,6 @@ function updateProblem() {
 
       const newtonSystems = wasmModule.getNewtonSystems(settings);
       const newtonSystem = newtonSystems.full;
-      //const newtonSystem = wasmModule.getNewtonSystem(settings);
       outputText += "<p><strong>Newton system:</strong></p>";
       outputText += "\\[ \\begin{align*}\n \\nabla^2 L p = -\\nabla L \\end{align*}, \\]";
       outputText += "or"
@@ -255,17 +254,15 @@ function updateProblem() {
       outputText += "=: \\left( \\begin{array}{c}\n " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
 
       const augmentedSystem = newtonSystems.augmented;
-      //const augmentedSystem = wasmModule.getAugmentedSystem(settings);
       outputText += "<p><strong>Augmented system:</strong></p>";
       cs = "c".repeat(countAmpersandsBeforeNewlines(augmentedSystem.lhs) + 1);
       outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
       outputText += "\\left( \\begin{array}{c}\n " + augmentedSystem.variables + "\\end{array} \\right) \\]";
       outputText += "\\[ = \\left( \\begin{array}{l}\n " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
       outputText += "where"
-      outputText += "\\[ \\begin{align*}\n " + augmentedSystem.variableDefinitions + "\\end{align*} \\]"
+      outputText += "\\[ \\begin{align*}\n " + augmentedSystem.deltaDefinitions + "\\end{align*} \\]"
 
       const normalEquations = newtonSystems.normal;
-      //const normalEquations = wasmModule.getNormalEquation(settings);
       outputText += "<p><strong>Normal equations:</strong></p>";
       const numNormalEquationVariables = countAmpersandsBeforeNewlines(normalEquations.lhs) + 1;
       cs = "c".repeat(numNormalEquationVariables);
@@ -279,7 +276,7 @@ function updateProblem() {
         outputText += "\\[ \\begin{array}{c}\n =" + normalEquations.rhs + " \\end{array} \\]"
       }
       outputText += "where"
-      outputText += "\\[ \\begin{align*}\n " + normalEquations.variableDefinitions + "\\end{align*} \\]"
+      outputText += "\\[ \\begin{align*}\n " + normalEquations.deltaDefinitions + "\\end{align*} \\]"
     } catch (error) {
       console.error("Error calling Lagrangian function:", error);
       outputText += "<p>Error generating Lagrangian: " + error.message + "</p>";
