@@ -94,7 +94,7 @@ ExprPtr ExprFactory::sum(std::vector<ExprPtr> terms) {
 
 ExprPtr ExprFactory::product(std::vector<ExprPtr> terms) {
   if (terms.empty()) {
-    return zero;
+    return unity;
   }
   if (terms.size() == 1) {
     return std::move(terms[0]);

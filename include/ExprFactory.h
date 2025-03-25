@@ -1,4 +1,6 @@
 #pragma once
+#include <gtest/gtest_prod.h>
+
 #include <mutex>
 #include <unordered_map>
 
@@ -24,6 +26,8 @@ class ExprFactory {
   [[nodiscard]] static ExprPtr getExpr(Expr::ExprVariant&& var);
 
  private:
+  friend class ExprFactoryTest;
+
   ExprFactory();
   static ExprFactory& instance_();
   ExprPtr getExpr_(Expr::ExprVariant&& variant);

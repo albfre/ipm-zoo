@@ -51,9 +51,10 @@ class Expr {
   [[nodiscard]] ExprPtr factorOut(const ExprPtr& factor, bool leading) const;
   [[nodiscard]] double complexity() const;
   [[nodiscard]] std::set<ExprPtr> getVariables() const;
-  friend class ExprFactory;
 
  private:
+  friend class ExprFactory;
+
   template <typename T>
   explicit Expr(T value, std::string_view expressionString)
       : impl_(std::make_shared<ExprVariant>(std::move(value))),
