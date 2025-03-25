@@ -141,10 +141,11 @@ void runOptimizationExample() {
   auto settings = SymbolicOptimization::Settings();
   settings.inequalityHandling =
       SymbolicOptimization::InequalityHandling::SimpleSlacks;
+  auto names = SymbolicOptimization::VariableNames();
 
   printSubHeader("Generating Lagrangian");
-  const auto [lagrangian, variables] = SymbolicOptimization::getLagrangian(
-      SymbolicOptimization::VariableNames(), settings);
+  const auto [lagrangian, variables] =
+      SymbolicOptimization::getLagrangian(settings, names);
 
   std::cout << "Lagrangian function: " << lagrangian->toString() << std::endl;
   std::cout << "\nOptimization variables:" << std::endl;
@@ -157,8 +158,8 @@ void runOptimizationExample() {
   std::cout << "Building the Newton system (may take a moment)..." << std::endl;
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto [lhs, rhs] =
-      SymbolicOptimization::getNewtonSystem(lagrangian, variables);
+  auto [lhs, rhs, newtonVariables, _] =
+      SymbolicOptimization::getNewtonSystem(settings, names);
   auto end = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double, std::milli> duration = end - start;

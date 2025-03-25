@@ -14,7 +14,7 @@ class OptimizationTest : public ::testing::Test {
 TEST_F(OptimizationTest, GetLagrangian) {
   auto settings = Settings();
   auto names = VariableNames();
-  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto [lagrangian, variables] = getLagrangian(settings, names);
   const auto str = lagrangian->toString();
   EXPECT_NE(str.find(names.s_A), std::string::npos);
   EXPECT_NE(str.find(names.s_Al), std::string::npos);
@@ -29,7 +29,7 @@ TEST_F(OptimizationTest, GetLagrangianLower) {
   settings.variableBounds = Bounds::Lower;
   auto names = VariableNames();
   names.s_Au = "t123";
-  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto [lagrangian, variables] = getLagrangian(settings, names);
   const auto str = lagrangian->toString();
   EXPECT_NE(str.find(names.s_A), std::string::npos);
   EXPECT_NE(str.find(names.s_Al), std::string::npos);
@@ -44,7 +44,7 @@ TEST_F(OptimizationTest, GetLagrangianUpper) {
   settings.variableBounds = Bounds::Upper;
   auto names = VariableNames();
   names.s_Al = "g123";
-  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto [lagrangian, variables] = getLagrangian(settings, names);
   const auto str = lagrangian->toString();
   EXPECT_NE(str.find(names.s_A), std::string::npos);
   EXPECT_EQ(str.find(names.s_Al), std::string::npos);
@@ -62,7 +62,7 @@ TEST_F(OptimizationTest, GetLagrangianNoBounds) {
   names.s_Au = "t123";
   names.s_xl = "y123";
   names.s_xu = "z123";
-  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto [lagrangian, variables] = getLagrangian(settings, names);
   const auto str = lagrangian->toString();
   EXPECT_EQ(str.find(names.s_A), std::string::npos);
   EXPECT_EQ(str.find(names.s_Al), std::string::npos);
@@ -74,16 +74,15 @@ TEST_F(OptimizationTest, GetLagrangianNoBounds) {
 TEST_F(OptimizationTest, GetFirstOrderOptimalityConditions) {
   auto settings = Settings();
   auto names = VariableNames();
-  auto [lagrangian, variables] = getLagrangian(names, settings);
-  auto firstOrder = getFirstOrderOptimalityConditions(lagrangian, variables);
+  auto [firstOrder, variables] =
+      getFirstOrderOptimalityConditions(settings, names);
   EXPECT_EQ(firstOrder.size(), variables.size());
 }
 
 TEST_F(OptimizationTest, GetNewtonSystem) {
   auto settings = Settings();
   auto names = VariableNames();
-  auto [lagrangian, variables] = getLagrangian(names, settings);
-  auto [lhs, rhs] = getNewtonSystem(lagrangian, variables);
+  auto [lhs, rhs, variables, _] = getNewtonSystem(settings, names);
   EXPECT_EQ(lhs.size(), rhs.size());
   EXPECT_EQ(lhs.size(), variables.size());
   for (const auto& row : lhs) {
@@ -94,7 +93,7 @@ TEST_F(OptimizationTest, GetNewtonSystem) {
 TEST_F(OptimizationTest, GetShorthandRhs) {
   auto settings = Settings();
   auto names = VariableNames();
-  auto [lagrangian, variables] = getLagrangian(names, settings);
+  auto [_, variables] = getLagrangian(settings, names);
   auto rhs = getShorthandRhs(variables);
   EXPECT_EQ(variables.size(), rhs.size());
   for (size_t i = 0; i < variables.size(); ++i) {
@@ -105,53 +104,64 @@ TEST_F(OptimizationTest, GetShorthandRhs) {
 TEST_F(OptimizationTest, GaussianElimination) {
   auto settings = Settings();
   auto names = VariableNames();
-  auto [lagrangian, variables] = getLagrangian(names, settings);
-  auto [lhs, _] = getNewtonSystem(lagrangian, variables);
-  auto rhs = getShorthandRhs(variables);
-  while (lhs.size() > 1) {
-    std::string lhsStr = "";
-    const auto condensed = true;
-    for (const auto& row : lhs) {
-      for (size_t i = 0; i < row.size(); ++i) {
-        lhsStr +=
-            row[i]->toString(condensed) + (i + 1 == row.size() ? "" : " & ");
-      }
-      lhsStr += "\\\\\n";
-    }
+  auto [lhs, rhs, variables, _] = getNewtonSystem(settings, names);
 
-    std::string rhsStr = "";
-    for (const auto& row : rhs) {
-      rhsStr += row->toString(condensed) + "\\\\\n";
-    }
-    std::cout << lhsStr << std::endl;
-    std::cout << rhsStr << std::endl;
-    std::cout << "\n\n";
+  // Save original size
+  size_t originalSize = lhs.size();
 
-    std::cout << "delta def" << std::endl;
-    auto deltaDef = deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
-    gaussianElimination(lhs, rhs, lhs.size() - 1);
+  // Perform one elimination step
+  gaussianElimination(lhs, rhs, lhs.size() - 1);
+
+  // Check sizes after elimination
+  EXPECT_EQ(lhs.size(), originalSize - 1);
+  EXPECT_EQ(rhs.size(), originalSize - 1);
+  for (const auto& row : lhs) {
+    EXPECT_EQ(row.size(), originalSize - 1);
   }
 }
 
-TEST_F(OptimizationTest, GetNewton) {
-  const auto variableNames = VariableNames();
-  const auto settings = Settings();
-  auto [lagrangian, variables] = getLagrangian(variableNames, settings);
-  auto [lhs, rhs] = getNewtonSystem(lagrangian, variables);
+TEST_F(OptimizationTest, GetAugmentedSystem) {
+  auto settings = Settings();
+  settings.inequalities = Bounds::Lower;
+  auto names = VariableNames();
+  auto newtonSystem = getNewtonSystem(settings, names);
 
-  auto i = 1;
-  rhs = getShorthandRhs(variables);
+  // Save original size
+  size_t originalSize = newtonSystem.lhs.size();
+  EXPECT_GT(originalSize, 2);  // Make sure we have something to eliminate
 
-  std::vector<std::pair<Expression::ExprPtr, Expression::ExprPtr>>
-      variableDefinitions;
-  while (lhs.size() > i) {
-    auto deltaVariable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1)->toString());
-    auto deltaDef = deltaDefinition(lhs, rhs, variables, lhs.size() - 1);
-    variableDefinitions.push_back({deltaVariable, deltaDef});
-    gaussianElimination(lhs, rhs, lhs.size() - 1);
-    variables.pop_back();
-  }
+  // Get augmented system
+  auto augmentedSystem = getAugmentedSystem(std::move(newtonSystem));
+
+  // Check that variables were eliminated and delta definitions were created
+  EXPECT_LT(augmentedSystem.lhs.size(), originalSize);
+  EXPECT_GT(augmentedSystem.deltaDefinitions.size(), 0);
+
+  // Check that first delta definition references the appropriate variable
+  const auto& [deltaVar, _] = augmentedSystem.deltaDefinitions.front();
+  EXPECT_TRUE(deltaVar->toString().find("\\Delta") != std::string::npos);
+}
+
+TEST_F(OptimizationTest, GetNormalEquations) {
+  auto settings = Settings();
+  settings.inequalities = Bounds::Lower;
+  auto names = VariableNames();
+  auto newtonSystem = getNewtonSystem(settings, names);
+
+  // Save original size
+  size_t originalSize = newtonSystem.lhs.size();
+  EXPECT_GT(originalSize, 2);  // Make sure we have something to eliminate
+
+  // Get normal equations (should be a single equation)
+  auto normalEquations = getNormalEquations(std::move(newtonSystem));
+
+  // Check that we have only one equation left
+  EXPECT_EQ(normalEquations.lhs.size(), 1);
+  EXPECT_EQ(normalEquations.rhs.size(), 1);
+  EXPECT_EQ(normalEquations.variables.size(), 1);
+
+  // Check that we have delta definitions
+  EXPECT_EQ(normalEquations.deltaDefinitions.size(), originalSize - 1);
 }
 
 int main(int argc, char** argv) {

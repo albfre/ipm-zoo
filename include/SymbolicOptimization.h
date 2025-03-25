@@ -63,14 +63,14 @@ struct NewtonSystem {
 };
 
 std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
-    const VariableNames& names, const Settings& settings);
+    const Settings& settings, const VariableNames& names);
 
-std::vector<Expression::ExprPtr> getFirstOrderOptimalityConditions(
-    const Expression::ExprPtr& lagrangian,
-    const std::vector<Expression::ExprPtr>& variables);
+std::pair<std::vector<Expression::ExprPtr>, std::vector<Expression::ExprPtr>>
+getFirstOrderOptimalityConditions(Settings settings,
+                                  const VariableNames& names);
 
-NewtonSystem getNewtonSystem(const Expression::ExprPtr& lagrangian,
-                             const std::vector<Expression::ExprPtr>& variables);
+NewtonSystem getNewtonSystem(const Settings& settings,
+                             const VariableNames& names);
 NewtonSystem getAugmentedSystem(NewtonSystem newtonSystem);
 NewtonSystem getNormalEquations(NewtonSystem newtonSystem);
 

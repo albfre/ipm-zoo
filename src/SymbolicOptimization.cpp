@@ -7,7 +7,7 @@
 
 namespace SymbolicOptimization {
 std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
-    const VariableNames& names, const Settings& settings) {
+    const Settings& settings, const VariableNames& names) {
   using EF = Expression::ExprFactory;
   using namespace Expression;
 
@@ -214,10 +214,17 @@ std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
   return {lagrangian, variables};
 }
 
-std::vector<Expression::ExprPtr> getFirstOrderOptimalityConditions(
-    const Expression::ExprPtr& lagrangian,
-    const std::vector<Expression::ExprPtr>& variables) {
+std::pair<std::vector<Expression::ExprPtr>, std::vector<Expression::ExprPtr>>
+getFirstOrderOptimalityConditions(Settings settings,
+                                  const VariableNames& names) {
   using EF = Expression::ExprFactory;
+
+  if (settings.equalityHandling == EqualityHandling::PenaltyFunction) {
+    settings.equalityHandling =
+        EqualityHandling::PenaltyFunctionWithExtraVariable;
+  }
+
+  auto [lagrangian, variables] = getLagrangian(settings, names);
 
   std::vector<Expression::ExprPtr> firstOrder;
   firstOrder.reserve(variables.size());
@@ -229,17 +236,16 @@ std::vector<Expression::ExprPtr> getFirstOrderOptimalityConditions(
     }
     firstOrder.push_back(diff);
   }
-  return firstOrder;
+  return {firstOrder, variables};
 }
 
-NewtonSystem getNewtonSystem(
-    const Expression::ExprPtr& lagrangian,
-    const std::vector<Expression::ExprPtr>& variables) {
+NewtonSystem getNewtonSystem(const Settings& settings,
+                             const VariableNames& names) {
   using EF = Expression::ExprFactory;
-
+  auto [firstOrder, variables] =
+      getFirstOrderOptimalityConditions(settings, names);
   auto lhs = std::vector<std::vector<Expression::ExprPtr>>();
   auto rhs = std::vector<Expression::ExprPtr>();
-  auto firstOrder = getFirstOrderOptimalityConditions(lagrangian, variables);
   for (auto& c : firstOrder) {
     lhs.emplace_back();
     auto& row = lhs.back();

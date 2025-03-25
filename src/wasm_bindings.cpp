@@ -29,16 +29,6 @@ struct NewtonSystemTriplet {
 };
 
 namespace {
-SymbolicOptimization::Settings changePenaltyToPenaltyWithExtraVariables(
-    SymbolicOptimization::Settings settings) {
-  if (settings.equalityHandling ==
-      SymbolicOptimization::EqualityHandling::PenaltyFunction) {
-    settings.equalityHandling = SymbolicOptimization::EqualityHandling::
-        PenaltyFunctionWithExtraVariable;
-  }
-  return settings;
-}
-
 NewtonSystemStr formatNewtonSystemStrings_(const auto& newtonSystem,
                                            const auto& variableNames) {
   const auto& [lhs, rhs, variables, deltaDefinitions] = newtonSystem;
@@ -95,51 +85,12 @@ NewtonSystemStr formatNewtonSystemStrings_(const auto& newtonSystem,
 
   return {lhsStr, rhsStr, rhsShorthandStr, variablesStr, definitionsStr};
 }
-
-enum class NewtonSystemType { Full, Augmented, Normal };
-
-std::tuple<NewtonSystemStr, NewtonSystemStr, NewtonSystemStr> getNewtonSystems_(
-    const SymbolicOptimization::Settings& settingsIn,
-    const SymbolicOptimization::VariableNames& variableNames) {
-  Util::Timer timer;
-  timer.start("getNewtonSystems");
-
-  // Get correct Lagrangian
-  const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
-  auto [lagrangian, variables] =
-      SymbolicOptimization::getLagrangian(variableNames, settings);
-
-  // Full Newton system
-  auto newtonSystem =
-      SymbolicOptimization::getNewtonSystem(lagrangian, variables);
-  auto newtonSystemStr =
-      formatNewtonSystemStrings_(newtonSystem, variableNames);
-
-  // Use shorthand for right-hand side
-  newtonSystem.rhs = SymbolicOptimization::getShorthandRhs(variables);
-
-  // Augmented system
-  auto augmentedSystem = SymbolicOptimization::getAugmentedSystem(newtonSystem);
-  auto augmentedSystemStr =
-      formatNewtonSystemStrings_(augmentedSystem, variableNames);
-
-  // Normal equations
-  auto normalEquations =
-      SymbolicOptimization::getNormalEquations(augmentedSystem);
-  auto normalEquationsStr =
-      formatNewtonSystemStrings_(normalEquations, variableNames);
-
-  timer.stop("getNewtonSystems");
-  timer.report();
-
-  return {newtonSystemStr, augmentedSystemStr, normalEquationsStr};
-}
 }  // namespace
 
 std::string getLagrangian(const SymbolicOptimization::Settings& settings) {
   const auto variableNames = SymbolicOptimization::VariableNames();
   const auto [lagrangian, variables] =
-      SymbolicOptimization::getLagrangian(variableNames, settings);
+      SymbolicOptimization::getLagrangian(settings, variableNames);
 
   const auto condensed = true;
   auto str = "& " + lagrangian->toString(condensed);
@@ -163,13 +114,11 @@ std::string getLagrangian(const SymbolicOptimization::Settings& settings) {
 }
 
 std::string getFirstOrderOptimalityConditions(
-    const SymbolicOptimization::Settings& settingsIn) {
+    const SymbolicOptimization::Settings& settings) {
   const auto variableNames = SymbolicOptimization::VariableNames();
-  const auto settings = changePenaltyToPenaltyWithExtraVariables(settingsIn);
-  const auto [lagrangian, variables] =
-      SymbolicOptimization::getLagrangian(variableNames, settings);
-  auto firstOrder = SymbolicOptimization::getFirstOrderOptimalityConditions(
-      lagrangian, variables);
+  auto [firstOrder, variables] =
+      SymbolicOptimization::getFirstOrderOptimalityConditions(settings,
+                                                              variableNames);
   const auto condensed = true;
   std::string str = "";
   for (const auto& c : firstOrder) {
@@ -181,8 +130,34 @@ std::string getFirstOrderOptimalityConditions(
 NewtonSystemTriplet getNewtonSystems(
     const SymbolicOptimization::Settings& settings) {
   const auto variableNames = SymbolicOptimization::VariableNames();
-  auto [full, augmented, normal] = getNewtonSystems_(settings, variableNames);
-  return {full, augmented, normal};
+  Util::Timer timer;
+  timer.start("getNewtonSystems");
+
+  // Full Newton system
+  auto newtonSystem =
+      SymbolicOptimization::getNewtonSystem(settings, variableNames);
+  auto newtonSystemStr =
+      formatNewtonSystemStrings_(newtonSystem, variableNames);
+
+  // Use shorthand for right-hand side
+  newtonSystem.rhs =
+      SymbolicOptimization::getShorthandRhs(newtonSystem.variables);
+
+  // Augmented system
+  auto augmentedSystem = SymbolicOptimization::getAugmentedSystem(newtonSystem);
+  auto augmentedSystemStr =
+      formatNewtonSystemStrings_(augmentedSystem, variableNames);
+
+  // Normal equations
+  auto normalEquations =
+      SymbolicOptimization::getNormalEquations(augmentedSystem);
+  auto normalEquationsStr =
+      formatNewtonSystemStrings_(normalEquations, variableNames);
+
+  timer.stop("getNewtonSystems");
+  timer.report();
+
+  return {newtonSystemStr, augmentedSystemStr, normalEquationsStr};
 }
 
 // Alternatively, use embind for more direct JS-to-C++ bindings
