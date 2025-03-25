@@ -1,6 +1,4 @@
 #pragma once
-#include <gtest/gtest_prod.h>
-
 #include <mutex>
 #include <unordered_map>
 
