@@ -104,7 +104,8 @@ std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
     switch (settings.equalityHandling) {
       case EqualityHandling::PenaltyFunction: {
         const auto muTerm = EF::number(0.5) * EF::invert(mu);
-        terms.push_back(muTerm * EF::transpose(CxMinusB) * CxMinusB);
+        terms.insert(terms.begin() + 2,
+                     muTerm * EF::transpose(CxMinusB) * CxMinusB);
         break;
       }
       case EqualityHandling::PenaltyFunctionWithExtraVariable: {
@@ -124,7 +125,7 @@ std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
         break;
       case EqualityHandling::Regularization: {
         const auto pterm = EF::number(0.5) * EF::transpose(p_eq) * p_eq;
-        terms.push_back(pterm);
+        terms.insert(terms.begin() + 2, pterm);
         terms.push_back(EF::transpose(lambda_C) *
                         (CxMinusB + (delta_eq * p_eq)));
         break;
