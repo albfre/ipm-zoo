@@ -266,7 +266,7 @@ function updateProblem() {
       outputText += "<p><strong>Normal equations:</strong></p>";
       const numNormalEquationVariables = countAmpersandsBeforeNewlines(normalEquations.lhs) + 1;
       cs = "c".repeat(numNormalEquationVariables);
-      outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(normalEquations.lhs) + "\\end{array} \\ right) "
+      outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(normalEquations.lhs) + "\\end{array} \\right) "
       if (numNormalEquationVariables > 1) {
         outputText += "\\left( \\begin{array}{c}\n " + normalEquations.variables + "\\end{array} \\right) \\]";
         outputText += "\\[ = \\left( \\begin{array}{l}\n " + normalEquations.rhs + "\\end{array} \\right) \\]"
