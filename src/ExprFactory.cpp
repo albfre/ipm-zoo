@@ -11,7 +11,7 @@ ExprFactory& ExprFactory::instance_() {
   return factory;
 }
 
-ExprPtr ExprFactory::getExpr_(Expr::ExprVariant&& variant) {
+ExprPtr ExprFactory::get_expr_(Expr::ExprVariant&& variant) {
   std::scoped_lock<std::mutex> lock(*mutex_);
 
   const auto key = std::visit(ToExpressionStringVisitor{}, variant);
@@ -26,7 +26,7 @@ ExprPtr ExprFactory::getExpr_(Expr::ExprVariant&& variant) {
   cache_[key] = expr;
 
   // Clean cache
-  if (++cleanupCounter_ % 1000 == 0) {
+  if (++cleanup_counter_ % 1000 == 0) {
     for (auto it = cache_.begin(); it != cache_.end();) {
       if (it->second.expired()) {
         it = cache_.erase(it);
@@ -39,47 +39,47 @@ ExprPtr ExprFactory::getExpr_(Expr::ExprVariant&& variant) {
 }
 
 ExprPtr ExprFactory::number(const double value) {
-  return instance_().getExpr_(Number(value));
+  return instance_().get_expr_(Number(value));
 }
 
-ExprPtr ExprFactory::namedScalar(std::string_view name) {
-  return instance_().getExpr_(NamedScalar(name));
+ExprPtr ExprFactory::named_scalar(std::string_view name) {
+  return instance_().get_expr_(NamedScalar(name));
 }
 
-ExprPtr ExprFactory::namedVector(std::string_view name) {
-  return instance_().getExpr_(NamedVector(name));
+ExprPtr ExprFactory::named_vector(std::string_view name) {
+  return instance_().get_expr_(NamedVector(name));
 }
 
 ExprPtr ExprFactory::variable(std::string_view name) {
-  return instance_().getExpr_(Variable(name));
+  return instance_().get_expr_(Variable(name));
 }
 
 ExprPtr ExprFactory::matrix(std::string_view name) {
-  return instance_().getExpr_(Matrix(name));
+  return instance_().get_expr_(Matrix(name));
 }
 
-ExprPtr ExprFactory::symmetricMatrix(std::string_view name) {
-  return instance_().getExpr_(SymmetricMatrix(name));
+ExprPtr ExprFactory::symmetric_matrix(std::string_view name) {
+  return instance_().get_expr_(SymmetricMatrix(name));
 }
 
-ExprPtr ExprFactory::diagonalMatrix(ExprPtr expr) {
-  return instance_().getExpr_(DiagonalMatrix(std::move(expr)));
+ExprPtr ExprFactory::diagonal_matrix(ExprPtr expr) {
+  return instance_().get_expr_(DiagonalMatrix(std::move(expr)));
 }
 
 ExprPtr ExprFactory::transpose(ExprPtr expr) {
-  return instance_().getExpr_(Transpose(std::move(expr)));
+  return instance_().get_expr_(Transpose(std::move(expr)));
 }
 
 ExprPtr ExprFactory::negate(ExprPtr expr) {
-  return instance_().getExpr_(Negate(std::move(expr)));
+  return instance_().get_expr_(Negate(std::move(expr)));
 }
 
 ExprPtr ExprFactory::invert(ExprPtr expr) {
-  return instance_().getExpr_(Invert(std::move(expr)));
+  return instance_().get_expr_(Invert(std::move(expr)));
 }
 
 ExprPtr ExprFactory::log(ExprPtr expr) {
-  return instance_().getExpr_(Log(std::move(expr)));
+  return instance_().get_expr_(Log(std::move(expr)));
 }
 
 ExprPtr ExprFactory::sum(std::vector<ExprPtr> terms) {
@@ -89,7 +89,7 @@ ExprPtr ExprFactory::sum(std::vector<ExprPtr> terms) {
   if (terms.size() == 1) {
     return std::move(terms[0]);
   }
-  return instance_().getExpr_(Sum(std::move(terms)));
+  return instance_().get_expr_(Sum(std::move(terms)));
 }
 
 ExprPtr ExprFactory::product(std::vector<ExprPtr> terms) {
@@ -99,15 +99,15 @@ ExprPtr ExprFactory::product(std::vector<ExprPtr> terms) {
   if (terms.size() == 1) {
     return std::move(terms[0]);
   }
-  return instance_().getExpr_(Product(std::move(terms)));
+  return instance_().get_expr_(Product(std::move(terms)));
 }
 
-ExprPtr ExprFactory::asPtr(const Expr& expr) {
-  auto variant = expr.getImpl();
-  return instance_().getExpr_(std::move(variant));
+ExprPtr ExprFactory::as_ptr(const Expr& expr) {
+  auto variant = expr.get_impl();
+  return instance_().get_expr_(std::move(variant));
 }
 
-ExprPtr ExprFactory::getExpr(Expr::ExprVariant&& variant) {
-  return instance_().getExpr_(std::move(variant));
+ExprPtr ExprFactory::get_expr(Expr::ExprVariant&& variant) {
+  return instance_().get_expr_(std::move(variant));
 }
 }  // namespace Expression

@@ -17,7 +17,7 @@ ExprPtr DifferentiationVisitor::operator()(const Variable& x) const {
 }
 
 ExprPtr DifferentiationVisitor::operator()(const DiagonalMatrix& x) const {
-  return ExprFactory::diagonalMatrix(x.child->differentiate(var_));
+  return ExprFactory::diagonal_matrix(x.child->differentiate(var_));
 }
 
 // Transpose: d/dx(f(x)^T) = (d/dx(f(x)))^T
@@ -40,7 +40,7 @@ ExprPtr DifferentiationVisitor::operator()(const Invert& x) const {
 ExprPtr DifferentiationVisitor::operator()(const Log& x) const {
   const auto& child = x.child;
   return ExprFactory::product(
-      {ExprFactory::invert(ExprFactory::diagonalMatrix(child)),
+      {ExprFactory::invert(ExprFactory::diagonal_matrix(child)),
        child->differentiate(var_)});
 }
 
@@ -53,8 +53,8 @@ ExprPtr DifferentiationVisitor::operator()(const Sum& x) const {
 
 // Product: d/dx(f(x) * g(x)) = d/dx(f(x)) * g(x) + f(x) * d/dx(g(x))
 ExprPtr DifferentiationVisitor::operator()(const Product& x) const {
-  std::vector<ExprPtr> sumTerms;
-  sumTerms.reserve(x.terms.size());
+  std::vector<ExprPtr> sum_terms;
+  sum_terms.reserve(x.terms.size());
 
   // Handle general product rule cases
   for (size_t i = 0; i < x.terms.size(); ++i) {
@@ -64,9 +64,9 @@ ExprPtr DifferentiationVisitor::operator()(const Product& x) const {
       terms[i] = xi->differentiate(var_);  // Differentiate one term
       if (i + 2 == terms.size() && is<DiagonalMatrix>(terms[i]) &&
           is<Variable>(terms[i + 1])) {
-        terms[i + 1] = ExprFactory::diagonalMatrix(terms[i + 1]);
+        terms[i + 1] = ExprFactory::diagonal_matrix(terms[i + 1]);
       }
-      sumTerms.push_back(ExprFactory::product(std::move(terms)));
+      sum_terms.push_back(ExprFactory::product(std::move(terms)));
     }
 
     // Handle special case for transpose
@@ -90,7 +90,7 @@ ExprPtr DifferentiationVisitor::operator()(const Product& x) const {
                     terms.push_back(ExprFactory::transpose(std::move(restTerm))
                                         ->differentiate(var_));  // d/dx(g(x))^T
                     terms.push_back(y.child);                    // f(x)
-                    sumTerms.push_back(ExprFactory::product(
+                    sum_terms.push_back(ExprFactory::product(
                         std::move(terms)));  // d/dx(g(x))^T f(x)
                     return true;
                   });
@@ -100,7 +100,7 @@ ExprPtr DifferentiationVisitor::operator()(const Product& x) const {
     }
   }
 
-  return ExprFactory::sum(std::move(sumTerms));
+  return ExprFactory::sum(std::move(sum_terms));
 }
 
 }  // namespace Expression

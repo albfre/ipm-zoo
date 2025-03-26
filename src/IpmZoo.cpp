@@ -11,72 +11,72 @@
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
 
-void printHeader(const std::string& title) {
+void print_header(const std::string& title) {
   std::cout << "\n" << std::string(80, '=') << std::endl;
   std::cout << "  " << title << std::endl;
   std::cout << std::string(80, '=') << std::endl;
 }
 
-void printSubHeader(const std::string& title) {
+void print_sub_header(const std::string& title) {
   std::cout << "\n" << std::string(60, '-') << std::endl;
   std::cout << "  " << title << std::endl;
   std::cout << std::string(60, '-') << std::endl;
 }
 
-void printExample(
+void print_example(
     const std::string& description, const Expression::ExprPtr& expr,
     const Expression::ExprPtr& var = Expression::ExprFactory::variable("")) {
   std::cout << "\n" << description << ":" << std::endl;
-  std::cout << "  Expression: " << expr->toString() << std::endl;
-  std::cout << "  Simplified: " << expr->simplify()->toString() << std::endl;
+  std::cout << "  Expression: " << expr->to_string() << std::endl;
+  std::cout << "  Simplified: " << expr->simplify()->to_string() << std::endl;
 
-  if (var->toString() != "") {
-    std::cout << "  Derivative wrt " << var->toString() << ": "
-              << expr->differentiate(var)->simplify()->toString() << std::endl;
+  if (var->to_string() != "") {
+    std::cout << "  Derivative wrt " << var->to_string() << ": "
+              << expr->differentiate(var)->simplify()->to_string() << std::endl;
   }
 }
 
-void runBasicExamples() {
+void run_basic_examples() {
   using namespace Expression;
-  printHeader("Basic Expression Examples");
+  print_header("Basic Expression Examples");
 
   auto x = ExprFactory::variable("x");
   auto y = ExprFactory::variable("y");
   auto z = ExprFactory::variable("z");
   auto a = ExprFactory::variable("a");
-  auto constant = ExprFactory::namedScalar("c");
+  auto constant = ExprFactory::named_scalar("c");
   auto A = ExprFactory::variable("A");
   auto B = ExprFactory::variable("B");
   auto C = ExprFactory::variable("C");
 
   // Vector-vector dot product examples
-  printSubHeader("Vector-Vector Products");
+  print_sub_header("Vector-Vector Products");
 
-  auto dotProduct1 = ExprFactory::product({ExprFactory::transpose(x), a});
-  auto dotProduct2 =
+  auto dot_product1 = ExprFactory::product({ExprFactory::transpose(x), a});
+  auto dot_product2 =
       ExprFactory::product({ExprFactory::transpose(a), x, constant});
 
-  printExample("Dot product x^T a", dotProduct1, x);
-  printExample("Scaled dot product c·a^T x", dotProduct2, x);
+  print_example("Dot product x^T a", dot_product1, x);
+  print_example("Scaled dot product c·a^T x", dot_product2, x);
 
   // Quadratic form examples
-  printSubHeader("Quadratic Forms");
+  print_sub_header("Quadratic Forms");
 
-  auto quadForm1 = ExprFactory::product(
+  auto quad_form1 = ExprFactory::product(
       {a, ExprFactory::transpose(x), ExprFactory::variable("Q"), x});
-  auto quadForm2 = ExprFactory::product(
-      {a, ExprFactory::transpose(x), ExprFactory::symmetricMatrix("Q"), x});
-  auto quadForm3 =
+  auto quad_form2 = ExprFactory::product(
+      {a, ExprFactory::transpose(x), ExprFactory::symmetric_matrix("Q"), x});
+  auto quad_form3 =
       ExprFactory::product({ExprFactory::number(0.5), ExprFactory::transpose(x),
-                            ExprFactory::symmetricMatrix("Q"), x});
+                            ExprFactory::symmetric_matrix("Q"), x});
 
-  printExample("Quadratic form a·x^T·Q·x", quadForm1, x);
-  printExample("Quadratic form with symmetric matrix a·x^T·Q_sym·x", quadForm2,
-               x);
-  printExample("Standard quadratic form 0.5·x^T·Q_sym·x", quadForm3, x);
+  print_example("Quadratic form a·x^T·Q·x", quad_form1, x);
+  print_example("Quadratic form with symmetric matrix a·x^T·Q_sym·x",
+                quad_form2, x);
+  print_example("Standard quadratic form 0.5·x^T·Q_sym·x", quad_form3, x);
 
   // Complex algebraic expressions
-  printSubHeader("Matrix and Algebraic Expressions");
+  print_sub_header("Matrix and Algebraic Expressions");
 
   auto expr1 = ExprFactory::sum(
       {ExprFactory::product({A, x}),
@@ -94,72 +94,72 @@ void runBasicExamples() {
   auto expr3 =
       ExprFactory::negate(ExprFactory::negate(ExprFactory::sum({A, B})));
 
-  printExample("Matrix expression with nested terms", expr1, x);
-  printExample("Complex algebraic expression with coefficients", expr2, x);
-  printExample("Double negation example", expr3, A);
+  print_example("Matrix expression with nested terms", expr1, x);
+  print_example("Complex algebraic expression with coefficients", expr2, x);
+  print_example("Double negation example", expr3, A);
 }
 
-void printLhs(const std::vector<std::vector<Expression::ExprPtr>>& lhs) {
+void print_lhs(const std::vector<std::vector<Expression::ExprPtr>>& lhs) {
   std::stringstream ss;
-  size_t maxRowSize = 0;
+  size_t max_row_size = 0;
   for (const auto& row : lhs) {
-    size_t currentRowSize = 0;
+    size_t current_row_size = 0;
     for (size_t i = 0; i < row.size(); ++i) {
-      const auto rowStr = row[i]->toString();
-      currentRowSize += rowStr.size() + (i + 1 == row.size() ? 0 : 1);
-      ss << (i == 0 ? " " : "") << rowStr << ((i + 1 < row.size()) ? " " : "");
+      const auto row_str = row[i]->to_string();
+      current_row_size += row_str.size() + (i + 1 == row.size() ? 0 : 1);
+      ss << (i == 0 ? " " : "") << row_str << ((i + 1 < row.size()) ? " " : "");
     }
     ss << std::endl;
-    maxRowSize = std::max(maxRowSize, currentRowSize);
+    max_row_size = std::max(max_row_size, current_row_size);
   }
-  std::cout << "┌" << std::string(maxRowSize, '-') << "┐" << std::endl;
+  std::cout << "┌" << std::string(max_row_size, '-') << "┐" << std::endl;
   std::cout << ss.str();
-  std::cout << "└" << std::string(maxRowSize, '-') << "┘" << std::endl;
+  std::cout << "└" << std::string(max_row_size, '-') << "┘" << std::endl;
 }
 
-void printRhs(const std::vector<Expression::ExprPtr>& rhs) {
+void print_rhs(const std::vector<Expression::ExprPtr>& rhs) {
   std::stringstream ss;
-  size_t maxSize = 0;
+  size_t max_size = 0;
   for (const auto& c : rhs) {
-    const auto cStr = c->toString();
-    ss << cStr << std::endl;
-    maxSize = std::max(maxSize, cStr.size() + 1);
+    const auto c_str = c->to_string();
+    ss << c_str << std::endl;
+    max_size = std::max(max_size, c_str.size() + 1);
   }
-  std::cout << "┌" << std::string(maxSize, '-') << "┐" << std::endl;
+  std::cout << "┌" << std::string(max_size, '-') << "┐" << std::endl;
   std::cout << ss.str() << std::endl;
-  std::cout << "└" << std::string(maxSize, '-') << "┘" << std::endl;
+  std::cout << "└" << std::string(max_size, '-') << "┘" << std::endl;
 }
 
-void runOptimizationExample() {
+void run_optimization_example() {
   using namespace Expression;
 
-  printHeader("Symbolic Optimization Example");
+  print_header("Symbolic Optimization Example");
 
   std::cout << "Creating a standard form optimization problem and solving "
             << "symbolically using Newton's method" << std::endl;
 
   auto settings = SymbolicOptimization::Settings();
-  settings.inequalityHandling =
+  settings.inequality_handling =
       SymbolicOptimization::InequalityHandling::SimpleSlacks;
   auto names = SymbolicOptimization::VariableNames();
 
-  printSubHeader("Generating Lagrangian");
+  print_sub_header("Generating Lagrangian");
   const auto [lagrangian, variables] =
-      SymbolicOptimization::getLagrangian(settings, names);
+      SymbolicOptimization::get_lagrangian(settings, names);
 
-  std::cout << "Lagrangian function: " << lagrangian->toString() << std::endl;
+  std::cout << "Lagrangian function: " << lagrangian->to_string() << std::endl;
   std::cout << "\nOptimization variables:" << std::endl;
   for (const auto& var : variables) {
-    std::cout << "  - " << var->toString() << std::endl;
+    std::cout << "  - " << var->to_string() << std::endl;
   }
 
-  // Add timing around getNewtonSystem
-  printSubHeader("Computing Newton System");
-  std::cout << "Building the Newton system (may take a moment)..." << std::endl;
+  // Add timing around get_newton_system
+  print_sub_header("Computing Newton System");
+  std::cout << "Building the Newton system ..." << std::endl;
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto [lhs, rhs, newtonVariables, _] =
-      SymbolicOptimization::getNewtonSystem(settings, names);
+  auto [lhs, rhs, newton_variables, _] =
+      SymbolicOptimization::get_newton_system(settings, names);
   auto end = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double, std::milli> duration = end - start;
@@ -167,13 +167,13 @@ void runOptimizationExample() {
 
   std::cout << "\nInitial Newton system:" << std::endl;
   std::cout << "Left-hand side (Hessian matrix):" << std::endl;
-  printLhs(lhs);
+  print_lhs(lhs);
 
-  rhs = SymbolicOptimization::getShorthandRhs(variables);
+  rhs = SymbolicOptimization::get_shorthand_rhs(variables);
   std::cout << "Right-hand side (gradient vector):" << std::endl;
-  printRhs(rhs);
+  print_rhs(rhs);
 
-  printSubHeader("Performing Gaussian Elimination");
+  print_sub_header("Performing Gaussian Elimination");
 
   std::cout
       << "Applying symbolic Gaussian elimination to solve the Newton system..."
@@ -182,47 +182,47 @@ void runOptimizationExample() {
   // Perform a few elimination steps to demonstrate the process
   for (int i = 0; i < 3; i++) {
     std::cout << "\nElimination step " << i + 1 << ":" << std::endl;
-    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    SymbolicOptimization::gaussian_elimination(lhs, rhs, lhs.size() - 1);
 
     if (i % 2 == 1) {  // Only show every other step to save space
       std::cout << "Matrix after elimination:" << std::endl;
-      printLhs(lhs);
+      print_lhs(lhs);
     }
   }
 
   // Finish elimination
   std::cout << "\nCompleting elimination..." << std::endl;
   while (lhs.size() > 1) {
-    SymbolicOptimization::gaussianElimination(lhs, rhs, lhs.size() - 1);
+    SymbolicOptimization::gaussian_elimination(lhs, rhs, lhs.size() - 1);
   }
 
   std::cout << "\nFinal reduced system:" << std::endl;
   std::cout << "Reduced matrix:" << std::endl;
-  printLhs(lhs);
+  print_lhs(lhs);
 
   std::cout << "Reduced right-hand side:" << std::endl;
-  printRhs(rhs);
+  print_rhs(rhs);
 
   std::cout << "\nThe solution can now be obtained by back-substitution."
             << std::endl;
 }
 
-void runEvaluationExample() {
+void run_evaluation_example() {
   using namespace Expression;
   using namespace Evaluation;
 
-  printHeader("Numerical Evaluation Example");
+  print_header("Numerical Evaluation Example");
 
   // Create some symbolic expressions
   auto x = ExprFactory::variable("x");
   auto y = ExprFactory::variable("y");
   auto z = ExprFactory::variable("z");
   auto A = ExprFactory::matrix("A");
-  auto B = ExprFactory::symmetricMatrix("B");
-  auto Q = ExprFactory::symmetricMatrix("Q");
-  auto c = ExprFactory::namedScalar("c");
+  auto B = ExprFactory::symmetric_matrix("B");
+  auto Q = ExprFactory::symmetric_matrix("Q");
+  auto c = ExprFactory::named_scalar("c");
 
-  printSubHeader("Setting Up Evaluation Environment");
+  print_sub_header("Setting Up Evaluation Environment");
   std::cout << "Creating an environment with concrete values for variables:"
             << std::endl;
 
@@ -230,35 +230,35 @@ void runEvaluationExample() {
   Environment env;
 
   // Vector x = [1, 2, 3]
-  env[x] = valVector({1.0, 2.0, 3.0});
+  env[x] = val_vector({1.0, 2.0, 3.0});
   std::cout << "  x = [1, 2, 3]" << std::endl;
 
   // Vector y = [4, 5, 6]
-  env[y] = valVector({4.0, 5.0, 6.0});
+  env[y] = val_vector({4.0, 5.0, 6.0});
   std::cout << "  y = [4, 5, 6]" << std::endl;
 
   // Scalar c = 2.5
-  env[c] = valScalar(2.5);
+  env[c] = val_scalar(2.5);
   std::cout << "  c = 2.5" << std::endl;
 
   // Matrix A = [[1, 2, 3], [3, 4, 5], [5, 6, 7], [7, 8, 9]]
-  ValMatrix matrixA = {
+  ValMatrix matrix_a = {
       {1.0, 2.0, 3.0}, {3.0, 4.0, 5.0}, {5.0, 6.0, 7.0}, {7.0, 8.0, 9.0}};
-  env[A] = matrixA;
+  env[A] = matrix_a;
   std::cout << "  A = [[1, 2, 3], [3, 4, 5], [5, 6, 7], [7, 8, 9]]"
             << std::endl;
 
   // Symmetric matrix Q = [[1, 2, 3], [2, 4, 5], [3, 5, 6]]
-  ValMatrix matrixQ = {{1.0, 2.0, 3.0}, {2.0, 4.0, 5.0}, {3.0, 5.0, 6.0}};
-  env[Q] = matrixQ;
+  ValMatrix matrix_q = {{1.0, 2.0, 3.0}, {2.0, 4.0, 5.0}, {3.0, 5.0, 6.0}};
+  env[Q] = matrix_q;
   std::cout << "  Q = [[1, 2, 3], [2, 4, 5], [3, 5, 6]]" << std::endl;
 
   // Example 1: Vector dot product x^T y
-  printSubHeader("Example 1: Vector Dot Product");
-  auto dotProduct = ExprFactory::product({ExprFactory::transpose(x), y});
-  std::cout << "Expression: " << dotProduct->toString() << std::endl;
+  print_sub_header("Example 1: Vector Dot Product");
+  auto dot_product = ExprFactory::product({ExprFactory::transpose(x), y});
+  std::cout << "Expression: " << dot_product->to_string() << std::endl;
 
-  auto result1 = evaluate(dotProduct, env);
+  auto result1 = evaluate(dot_product, env);
   std::cout << "Result: ";
   if (is<ValScalar>(result1)) {
     std::cout << std::get<ValScalar>(result1) << std::endl;
@@ -269,11 +269,11 @@ void runEvaluationExample() {
   std::cout << "Expected: 1*4 + 2*5 + 3*6 = 32" << std::endl;
 
   // Example 2: Scaled vector c * x
-  printSubHeader("Example 2: Scaled Vector");
-  auto scaledVector = ExprFactory::product({c, x});
-  std::cout << "Expression: " << scaledVector->toString() << std::endl;
+  print_sub_header("Example 2: Scaled Vector");
+  auto scaled_vector = ExprFactory::product({c, x});
+  std::cout << "Expression: " << scaled_vector->to_string() << std::endl;
 
-  auto result2 = evaluate(scaledVector, env);
+  auto result2 = evaluate(scaled_vector, env);
   std::cout << "Result: [";
   if (is<ValVector>(result2)) {
     const auto& vec = std::get<ValVector>(result2);
@@ -285,11 +285,11 @@ void runEvaluationExample() {
   std::cout << "Expected: [2.5*1, 2.5*2, 2.5*3] = [2.5, 5.0, 7.5]" << std::endl;
 
   // Example 3: Quadratic form x^T Q x
-  printSubHeader("Example 3: Quadratic Form");
-  auto quadraticForm = ExprFactory::product({ExprFactory::transpose(x), Q, x});
-  std::cout << "Expression: " << quadraticForm->toString() << std::endl;
+  print_sub_header("Example 3: Quadratic Form");
+  auto quadratic_form = ExprFactory::product({ExprFactory::transpose(x), Q, x});
+  std::cout << "Expression: " << quadratic_form->to_string() << std::endl;
 
-  auto result3 = evaluate(quadraticForm, env);
+  auto result3 = evaluate(quadratic_form, env);
   std::cout << "Result: ";
   if (is<ValScalar>(result3)) {
     std::cout << std::get<ValScalar>(result3) << std::endl;
@@ -301,12 +301,13 @@ void runEvaluationExample() {
             << std::endl;
 
   // Example 4: Matrix-vector product A * x
-  printSubHeader("Example 4: Matrix-Vector Product");
-  auto matrixVectorProduct = ExprFactory::product({A, x});
-  std::cout << "Expression: " << matrixVectorProduct->toString() << std::endl;
+  print_sub_header("Example 4: Matrix-Vector Product");
+  auto matrix_vector_product = ExprFactory::product({A, x});
+  std::cout << "Expression: " << matrix_vector_product->to_string()
+            << std::endl;
   ASSERT(is<ValVector>(env.at(x)));
 
-  auto result4 = evaluate(matrixVectorProduct, env);
+  auto result4 = evaluate(matrix_vector_product, env);
   std::cout << "Result: [";
   if (is<ValVector>(result4)) {
     const auto& vec = std::get<ValVector>(result4);
@@ -320,18 +321,18 @@ void runEvaluationExample() {
             << std::endl;
 
   // Example 5: Complex expression combining multiple operations
-  printSubHeader("Example 5: Complex Expression");
+  print_sub_header("Example 5: Complex Expression");
   // 0.5 * x^T Q x + c * y^T x
-  auto complexExpr = ExprFactory::sum(
+  auto complex_expr = ExprFactory::sum(
       {ExprFactory::product(
            {ExprFactory::number(0.5), ExprFactory::transpose(x), Q, x}),
        ExprFactory::product({c, ExprFactory::transpose(y), x})});
 
-  std::cout << "Expression: " << complexExpr->toString() << std::endl;
-  std::cout << "Simplified: " << complexExpr->simplify()->toString()
+  std::cout << "Expression: " << complex_expr->to_string() << std::endl;
+  std::cout << "Simplified: " << complex_expr->simplify()->to_string()
             << std::endl;
 
-  auto result5 = evaluate(complexExpr, env);
+  auto result5 = evaluate(complex_expr, env);
   std::cout << "Result: ";
   if (is<ValScalar>(result5)) {
     std::cout << std::get<ValScalar>(result5) << std::endl;
@@ -342,7 +343,7 @@ void runEvaluationExample() {
             << std::endl;
 }
 
-void printUsage() {
+void print_usage() {
   std::cout << "Usage: IpmZoo [option]" << std::endl;
   std::cout << "Options:" << std::endl;
   std::cout << "  -h, --help     : Show this help message" << std::endl;
@@ -357,20 +358,20 @@ int main(int argc, char* argv[]) {
   if (argc > 1) {
     std::string arg = argv[1];
     if (arg == "-h" || arg == "--help") {
-      printUsage();
+      print_usage();
       return 0;
     } else if (arg == "-b" || arg == "--basic") {
-      runBasicExamples();
+      run_basic_examples();
       return 0;
     } else if (arg == "-o" || arg == "--optimize") {
-      runOptimizationExample();
+      run_optimization_example();
       return 0;
     } else if (arg == "-e" || arg == "--evaluate") {
-      runEvaluationExample();
+      run_evaluation_example();
       return 0;
     } else {
       std::cout << "Unknown option: " << arg << std::endl;
-      printUsage();
+      print_usage();
       return 1;
     }
   }
@@ -388,9 +389,9 @@ int main(int argc, char* argv[]) {
   std::cout << "  - Solution of Newton systems through Gaussian elimination"
             << std::endl;
 
-  runBasicExamples();
-  runOptimizationExample();
-  runEvaluationExample();
+  run_basic_examples();
+  run_optimization_example();
+  run_evaluation_example();
 
   std::cout << "\nDone!" << std::endl;
 

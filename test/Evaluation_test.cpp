@@ -15,9 +15,9 @@ class EvaluationTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // Set up common variables and environment for tests
-    env[x] = valVector({1.0, 2.0, 3.0});  // Vector x = [1, 2, 3]
-    env[y] = valVector({4.0, 5.0, 6.0});  // Vector y = [4, 5, 6]
-    env[scalar_c] = valScalar(2.5);       // Scalar c = 2.5
+    env[x] = val_vector({1.0, 2.0, 3.0});  // Vector x = [1, 2, 3]
+    env[y] = val_vector({4.0, 5.0, 6.0});  // Vector y = [4, 5, 6]
+    env[scalar_c] = val_scalar(2.5);       // Scalar c = 2.5
 
     // Matrix A = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
     ValMatrix matrixA = {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}, {7.0, 8.0, 9.0}};
@@ -32,9 +32,9 @@ class EvaluationTest : public ::testing::Test {
   ExprPtr x = ExprFactory::variable("x");
   ExprPtr y = ExprFactory::variable("y");
   ExprPtr z = ExprFactory::variable("z");
-  ExprPtr scalar_c = ExprFactory::namedScalar("c");
+  ExprPtr scalar_c = ExprFactory::named_scalar("c");
   ExprPtr A = ExprFactory::matrix("A");
-  ExprPtr Q = ExprFactory::symmetricMatrix("Q");
+  ExprPtr Q = ExprFactory::symmetric_matrix("Q");
 
   // Set up evaluation environment
   Environment env;
@@ -180,7 +180,7 @@ TEST_F(EvaluationTest, EvaluationErrorHandling) {
 
   // Test inconsistent dimensions in vector operations
   auto inconsistent = ExprFactory::variable("inconsistent");
-  env[inconsistent] = valVector({1.0, 2.0});  // Different size than x
+  env[inconsistent] = val_vector({1.0, 2.0});  // Different size than x
 
   auto badDot = ExprFactory::product({ExprFactory::transpose(x), inconsistent});
   EXPECT_THROW(evaluate(badDot, env), AssertionError);
@@ -188,7 +188,7 @@ TEST_F(EvaluationTest, EvaluationErrorHandling) {
 
 TEST_F(EvaluationTest, ElementwiseOperations) {
   // Add vector elementwise
-  auto result = add(valVector({1.0, 2.0, 3.0}), valVector({4.0, 5.0, 6.0}));
+  auto result = add(val_vector({1.0, 2.0, 3.0}), val_vector({4.0, 5.0, 6.0}));
   ASSERT_TRUE(is<ValVector>(result));
   auto vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
@@ -197,8 +197,8 @@ TEST_F(EvaluationTest, ElementwiseOperations) {
   EXPECT_DOUBLE_EQ(vec[2], 9.0);
 
   // Multiply vector elementwise
-  result = elementwiseMultiply(valVector({1.0, 2.0, 3.0}),
-                               valDiagMatrix({4.0, 5.0, 6.0}));
+  result = elementwise_multiply(val_vector({1.0, 2.0, 3.0}),
+                                val_diag_matrix({4.0, 5.0, 6.0}));
   ASSERT_TRUE(is<ValVector>(result));
   vec = std::get<ValVector>(result);
   ASSERT_EQ(vec.size(), 3);
@@ -208,8 +208,8 @@ TEST_F(EvaluationTest, ElementwiseOperations) {
 }
 
 TEST_F(EvaluationTest, ElementwiseVecAndDiagOperations) {
-  const auto a = valVector({1.0, 2.0, 3.0});
-  const auto b = valDiagMatrix({1.0, 2.0, 3.0});
+  const auto a = val_vector({1.0, 2.0, 3.0});
+  const auto b = val_diag_matrix({1.0, 2.0, 3.0});
 
   constexpr auto eval = [](const auto& vec) {
     ASSERT_EQ(vec.size(), 3);
@@ -221,25 +221,25 @@ TEST_F(EvaluationTest, ElementwiseVecAndDiagOperations) {
   // Test that multiplyong two diagonal matrices results in a new diagonal
   // matrix, whereas operations involving vectors results in a vector
   {
-    auto result = elementwiseMultiply(a, a);
+    auto result = elementwise_multiply(a, a);
     ASSERT_TRUE(is<ValVector>(result));
     auto vec = std::get<ValVector>(result);
     eval(vec);
   }
   {
-    auto result = elementwiseMultiply(a, b);
+    auto result = elementwise_multiply(a, b);
     ASSERT_TRUE(is<ValVector>(result));
     auto vec = std::get<ValVector>(result);
     eval(vec);
   }
   {
-    auto result = elementwiseMultiply(b, a);
+    auto result = elementwise_multiply(b, a);
     ASSERT_TRUE(is<ValVector>(result));
     auto vec = std::get<ValVector>(result);
     eval(vec);
   }
   {
-    auto result = elementwiseMultiply(b, b);
+    auto result = elementwise_multiply(b, b);
     ASSERT_TRUE(is<ValDiagMatrix>(result));
     auto vec = std::get<ValDiagMatrix>(result);
     eval(vec);
@@ -248,11 +248,12 @@ TEST_F(EvaluationTest, ElementwiseVecAndDiagOperations) {
 
 TEST_F(EvaluationTest, UnaryOperations) {
   // Test unary operations on different types
-  auto result = unaryOp(valScalar(5.0), [](double x) { return x * x; });
+  auto result = unary_op(val_scalar(5.0), [](double x) { return x * x; });
   ASSERT_TRUE(is<ValScalar>(result));
   EXPECT_DOUBLE_EQ(std::get<ValScalar>(result), 25.0);
 
-  result = unaryOp(valVector({1.0, 2.0, 3.0}), [](double x) { return x * x; });
+  result =
+      unary_op(val_vector({1.0, 2.0, 3.0}), [](double x) { return x * x; });
   ASSERT_TRUE(is<ValVector>(result));
   auto vec = std::get<ValVector>(result);
   EXPECT_DOUBLE_EQ(vec[0], 1.0);

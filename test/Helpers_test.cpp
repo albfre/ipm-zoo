@@ -13,8 +13,8 @@ class HelpersTest : public ::testing::Test {
 };
 
 TEST_F(HelpersTest, ConstantExprs) {
-  EXPECT_EQ(unity->toString(), "1");
-  EXPECT_EQ(zero->toString(), "0");
+  EXPECT_EQ(unity->to_string(), "1");
+  EXPECT_EQ(zero->to_string(), "0");
 }
 
 TEST_F(HelpersTest, VariantTypeCheck) {
@@ -22,25 +22,25 @@ TEST_F(HelpersTest, VariantTypeCheck) {
   EXPECT_FALSE(VariantType<int>);
 
   // Test the VariantType concept
-  auto testVariant = [](VariantType auto var) { return true; };
-  EXPECT_TRUE(testVariant(std::variant<int, double>{}));
+  auto test_variant = [](VariantType auto var) { return true; };
+  EXPECT_TRUE(test_variant(std::variant<int, double>{}));
 }
 
 TEST_F(HelpersTest, MatchFunction) {
-  auto numberExpr = ExprFactory::number(42.0);
-  auto varExpr = ExprFactory::variable("x");
+  auto number_expr = ExprFactory::number(42.0);
+  auto var_expr = ExprFactory::variable("x");
 
   // Test matching with Expr
-  auto matchResult1 = match(numberExpr)
-                          .with([](const Number& n) { return n.value; },
-                                [](const auto& _) { return 0.0; });
-  EXPECT_EQ(matchResult1, 42.0);
+  auto match_result1 = match(number_expr)
+                           .with([](const Number& n) { return n.value; },
+                                 [](const auto& _) { return 0.0; });
+  EXPECT_EQ(match_result1, 42.0);
 
-  auto matchResult2 =
-      match(varExpr).with([](const Number& n) { return "number"; },
-                          [](const Variable& v) { return "variable"; },
-                          [](const auto& _) { return "other"; });
-  EXPECT_EQ(matchResult2, "variable");
+  auto match_result2 =
+      match(var_expr).with([](const Number& n) { return "number"; },
+                           [](const Variable& v) { return "variable"; },
+                           [](const auto& _) { return "other"; });
+  EXPECT_EQ(match_result2, "variable");
 }
 
 TEST_F(HelpersTest, VariadicMatchFunction) {
@@ -105,27 +105,27 @@ TEST_F(HelpersTest, TypeChecking) {
 }
 
 TEST_F(HelpersTest, IsFunction) {
-  auto numberExpr = ExprFactory::number(42.0);
-  auto varExpr = ExprFactory::variable("x");
+  auto number_expr = ExprFactory::number(42.0);
+  auto var_expr = ExprFactory::variable("x");
 
-  EXPECT_TRUE(is<Number>(numberExpr));
-  EXPECT_FALSE(is<Variable>(numberExpr));
+  EXPECT_TRUE(is<Number>(number_expr));
+  EXPECT_FALSE(is<Variable>(number_expr));
 
-  EXPECT_TRUE(is<Variable>(varExpr));
-  EXPECT_FALSE(is<Number>(varExpr));
+  EXPECT_TRUE(is<Variable>(var_expr));
+  EXPECT_FALSE(is<Number>(var_expr));
 }
 
 TEST_F(HelpersTest, Transform) {
   auto terms = std::vector{ExprFactory::number(1.0), ExprFactory::number(2.0),
                            ExprFactory::number(3.0)};
 
-  auto doubleValue = [](const ExprPtr& e) {
+  auto double_value = [](const ExprPtr& e) {
     return match(e).with(
         [](const Number& n) { return ExprFactory::number(n.value * 2.0); },
         [&](const auto&) { return e; });
   };
 
-  auto transformed = transform(terms, doubleValue);
+  auto transformed = transform(terms, double_value);
 
   EXPECT_EQ(transformed.size(), terms.size());
   EXPECT_EQ(match(transformed[0])

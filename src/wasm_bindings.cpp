@@ -17,9 +17,9 @@ using namespace emscripten;
 struct NewtonSystemStr {
   std::string lhs;
   std::string rhs;
-  std::string rhsShorthand;
+  std::string rhs_shorthand;
   std::string variables;
-  std::string deltaDefinitions;
+  std::string delta_definitions;
 };
 
 struct NewtonSystemTriplet {
@@ -29,73 +29,73 @@ struct NewtonSystemTriplet {
 };
 
 namespace {
-NewtonSystemStr formatNewtonSystemStrings_(const auto& newtonSystem,
-                                           const auto& variableNames) {
-  const auto& [lhs, rhs, variables, deltaDefinitions] = newtonSystem;
+NewtonSystemStr format_newton_system_strings_(const auto& newton_system,
+                                              const auto& variable_names) {
+  const auto& [lhs, rhs, variables, delta_definitions] = newton_system;
   using EF = Expression::ExprFactory;
   const auto unity = EF::number(1);
-  const auto I = EF::namedVector("I");
-  const auto mu = EF::namedScalar("\\mu");
+  const auto I = EF::named_vector("I");
+  const auto mu = EF::named_scalar("\\mu");
   const auto muI = EF::product({mu, I});
-  const auto delta = EF::namedScalar(variableNames.delta_eq);
-  const auto delta2 = EF::namedScalar(variableNames.delta_eq + "^2");
+  const auto delta = EF::named_scalar(variable_names.delta_eq);
+  const auto delta2 = EF::named_scalar(variable_names.delta_eq + "^2");
   const auto deltaI = EF::product({delta, I});
   const auto deltaI2 = EF::product({deltaI, deltaI})->simplify();
   const auto delta2I = EF::product({delta2, I})->simplify();
-  std::string lhsStr = "";
+  std::string lhs_str = "";
   const auto condensed = true;
   for (const auto& row : lhs) {
     for (size_t i = 0; i < row.size(); ++i) {
-      auto rowExpr = row[i];
-      rowExpr = rowExpr->replaceSubexpression(unity, I);
-      rowExpr = rowExpr->replaceSubexpression(mu, muI);
-      rowExpr = rowExpr->replaceSubexpression(delta, deltaI)->simplify();
-      rowExpr = rowExpr->replaceSubexpression(deltaI2, delta2I);
-      lhsStr +=
-          rowExpr->toString(condensed) + (i + 1 == row.size() ? "" : " & ");
+      auto row_expr = row[i];
+      row_expr = row_expr->replace_subexpression(unity, I);
+      row_expr = row_expr->replace_subexpression(mu, muI);
+      row_expr = row_expr->replace_subexpression(delta, deltaI)->simplify();
+      row_expr = row_expr->replace_subexpression(deltaI2, delta2I);
+      lhs_str +=
+          row_expr->to_string(condensed) + (i + 1 == row.size() ? "" : " & ");
     }
-    lhsStr += " \\\\\n ";
+    lhs_str += " \\\\\n ";
   }
 
-  std::string rhsStr = "";
+  std::string rhs_str = "";
   for (const auto& row : rhs) {
-    auto rowStr = row->toString(condensed);
-    rhsStr += rowStr + " \\\\\n ";
+    auto row_str = row->to_string(condensed);
+    rhs_str += row_str + " \\\\\n ";
   }
 
-  const auto rhsShorthand = SymbolicOptimization::getShorthandRhs(variables);
-  std::string rhsShorthandStr = "";
-  for (const auto& row : rhsShorthand) {
-    rhsShorthandStr += row->toString(condensed) + " \\\\\n ";
+  const auto rhs_shorthand = SymbolicOptimization::get_shorthand_rhs(variables);
+  std::string rhs_shorthand_str = "";
+  for (const auto& row : rhs_shorthand) {
+    rhs_shorthand_str += row->to_string(condensed) + " \\\\\n ";
   }
 
-  std::string variablesStr = "";
+  std::string variables_str = "";
   for (size_t i = 0; i < variables.size(); ++i) {
-    variablesStr += "\\Delta " + variables[i]->toString(condensed) +
-                    (i + 1 == variables.size() ? "\n" : " \\\\\n ");
+    variables_str += "\\Delta " + variables[i]->to_string(condensed) +
+                     (i + 1 == variables.size() ? "\n" : " \\\\\n ");
   }
 
-  std::string definitionsStr = "";
-  for (size_t i = deltaDefinitions.size(); i > 0; --i) {
-    definitionsStr +=
-        deltaDefinitions.at(i - 1).first->toString(condensed) +
-        " &= " + deltaDefinitions.at(i - 1).second->toString(condensed) +
+  std::string definitions_str = "";
+  for (size_t i = delta_definitions.size(); i > 0; --i) {
+    definitions_str +=
+        delta_definitions.at(i - 1).first->to_string(condensed) +
+        " &= " + delta_definitions.at(i - 1).second->to_string(condensed) +
         (i - 1 == 0 ? "\n" : " \\\\\n ");
   }
 
-  return {lhsStr, rhsStr, rhsShorthandStr, variablesStr, definitionsStr};
+  return {lhs_str, rhs_str, rhs_shorthand_str, variables_str, definitions_str};
 }
 }  // namespace
 
-std::string getLagrangian(const SymbolicOptimization::Settings& settings) {
-  const auto variableNames = SymbolicOptimization::VariableNames();
+std::string get_lagrangian(const SymbolicOptimization::Settings& settings) {
+  const auto variable_names = SymbolicOptimization::VariableNames();
   const auto [lagrangian, variables] =
-      SymbolicOptimization::getLagrangian(settings, variableNames);
+      SymbolicOptimization::get_lagrangian(settings, variable_names);
 
   const auto condensed = true;
-  auto str = "& " + lagrangian->toString(condensed);
+  auto str = "& " + lagrangian->to_string(condensed);
   auto pos = 0;
-  const auto addNewlines = [&](const auto& term) {
+  const auto add_newlines = [&](const auto& term) {
     pos = str.find(term);
     while (pos != std::string::npos) {
       str.insert(pos - 1, " \\\\\n & ");
@@ -108,56 +108,57 @@ std::string getLagrangian(const SymbolicOptimization::Settings& settings) {
       }
     }
   };
-  addNewlines("\\lambda");
-  addNewlines("- \\mu");
+  add_newlines("\\lambda");
+  add_newlines("- \\mu");
   return str;
 }
 
-std::string getFirstOrderOptimalityConditions(
+std::string get_first_order_optimality_conditions(
     const SymbolicOptimization::Settings& settings) {
-  const auto variableNames = SymbolicOptimization::VariableNames();
-  auto [firstOrder, variables] =
-      SymbolicOptimization::getFirstOrderOptimalityConditions(settings,
-                                                              variableNames);
+  const auto variable_names = SymbolicOptimization::VariableNames();
+  auto [first_order, variables] =
+      SymbolicOptimization::get_first_order_optimality_conditions(
+          settings, variable_names);
   const auto condensed = true;
   std::string str = "";
-  for (const auto& c : firstOrder) {
-    str += c->toString(condensed) + " &= 0 \\\\";
+  for (const auto& c : first_order) {
+    str += c->to_string(condensed) + " &= 0 \\\\";
   }
   return str;
 }
 
-NewtonSystemTriplet getNewtonSystems(
+NewtonSystemTriplet get_newton_systems(
     const SymbolicOptimization::Settings& settings) {
-  const auto variableNames = SymbolicOptimization::VariableNames();
+  const auto variable_names = SymbolicOptimization::VariableNames();
   Util::Timer timer;
-  timer.start("getNewtonSystems");
+  timer.start("get_newton_systems");
 
   // Full Newton system
-  auto newtonSystem =
-      SymbolicOptimization::getNewtonSystem(settings, variableNames);
-  auto newtonSystemStr =
-      formatNewtonSystemStrings_(newtonSystem, variableNames);
+  auto newton_system =
+      SymbolicOptimization::get_newton_system(settings, variable_names);
+  auto newton_system_str =
+      format_newton_system_strings_(newton_system, variable_names);
 
   // Use shorthand for right-hand side
-  newtonSystem.rhs =
-      SymbolicOptimization::getShorthandRhs(newtonSystem.variables);
+  newton_system.rhs =
+      SymbolicOptimization::get_shorthand_rhs(newton_system.variables);
 
   // Augmented system
-  auto augmentedSystem = SymbolicOptimization::getAugmentedSystem(newtonSystem);
-  auto augmentedSystemStr =
-      formatNewtonSystemStrings_(augmentedSystem, variableNames);
+  auto augmented_system =
+      SymbolicOptimization::get_augmented_system(newton_system);
+  auto augmented_system_str =
+      format_newton_system_strings_(augmented_system, variable_names);
 
   // Normal equations
-  auto normalEquations =
-      SymbolicOptimization::getNormalEquations(augmentedSystem);
-  auto normalEquationsStr =
-      formatNewtonSystemStrings_(normalEquations, variableNames);
+  auto normal_equations =
+      SymbolicOptimization::get_normal_equations(augmented_system);
+  auto normal_equations_str =
+      format_newton_system_strings_(normal_equations, variable_names);
 
-  timer.stop("getNewtonSystems");
+  timer.stop("get_newton_systems");
   timer.report();
 
-  return {newtonSystemStr, augmentedSystemStr, normalEquationsStr};
+  return {newton_system_str, augmented_system_str, normal_equations_str};
 }
 
 // Alternatively, use embind for more direct JS-to-C++ bindings
@@ -202,19 +203,19 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .constructor<>()
       .property("inequalities", &SymbolicOptimization::Settings::inequalities)
       .property("variableBounds",
-                &SymbolicOptimization::Settings::variableBounds)
+                &SymbolicOptimization::Settings::variable_bounds)
       .property("equalities", &SymbolicOptimization::Settings::equalities)
       .property("equalityHandling",
-                &SymbolicOptimization::Settings::equalityHandling)
+                &SymbolicOptimization::Settings::equality_handling)
       .property("inequalityHandling",
-                &SymbolicOptimization::Settings::inequalityHandling);
+                &SymbolicOptimization::Settings::inequality_handling);
 
   value_object<NewtonSystemStr>("NewtonSystem")
       .field("lhs", &NewtonSystemStr::lhs)
       .field("rhs", &NewtonSystemStr::rhs)
-      .field("rhsShorthand", &NewtonSystemStr::rhsShorthand)
+      .field("rhsShorthand", &NewtonSystemStr::rhs_shorthand)
       .field("variables", &NewtonSystemStr::variables)
-      .field("deltaDefinitions", &NewtonSystemStr::deltaDefinitions);
+      .field("deltaDefinitions", &NewtonSystemStr::delta_definitions);
 
   value_object<NewtonSystemTriplet>("NewtonSystemTriplet")
       .field("full", &NewtonSystemTriplet::full)
@@ -222,8 +223,8 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .field("normal", &NewtonSystemTriplet::normal);
 
   // Register free functions
-  function("getLagrangian", &getLagrangian);
+  function("getLagrangian", &get_lagrangian);
   function("getFirstOrderOptimalityConditions",
-           &getFirstOrderOptimalityConditions);
-  function("getNewtonSystems", &getNewtonSystems);
+           &get_first_order_optimality_conditions);
+  function("getNewtonSystems", &get_newton_systems);
 }

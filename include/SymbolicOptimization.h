@@ -48,10 +48,10 @@ enum class EqualityHandling {
 
 struct Settings {
   Bounds inequalities = Bounds::Both;
-  Bounds variableBounds = Bounds::Both;
+  Bounds variable_bounds = Bounds::Both;
   bool equalities = false;
-  EqualityHandling equalityHandling = EqualityHandling::None;
-  InequalityHandling inequalityHandling = InequalityHandling::Slacks;
+  EqualityHandling equality_handling = EqualityHandling::None;
+  InequalityHandling inequality_handling = InequalityHandling::Slacks;
 };
 
 struct NewtonSystem {
@@ -59,30 +59,30 @@ struct NewtonSystem {
   std::vector<Expression::ExprPtr> rhs;
   std::vector<Expression::ExprPtr> variables;
   std::vector<std::pair<Expression::ExprPtr, Expression::ExprPtr>>
-      deltaDefinitions;
+      delta_definitions;
 };
 
-std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(
+std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> get_lagrangian(
     const Settings& settings, const VariableNames& names);
 
 std::pair<std::vector<Expression::ExprPtr>, std::vector<Expression::ExprPtr>>
-getFirstOrderOptimalityConditions(Settings settings,
-                                  const VariableNames& names);
+get_first_order_optimality_conditions(Settings settings,
+                                      const VariableNames& names);
 
-NewtonSystem getNewtonSystem(const Settings& settings,
-                             const VariableNames& names);
-NewtonSystem getAugmentedSystem(NewtonSystem newtonSystem);
-NewtonSystem getNormalEquations(NewtonSystem newtonSystem);
+NewtonSystem get_newton_system(const Settings& settings,
+                               const VariableNames& names);
+NewtonSystem get_augmented_system(NewtonSystem newton_system);
+NewtonSystem get_normal_equations(NewtonSystem newton_system);
 
-std::vector<Expression::ExprPtr> getShorthandRhs(
+std::vector<Expression::ExprPtr> get_shorthand_rhs(
     const std::vector<Expression::ExprPtr>& variables);
 
-Expression::ExprPtr deltaDefinition(
+Expression::ExprPtr delta_definition(
     const std::vector<std::vector<Expression::ExprPtr>>& lhs,
     const std::vector<Expression::ExprPtr>& rhs,
-    const std::vector<Expression::ExprPtr>& variables, size_t sourceRow);
+    const std::vector<Expression::ExprPtr>& variables, size_t source_row);
 
-void gaussianElimination(std::vector<std::vector<Expression::ExprPtr>>& lhs,
-                         std::vector<Expression::ExprPtr>& rhs,
-                         size_t sourceRow);
+void gaussian_elimination(std::vector<std::vector<Expression::ExprPtr>>& lhs,
+                          std::vector<Expression::ExprPtr>& rhs,
+                          size_t source_row);
 }  // namespace SymbolicOptimization

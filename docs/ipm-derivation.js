@@ -266,10 +266,10 @@ function updateProblem() {
       outputText += "<p><strong>Normal equations:</strong></p>";
       const numNormalEquationVariables = countAmpersandsBeforeNewlines(normalEquations.lhs) + 1;
       cs = "c".repeat(numNormalEquationVariables);
-      outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(normalEquations.lhs) + "\\end{array} \\right) "
+      outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(normalEquations.lhs) + "\\end{array} \\ right) "
       if (numNormalEquationVariables > 1) {
         outputText += "\\left( \\begin{array}{c}\n " + normalEquations.variables + "\\end{array} \\right) \\]";
-        outputText += "\\[ = \\left( \\begin{array}{l}\n " + normalEquations.rhs + "\\end{array} \\right) \\]"
+        outputText += "\\[ = \\left( \\begin{array}{l}\n " + normalEquations.rhs + "\\end{array} \\ right) \\]"
       }
       else {
         outputText += normalEquations.variables + " \\]";
@@ -284,24 +284,6 @@ function updateProblem() {
   } else {
     outputText += "<p>WASM module not yet initialized. Lagrangian will appear here when ready.</p>";
   }
-
-  outputText += "<h3>TODO list</h3>";
-  outputText += "<p><s>1. Optimization problem with slacks</s></p>";
-  outputText += "<p><s>2. Optimization problem with barriers</s></p>";
-  outputText += "<p><s>3. Lagrangian function</s></p>";
-  outputText += "<p><s>4. First-order optimality conditions</s></p>";
-  outputText += "<p><s>5. Newton system</s></p>";
-  outputText += "<p><s>6. Reduction of rows for log-barriers</s></p>";
-  outputText += "<p><s>7. Reduction of rows for Lagrange multipliers</s></p>";
-  outputText += "<p><s>8. Expressions for search direction variables in reduced system</s></p>";
-  outputText += "<p><s>9. Augmented system</s></p>";
-  outputText += "<p><s>10. Reduction to normal equations</s></p>";
-  outputText += "<p><s>11. Support for equalities</s></p>";
-  outputText += "<p><s>12. Support for direct slacks for inequalities</s></p>";
-  outputText += "<p><s>13. Support for different equality handling</s></p>";
-  outputText += "<p><s>14. Handling equality constraints via regularization</s></p>";
-  outputText += "<p>15. LU/LDLT solution methods</p>";
-  outputText += "<p>16. Improved vector differentiation</p>";
 
   document.getElementById("output").innerHTML = outputText;
   MathJax.typesetPromise().catch((err) => {

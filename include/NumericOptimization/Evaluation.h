@@ -25,11 +25,11 @@ using Environment = std::map<Expression::ExprPtr, EvalResult>;
 EvalResult evaluate(const Expression::ExprPtr& expr, Environment& env);
 
 // Functions for modifying EvalResults
-EvalResult unaryOp(const EvalResult& x,
-                   const std::function<double(double)>& lambda);
+EvalResult unary_op(const EvalResult& x,
+                    const std::function<double(double)>& lambda);
 
-EvalResult elementwiseOp(const EvalResult& x, const EvalResult& y,
-                         const std::function<double(double, double)>& lambda);
+EvalResult elementwise_op(const EvalResult& x, const EvalResult& y,
+                          const std::function<double(double, double)>& lambda);
 
 // Basic operations
 EvalResult negate(const EvalResult& x);
@@ -37,11 +37,11 @@ EvalResult invert(const EvalResult& x);
 EvalResult add(const EvalResult& x, const EvalResult& y);
 EvalResult subtract(const EvalResult& x, const EvalResult& y);
 EvalResult multiply(const EvalResult& x, const EvalResult& y);
-EvalResult elementwiseMultiply(const EvalResult& x, const EvalResult& y);
-EvalResult elementwiseDivide(const EvalResult& x, const EvalResult& y);
+EvalResult elementwise_multiply(const EvalResult& x, const EvalResult& y);
+EvalResult elementwise_divide(const EvalResult& x, const EvalResult& y);
 
 // Constructor functions
-EvalResult valScalar(double x);
-EvalResult valVector(const std::vector<double>& v);
-EvalResult valDiagMatrix(const std::vector<double>& v);
+EvalResult val_scalar(double x);
+EvalResult val_vector(const std::vector<double>& v);
+EvalResult val_diag_matrix(const std::vector<double>& v);
 }  // namespace Evaluation

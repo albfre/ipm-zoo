@@ -5,7 +5,6 @@
 #include <vector>
 
 namespace Util {
-
 class Timer {
  public:
   Timer() = default;
@@ -17,8 +16,8 @@ class Timer {
  private:
   std::unordered_map<std::string,
                      std::chrono::high_resolution_clock::time_point>
-      startTimes;
-  std::unordered_map<std::string, std::chrono::milliseconds> totalTimes;
-  std::vector<std::string> operationOrder;
+      start_times;
+  std::unordered_map<std::string, std::chrono::milliseconds> total_times;
+  std::vector<std::string> operation_order;
 };
 }  // namespace Util

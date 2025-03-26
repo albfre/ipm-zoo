@@ -52,7 +52,7 @@ auto match(const Variants&... variants) {
   return MatchMaker<Variants...>(variants...);
 }
 
-inline auto match(const Expr& expr) { return match(expr.getImpl()); }
+inline auto match(const Expr& expr) { return match(expr.get_impl()); }
 inline auto match(const ExprPtr& expr) { return match(*expr); }
 
 // Helper template for static_assert that depends on a type
@@ -76,17 +76,17 @@ bool is(const Variant& v) {
 
 template <typename T>
 bool is(const ExprPtr& expr) {
-  return is<T>(expr->getImpl());
+  return is<T>(expr->get_impl());
 }
 
 template <typename TLambda>
 std::vector<ExprPtr> transform(const std::vector<ExprPtr>& terms,
                                const TLambda& lambda) {
-  std::vector<ExprPtr> transformedTerms;
-  transformedTerms.reserve(terms.size());
-  std::ranges::transform(terms, std::back_inserter(transformedTerms),
+  std::vector<ExprPtr> transformed_terms;
+  transformed_terms.reserve(terms.size());
+  std::ranges::transform(terms, std::back_inserter(transformed_terms),
                          [&lambda](const auto& t) { return lambda(t); });
-  return transformedTerms;
+  return transformed_terms;
 }
 
 }  // namespace Expression

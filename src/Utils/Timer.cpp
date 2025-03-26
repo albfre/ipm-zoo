@@ -6,34 +6,34 @@
 namespace Util {
 
 void Timer::start(const std::string& operation) {
-  startTimes[operation] = std::chrono::high_resolution_clock::now();
+  start_times[operation] = std::chrono::high_resolution_clock::now();
 }
 
 void Timer::stop(const std::string& operation) {
-  auto endTime = std::chrono::high_resolution_clock::now();
-  auto startTimeIter = startTimes.find(operation);
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto start_time_iter = start_times.find(operation);
 
-  if (startTimeIter == startTimes.end()) {
+  if (start_time_iter == start_times.end()) {
     std::cerr << "Warning: Attempting to stop timer for operation '"
               << operation << "' that was not started" << std::endl;
     return;
   }
 
-  auto startTime = startTimeIter->second;
+  auto start_time = start_time_iter->second;
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-      endTime - startTime);
+      end_time - start_time);
 
-  if (totalTimes.find(operation) == totalTimes.end()) {
-    operationOrder.push_back(operation);
-    totalTimes[operation] = duration;
+  if (total_times.find(operation) == total_times.end()) {
+    operation_order.push_back(operation);
+    total_times[operation] = duration;
   } else {
-    totalTimes[operation] += duration;
+    total_times[operation] += duration;
   }
 }
 
 void Timer::report() const {
-  for (const auto& operation : operationOrder) {
-    const auto& duration = totalTimes.at(operation);
+  for (const auto& operation : operation_order) {
+    const auto& duration = total_times.at(operation);
 
     std::cout << operation << ": ";
 

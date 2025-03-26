@@ -12,15 +12,15 @@ SimplificationVisitor::SimplificationVisitor(const bool distribute)
     : distribute_(distribute) {}
 
 ExprPtr SimplificationVisitor::operator()(const DiagonalMatrix& x) {
-  auto child = x.child->simplifyOnce(distribute_);
+  auto child = x.child->simplify_once(distribute_);
   if (child == zero || child == unity) {
     return child;
   }
-  return ExprFactory::diagonalMatrix(std::move(child));
+  return ExprFactory::diagonal_matrix(std::move(child));
 }
 
 ExprPtr SimplificationVisitor::operator()(const Transpose& x) const {
-  auto child = x.child->simplifyOnce(distribute_);
+  auto child = x.child->simplify_once(distribute_);
   if (child == zero || child == unity) {
     return child;  // 0^T = 0, 1^T = 1
   }
@@ -49,7 +49,7 @@ ExprPtr SimplificationVisitor::operator()(const Transpose& x) const {
 }
 
 ExprPtr SimplificationVisitor::operator()(const Negate& x) {
-  auto child = x.child->simplifyOnce(distribute_);
+  auto child = x.child->simplify_once(distribute_);
   if (child == zero) {  // -0 = 0
     return child;
   }
@@ -60,7 +60,7 @@ ExprPtr SimplificationVisitor::operator()(const Negate& x) {
             it != x.terms.end()) {
           auto terms = x.terms;
           terms[std::distance(x.terms.begin(), it)] =
-              std::get<Negate>((*it)->getImpl()).child;
+              std::get<Negate>((*it)->get_impl()).child;
           return ExprFactory::product(std::move(terms));
         }
         return ExprFactory::negate(std::move(child));
@@ -83,7 +83,7 @@ ExprPtr SimplificationVisitor::operator()(const Negate& x) {
 }
 
 ExprPtr SimplificationVisitor::operator()(const Invert& x) const {
-  auto child = x.child->simplifyOnce(distribute_);
+  auto child = x.child->simplify_once(distribute_);
   if (child == unity) {
     return child;
   }
@@ -104,45 +104,45 @@ ExprPtr SimplificationVisitor::operator()(const Invert& x) const {
 }
 
 ExprPtr SimplificationVisitor::operator()(const Log& x) const {
-  return ExprFactory::log(x.child->simplifyOnce(distribute_));
+  return ExprFactory::log(x.child->simplify_once(distribute_));
 }
 
 ExprPtr SimplificationVisitor::operator()(const Sum& x) const {
   // Recursive simplification
   auto terms = transform(
-      x.terms, [this](const auto& t) { return t->simplifyOnce(distribute_); });
+      x.terms, [this](const auto& t) { return t->simplify_once(distribute_); });
 
   // Associative transformation ((x + y) + z = x + y + z)
-  std::vector<ExprPtr> newTerms;
-  newTerms.reserve(terms.size());
+  std::vector<ExprPtr> new_terms;
+  new_terms.reserve(terms.size());
   for (auto& t : terms) {
     match(t).with(
         [&](const Sum& x) {
-          newTerms.insert(newTerms.end(), x.terms.begin(), x.terms.end());
+          new_terms.insert(new_terms.end(), x.terms.begin(), x.terms.end());
         },
         [&](auto& x) {
           if constexpr (std::is_same_v<Negate, std::decay_t<decltype(x)>>) {
             if (match(x.child).with([](const Sum& sum) { return true; },
                                     [](const auto&) { return false; })) {
-              auto& sum = std::get<Sum>(x.child->getImpl());
-              newTerms.reserve(newTerms.size() + sum.terms.size());
+              auto& sum = std::get<Sum>(x.child->get_impl());
+              new_terms.reserve(new_terms.size() + sum.terms.size());
               for (auto& ct : sum.terms) {
-                newTerms.emplace_back(ExprFactory::negate(ct));
+                new_terms.emplace_back(ExprFactory::negate(ct));
               }
               return;
             }
           }
-          newTerms.emplace_back(std::move(t));
+          new_terms.emplace_back(std::move(t));
         });
   }
-  terms = std::move(newTerms);
+  terms = std::move(new_terms);
 
   // Distributive transformation (x + y + 1.3x = 2.3x + y)
   for (size_t i = 0; i < terms.size(); ++i) {
     if (terms.at(i) != zero) {
       auto term = terms.at(i);
-      const auto negTerm = ExprFactory::negate(term);
-      const auto isNumberTimesTerm = [&term](const auto& t) -> bool {
+      const auto neg_term = ExprFactory::negate(term);
+      const auto is_number_times_term = [&term](const auto& t) -> bool {
         return match(t).with(
             [&term](const Product& x) {
               return x.terms.size() == 2 && is<Number>(x.terms.front()) &&
@@ -150,24 +150,24 @@ ExprPtr SimplificationVisitor::operator()(const Sum& x) const {
             },
             [](const auto&) { return false; });
       };
-      const auto isTerm = [&](const auto& t) {
-        return t == term || t == negTerm || isNumberTimesTerm(t);
+      const auto is_term = [&](const auto& t) {
+        return t == term || t == neg_term || is_number_times_term(t);
       };
-      if (std::ranges::count_if(terms, isTerm) > 1) {
+      if (std::ranges::count_if(terms, is_term) > 1) {
         const auto value = std::accumulate(
             terms.cbegin(), terms.cend(), 0.0,
-            [&term, &negTerm, &isNumberTimesTerm](const auto s,
-                                                  const auto& t) -> double {
-              return s + (t == term      ? 1.0
-                          : t == negTerm ? -1.0
-                          : isNumberTimesTerm(t)
-                              ? std::get<Number>(std::get<Product>(t->getImpl())
-                                                     .terms.front()
-                                                     ->getImpl())
-                                    .value
-                              : 0.0);
+            [&](const auto s, const auto& t) -> double {
+              return s +
+                     (t == term       ? 1.0
+                      : t == neg_term ? -1.0
+                      : is_number_times_term(t)
+                          ? std::get<Number>(std::get<Product>(t->get_impl())
+                                                 .terms.front()
+                                                 ->get_impl())
+                                .value
+                          : 0.0);
             });
-        std::erase_if(terms, isTerm);
+        std::erase_if(terms, is_term);
         terms.push_back(ExprFactory::product(
             {ExprFactory::number(value), std::move(term)}));
       }
@@ -182,7 +182,7 @@ ExprPtr SimplificationVisitor::operator()(const Sum& x) const {
   }
 
   // Canceling transformation (x - x = 0)
-  eraseCanceling_<Negate>(terms, zero);
+  erase_canceling_<Negate>(terms, zero);
 
   // Numerical transformation (1 + x + 2 = 3 + x)
   if (std::ranges::count_if(terms, is<Number>) > 1) {
@@ -200,10 +200,10 @@ ExprPtr SimplificationVisitor::operator()(const Sum& x) const {
 
   // -x - y = -(x + y)
   if (std::ranges::all_of(terms, is<Negate>)) {
-    auto newTerms = transform(terms, [](const auto& t) {
-      return std::get<Negate>(t->getImpl()).child;
+    auto new_terms = transform(terms, [](const auto& t) {
+      return std::get<Negate>(t->get_impl()).child;
     });
-    return ExprFactory::negate(ExprFactory::sum(std::move(newTerms)));
+    return ExprFactory::negate(ExprFactory::sum(std::move(new_terms)));
   }
 
   if (terms.size() == 1) {
@@ -216,15 +216,15 @@ ExprPtr SimplificationVisitor::operator()(const Sum& x) const {
   // (xy + xz + xw = x(y + z + w)
   if (distribute_) {
     for (const auto leading : std::vector{true, false}) {
-      std::map<ExprPtr, size_t> numOccurrencesOfFactors;
-      std::vector<ExprPtr> factorPerTerm;
-      factorPerTerm.reserve(terms.size());
+      std::map<ExprPtr, size_t> num_occurrences_of_factors;
+      std::vector<ExprPtr> factor_per_term;
+      factor_per_term.reserve(terms.size());
       for (auto& t : terms) {
-        factorPerTerm.push_back(t->getLeadingOrEndingFactor(leading));
-        ++numOccurrencesOfFactors[factorPerTerm.back()];
+        factor_per_term.push_back(t->get_leading_or_ending_factor(leading));
+        ++num_occurrences_of_factors[factor_per_term.back()];
       }
       std::vector<std::pair<ExprPtr, size_t>> sorted(
-          numOccurrencesOfFactors.begin(), numOccurrencesOfFactors.end());
+          num_occurrences_of_factors.begin(), num_occurrences_of_factors.end());
       std::ranges::sort(sorted, {}, &std::pair<ExprPtr, size_t>::second);
 
       while (!sorted.empty()) {
@@ -232,33 +232,33 @@ ExprPtr SimplificationVisitor::operator()(const Sum& x) const {
         if (numOccurrences < 2) {
           break;
         }
-        std::vector<ExprPtr> factoredTerms;
-        std::vector<ExprPtr> unfactoredTerms;
-        factoredTerms.reserve(terms.size());
-        unfactoredTerms.reserve(terms.size());
+        std::vector<ExprPtr> factored_terms;
+        std::vector<ExprPtr> unfactored_terms;
+        factored_terms.reserve(terms.size());
+        unfactored_terms.reserve(terms.size());
         for (size_t i = 0; i < terms.size(); ++i) {
-          if (factorPerTerm.at(i) == factor) {
-            factoredTerms.push_back(terms[i]->factorOut(factor, leading));
+          if (factor_per_term.at(i) == factor) {
+            factored_terms.push_back(terms[i]->factor_out(factor, leading));
           } else {
-            unfactoredTerms.push_back(terms[i]);
+            unfactored_terms.push_back(terms[i]);
           }
         }
 
-        auto sumFactored = ExprFactory::sum(std::move(factoredTerms));
-        auto factorTimesFactored =
+        auto sum_factored = ExprFactory::sum(std::move(factored_terms));
+        auto factor_times_factored =
             leading ? ExprFactory::product(
-                          {std::move(factor), std::move(sumFactored)})
+                          {std::move(factor), std::move(sum_factored)})
                     : ExprFactory::product(
-                          {std::move(sumFactored), std::move(factor)});
-        auto factoredExpr =
-            (unfactoredTerms.empty()
-                 ? std::move(factorTimesFactored)
+                          {std::move(sum_factored), std::move(factor)});
+        auto factored_expr =
+            (unfactored_terms.empty()
+                 ? std::move(factor_times_factored)
                  : ExprFactory::sum(
-                       {ExprFactory::sum(std::move(unfactoredTerms)),
-                        std::move(factorTimesFactored)}))
+                       {ExprFactory::sum(std::move(unfactored_terms)),
+                        std::move(factor_times_factored)}))
                 ->simplify(false);
-        if (factoredExpr->complexity() < simplified->complexity()) {
-          return factoredExpr;
+        if (factored_expr->complexity() < simplified->complexity()) {
+          return factored_expr;
         }
         sorted.pop_back();
       }
@@ -271,10 +271,10 @@ ExprPtr SimplificationVisitor::operator()(const Sum& x) const {
 ExprPtr SimplificationVisitor::operator()(const Product& x) const {
   // Recursive simplification
   auto terms = transform(
-      x.terms, [this](const auto& t) { return t->simplifyOnce(distribute_); });
+      x.terms, [this](const auto& t) { return t->simplify_once(distribute_); });
 
   // Associative transformation (x(yz) = xyz)
-  associativeTransformation_<Product>(terms);
+  associative_transformation_<Product>(terms);
 
   // Identity transformations (x * 0 = 0, x * 1 = x)
   if (std::ranges::any_of(terms, [](const auto& t) { return t == zero; })) {
@@ -289,13 +289,13 @@ ExprPtr SimplificationVisitor::operator()(const Product& x) const {
   if (const auto it = std::ranges::find_if(terms, is<Negate>);
       it != terms.end()) {
     terms[std::distance(terms.begin(), it)] =
-        std::get<Negate>((*it)->getImpl()).child;
+        std::get<Negate>((*it)->get_impl()).child;
     return ExprFactory::negate(ExprFactory::product(std::move(terms)));
   }
 
   // Canceling transformation (power transformation for the special case
   // of inverse) (x * inv(x) = 1)
-  eraseCanceling_<Invert>(terms, unity);
+  erase_canceling_<Invert>(terms, unity);
 
   // Commutative transformation (2x3y = 2*3*xy)
   std::ranges::partition(terms, is<NamedScalar>);
@@ -306,7 +306,7 @@ ExprPtr SimplificationVisitor::operator()(const Product& x) const {
     const auto value = std::accumulate(
         terms.cbegin(), terms.cend(), 1.0, [](const double s, const auto& t) {
           return s *
-                 (is<Number>(t) ? std::get<Number>(t->getImpl()).value : 1.0);
+                 (is<Number>(t) ? std::get<Number>(t->get_impl()).value : 1.0);
         });
     std::erase_if(terms, is<Number>);
     terms.insert(terms.begin(), ExprFactory::number(value));
@@ -327,7 +327,7 @@ ExprPtr SimplificationVisitor::operator()(const Product& x) const {
                 const auto init = std::vector(terms.begin(), terms.begin() + i);
                 const auto rest =
                     std::vector(terms.begin() + i + 1, terms.end());
-                auto sumTerms =
+                auto sum_terms =
                     transform(x.terms, [&init, &rest](const auto& t) {
                       auto factors = init;
                       factors.push_back(t);
@@ -335,10 +335,11 @@ ExprPtr SimplificationVisitor::operator()(const Product& x) const {
                       auto term = ExprFactory::product(factors);
                       return term;
                     });
-                if (auto distributedExpr =
-                        ExprFactory::sum(std::move(sumTerms))->simplify(false);
-                    distributedExpr->complexity() <= simplified->complexity()) {
-                  simplified = std::move(distributedExpr);
+                if (auto distributed_expr =
+                        ExprFactory::sum(std::move(sum_terms))->simplify(false);
+                    distributed_expr->complexity() <=
+                    simplified->complexity()) {
+                  simplified = std::move(distributed_expr);
                   return true;
                 }
                 return false;
@@ -353,14 +354,14 @@ ExprPtr SimplificationVisitor::operator()(const Product& x) const {
 }
 
 template <typename T>
-void SimplificationVisitor::eraseCanceling_(std::vector<ExprPtr>& terms,
-                                            const ExprPtr& replacement) const {
+void SimplificationVisitor::erase_canceling_(std::vector<ExprPtr>& terms,
+                                             const ExprPtr& replacement) const {
   for (size_t i = 0; i < terms.size(); ++i) {
     const auto& t1 = terms.at(i);
     for (size_t j = i + 1; j < terms.size(); ++j) {
       const auto& t2 = terms.at(j);
-      if ((is<T>(t1) && *std::get<T>(t1->getImpl()).child == *t2) ||
-          (is<T>(t2) && *std::get<T>(t2->getImpl()).child == *t1)) {
+      if ((is<T>(t1) && *std::get<T>(t1->get_impl()).child == *t2) ||
+          (is<T>(t2) && *std::get<T>(t2->get_impl()).child == *t1)) {
         terms.erase(terms.begin() + j);
         terms.erase(terms.begin() + i);
         terms.insert(terms.begin() + i, replacement);
@@ -371,28 +372,28 @@ void SimplificationVisitor::eraseCanceling_(std::vector<ExprPtr>& terms,
 }
 
 template <typename T>
-  requires NaryType<T> void SimplificationVisitor::associativeTransformation_(
+  requires NaryType<T> void SimplificationVisitor::associative_transformation_(
     std::vector<ExprPtr>& terms) const {
-  std::vector<ExprPtr> newTerms;
-  newTerms.reserve(terms.size());
+  std::vector<ExprPtr> new_terms;
+  new_terms.reserve(terms.size());
   for (auto& t : terms) {
     match(t).with(
         [&](const T& x) {
-          newTerms.insert(newTerms.end(), x.terms.begin(), x.terms.end());
+          new_terms.insert(new_terms.end(), x.terms.begin(), x.terms.end());
         },
-        [&](const auto&) { newTerms.emplace_back(std::move(t)); });
+        [&](const auto&) { new_terms.emplace_back(std::move(t)); });
   }
-  terms = std::move(newTerms);
+  terms = std::move(new_terms);
 }
 
 // Explicit template instantiations for the templates used
-template void SimplificationVisitor::eraseCanceling_<Negate>(
+template void SimplificationVisitor::erase_canceling_<Negate>(
     std::vector<ExprPtr>& terms, const ExprPtr& replacement) const;
-template void SimplificationVisitor::eraseCanceling_<Invert>(
+template void SimplificationVisitor::erase_canceling_<Invert>(
     std::vector<ExprPtr>& terms, const ExprPtr& replacement) const;
-template void SimplificationVisitor::associativeTransformation_<Sum>(
+template void SimplificationVisitor::associative_transformation_<Sum>(
     std::vector<ExprPtr>& terms) const;
-template void SimplificationVisitor::associativeTransformation_<Product>(
+template void SimplificationVisitor::associative_transformation_<Product>(
     std::vector<ExprPtr>& terms) const;
 
 }  // namespace Expression

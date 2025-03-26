@@ -40,27 +40,27 @@ class Expr {
 
   [[nodiscard]] ExprPtr differentiate(const ExprPtr& var) const;
   [[nodiscard]] ExprPtr simplify(bool distribute = true) const;
-  [[nodiscard]] ExprPtr simplifyOnce(bool distribute = true) const;
-  [[nodiscard]] std::string toString(bool condensed = false) const;
-  [[nodiscard]] const std::string& toExpressionString() const;
-  [[nodiscard]] bool containsSubexpression(const ExprPtr& expr) const;
-  [[nodiscard]] ExprPtr replaceSubexpression(const ExprPtr& expr,
-                                             const ExprPtr& replacement) const;
-  [[nodiscard]] const ExprVariant& getImpl() const;
-  [[nodiscard]] ExprPtr getLeadingOrEndingFactor(bool leading) const;
-  [[nodiscard]] ExprPtr factorOut(const ExprPtr& factor, bool leading) const;
+  [[nodiscard]] ExprPtr simplify_once(bool distribute = true) const;
+  [[nodiscard]] std::string to_string(bool condensed = false) const;
+  [[nodiscard]] const std::string& to_expression_string() const;
+  [[nodiscard]] bool contains_subexpression(const ExprPtr& expr) const;
+  [[nodiscard]] ExprPtr replace_subexpression(const ExprPtr& expr,
+                                              const ExprPtr& replacement) const;
+  [[nodiscard]] const ExprVariant& get_impl() const;
+  [[nodiscard]] ExprPtr get_leading_or_ending_factor(bool leading) const;
+  [[nodiscard]] ExprPtr factor_out(const ExprPtr& factor, bool leading) const;
   [[nodiscard]] double complexity() const;
-  [[nodiscard]] std::set<ExprPtr> getVariables() const;
+  [[nodiscard]] std::set<ExprPtr> get_variables() const;
 
  private:
   friend class ExprFactory;
 
   template <typename T>
-  explicit Expr(T value, std::string_view expressionString)
+  explicit Expr(T value, std::string_view expression_string)
       : impl_(std::make_shared<ExprVariant>(std::move(value))),
-        expressionString_(std::string(expressionString)) {}
+        expression_string_(std::string(expression_string)) {}
   const std::shared_ptr<const ExprVariant> impl_;
-  const std::string expressionString_;
+  const std::string expression_string_;
 };
 
 struct NamedNullaryExpr {

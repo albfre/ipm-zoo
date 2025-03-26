@@ -44,6 +44,6 @@ struct ToExpressionStringVisitor {
   std::string operator()(const Product& x) const;
 
  private:
-  std::string termsToString_(const std::vector<ExprPtr>& terms) const;
+  std::string terms_to_string_(const std::vector<ExprPtr>& terms) const;
 };
 }  // namespace Expression

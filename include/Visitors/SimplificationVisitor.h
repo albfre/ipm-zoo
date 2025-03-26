@@ -6,7 +6,7 @@ namespace Expression {
 struct SimplificationVisitor {
   explicit SimplificationVisitor(bool distribute);
 
-  ExprPtr operator()(const auto& x) const { return ExprFactory::getExpr(x); }
+  ExprPtr operator()(const auto& x) const { return ExprFactory::get_expr(x); }
   ExprPtr operator()(const DiagonalMatrix& x);
   ExprPtr operator()(const Transpose& x) const;
   ExprPtr operator()(const Negate& x);
@@ -18,11 +18,11 @@ struct SimplificationVisitor {
  private:
   bool distribute_ = true;
   template <typename T>
-  void eraseCanceling_(std::vector<ExprPtr>& terms,
-                       const ExprPtr& replacement) const;
+  void erase_canceling_(std::vector<ExprPtr>& terms,
+                        const ExprPtr& replacement) const;
 
   template <typename T>
     requires NaryType<T>
-  void associativeTransformation_(std::vector<ExprPtr>& terms) const;
+  void associative_transformation_(std::vector<ExprPtr>& terms) const;
 };
 }  // namespace Expression
