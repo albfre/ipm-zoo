@@ -1,11 +1,11 @@
-#include "Evaluation.h"
+#include "NumericOptimization/Evaluation.h"
 
 #include <algorithm>
 #include <numeric>
 #include <ranges>
 
-#include "Assert.h"
-#include "Helpers.h"
+#include "Utils/Assert.h"
+#include "Utils/Helpers.h"
 
 namespace Evaluation {
 

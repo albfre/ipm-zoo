@@ -1,7 +1,7 @@
 #include "ExprFactory.h"
 
-#include "Helpers.h"
-#include "ToStringVisitor.h"
+#include "Utils/Helpers.h"
+#include "Visitors/ToStringVisitor.h"
 
 namespace Expression {
 ExprFactory::ExprFactory() : mutex_(std::make_unique<std::mutex>()) {}

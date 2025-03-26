@@ -1,11 +1,11 @@
-#include "ToStringVisitor.h"
+#include "Visitors/ToStringVisitor.h"
 
 #include <algorithm>
 #include <cctype>
 #include <ranges>
 #include <sstream>
 
-#include "Helpers.h"
+#include "Utils/Helpers.h"
 
 namespace Expression {
 

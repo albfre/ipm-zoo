@@ -10,7 +10,7 @@
 #include "Expr.h"
 #include "ExprFactory.h"
 #include "SymbolicOptimization.h"
-#include "Timer.h"
+#include "Utils/Timer.h"
 
 using namespace emscripten;
 

@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "ExprFactory.h"
-#include "Helpers.h"
+#include "Utils/Helpers.h"
 
 using namespace Expression;
 

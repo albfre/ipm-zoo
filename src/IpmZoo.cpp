@@ -4,12 +4,12 @@
 #include <memory>
 #include <sstream>
 
-#include "Assert.h"
-#include "Evaluation.h"
 #include "Expr.h"
 #include "ExprFactory.h"
-#include "Helpers.h"
+#include "NumericOptimization/Evaluation.h"
 #include "SymbolicOptimization.h"
+#include "Utils/Assert.h"
+#include "Utils/Helpers.h"
 
 void printHeader(const std::string& title) {
   std::cout << "\n" << std::string(80, '=') << std::endl;

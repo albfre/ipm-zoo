@@ -2,12 +2,12 @@
 set(LIBRARY_SOURCES
     Expr.cpp
     ExprFactory.cpp
-    DifferentiationVisitor.cpp
-    SimplificationVisitor.cpp
-    ToStringVisitor.cpp
     SymbolicOptimization.cpp
-    Evaluation.cpp
-    Timer.cpp
+    Visitors/DifferentiationVisitor.cpp
+    Visitors/SimplificationVisitor.cpp
+    Visitors/ToStringVisitor.cpp
+    NumericOptimization/Evaluation.cpp
+    Utils/Timer.cpp
 )
 
 # Create SymbolicOptimization library

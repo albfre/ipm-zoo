@@ -1,10 +1,10 @@
-#include "DifferentiationVisitor.h"
+#include "Visitors/DifferentiationVisitor.h"
 
 #include <algorithm>
 #include <iostream>
 #include <ranges>
 
-#include "Assert.h"
+#include "Utils/Assert.h"
 
 namespace Expression {
 

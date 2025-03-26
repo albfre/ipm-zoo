@@ -59,9 +59,6 @@ else()
   enable_testing()
 endif()
 
-# Add include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-
 # Add source directory
 add_subdirectory(src)
 

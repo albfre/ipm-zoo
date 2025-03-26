@@ -1,9 +1,9 @@
 #include "SymbolicOptimization.h"
 
-#include "Assert.h"
 #include "ExprFactory.h"
-#include "Helpers.h"
 #include "SymbolicOperators.h"
+#include "Utils/Assert.h"
+#include "Utils/Helpers.h"
 
 namespace SymbolicOptimization {
 std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> getLagrangian(

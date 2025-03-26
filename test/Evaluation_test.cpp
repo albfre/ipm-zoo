@@ -1,12 +1,12 @@
-#include "Evaluation.h"
+#include "NumericOptimization/Evaluation.h"
 
 #include <gtest/gtest.h>
 
 #include <cmath>
 
-#include "Assert.h"
 #include "ExprFactory.h"
-#include "Helpers.h"
+#include "Utils/Assert.h"
+#include "Utils/Helpers.h"
 
 using namespace Expression;
 using namespace Evaluation;

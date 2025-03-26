@@ -6,12 +6,12 @@
 #include <ranges>
 #include <set>
 
-#include "Assert.h"
-#include "DifferentiationVisitor.h"
 #include "ExprFactory.h"
-#include "Helpers.h"
-#include "SimplificationVisitor.h"
-#include "ToStringVisitor.h"
+#include "Utils/Assert.h"
+#include "Utils/Helpers.h"
+#include "Visitors/DifferentiationVisitor.h"
+#include "Visitors/SimplificationVisitor.h"
+#include "Visitors/ToStringVisitor.h"
 
 namespace Expression {
 std::strong_ordering operator<=>(const ExprPtr& left, const ExprPtr& right) {

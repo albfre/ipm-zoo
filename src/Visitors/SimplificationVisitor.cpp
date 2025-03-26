@@ -1,11 +1,11 @@
-#include "SimplificationVisitor.h"
+#include "Visitors/SimplificationVisitor.h"
 
 #include <algorithm>
 #include <map>
 #include <numeric>
 #include <ranges>
 
-#include "Assert.h"
+#include "Utils/Assert.h"
 
 namespace Expression {
 SimplificationVisitor::SimplificationVisitor(const bool distribute)
