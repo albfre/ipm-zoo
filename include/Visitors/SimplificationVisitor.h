@@ -17,12 +17,5 @@ struct SimplificationVisitor {
 
  private:
   bool distribute_ = true;
-  template <typename T>
-  void erase_canceling_(std::vector<ExprPtr>& terms,
-                        const ExprPtr& replacement) const;
-
-  template <typename T>
-    requires NaryType<T>
-  void associative_transformation_(std::vector<ExprPtr>& terms) const;
 };
 }  // namespace Expression

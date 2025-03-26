@@ -8,6 +8,42 @@
 #include "Utils/Assert.h"
 
 namespace Expression {
+
+namespace {
+// Utility functions
+template <typename T>
+void erase_canceling_(std::vector<ExprPtr>& terms, const ExprPtr& replacement) {
+  for (size_t i = 0; i < terms.size(); ++i) {
+    const auto& t1 = terms.at(i);
+    for (size_t j = i + 1; j < terms.size(); ++j) {
+      const auto& t2 = terms.at(j);
+      if ((is<T>(t1) && *std::get<T>(t1->get_impl()).child == *t2) ||
+          (is<T>(t2) && *std::get<T>(t2->get_impl()).child == *t1)) {
+        terms.erase(terms.begin() + j);
+        terms.erase(terms.begin() + i);
+        terms.insert(terms.begin() + i, replacement);
+        break;
+      }
+    }
+  }
+}
+
+template <typename T>
+  requires NaryType<T>
+void associative_transformation_(std::vector<ExprPtr>& terms) {
+  std::vector<ExprPtr> new_terms;
+  new_terms.reserve(terms.size());
+  for (auto& t : terms) {
+    match(t).with(
+        [&](const T& x) {
+          new_terms.insert(new_terms.end(), x.terms.begin(), x.terms.end());
+        },
+        [&](const auto&) { new_terms.emplace_back(std::move(t)); });
+  }
+  terms = std::move(new_terms);
+}
+}  // namespace
+
 SimplificationVisitor::SimplificationVisitor(const bool distribute)
     : distribute_(distribute) {}
 
@@ -352,48 +388,4 @@ ExprPtr SimplificationVisitor::operator()(const Product& x) const {
 
   return simplified;
 }
-
-template <typename T>
-void SimplificationVisitor::erase_canceling_(std::vector<ExprPtr>& terms,
-                                             const ExprPtr& replacement) const {
-  for (size_t i = 0; i < terms.size(); ++i) {
-    const auto& t1 = terms.at(i);
-    for (size_t j = i + 1; j < terms.size(); ++j) {
-      const auto& t2 = terms.at(j);
-      if ((is<T>(t1) && *std::get<T>(t1->get_impl()).child == *t2) ||
-          (is<T>(t2) && *std::get<T>(t2->get_impl()).child == *t1)) {
-        terms.erase(terms.begin() + j);
-        terms.erase(terms.begin() + i);
-        terms.insert(terms.begin() + i, replacement);
-        break;
-      }
-    }
-  }
-}
-
-template <typename T>
-  requires NaryType<T> void SimplificationVisitor::associative_transformation_(
-    std::vector<ExprPtr>& terms) const {
-  std::vector<ExprPtr> new_terms;
-  new_terms.reserve(terms.size());
-  for (auto& t : terms) {
-    match(t).with(
-        [&](const T& x) {
-          new_terms.insert(new_terms.end(), x.terms.begin(), x.terms.end());
-        },
-        [&](const auto&) { new_terms.emplace_back(std::move(t)); });
-  }
-  terms = std::move(new_terms);
-}
-
-// Explicit template instantiations for the templates used
-template void SimplificationVisitor::erase_canceling_<Negate>(
-    std::vector<ExprPtr>& terms, const ExprPtr& replacement) const;
-template void SimplificationVisitor::erase_canceling_<Invert>(
-    std::vector<ExprPtr>& terms, const ExprPtr& replacement) const;
-template void SimplificationVisitor::associative_transformation_<Sum>(
-    std::vector<ExprPtr>& terms) const;
-template void SimplificationVisitor::associative_transformation_<Product>(
-    std::vector<ExprPtr>& terms) const;
-
 }  // namespace Expression

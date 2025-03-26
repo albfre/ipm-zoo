@@ -7,7 +7,7 @@
 #include "Expr.h"
 
 namespace Evaluation {
-// Type definitions for evaluation results
+// Types of evaluation results
 using ValScalar = double;
 struct ValVector : std::vector<double> {
   using std::vector<double>::vector;
@@ -18,10 +18,9 @@ struct ValDiagMatrix : std::vector<double> {
 using ValMatrix = std::vector<ValVector>;
 using EvalResult = std::variant<ValScalar, ValVector, ValDiagMatrix, ValMatrix>;
 
-// Environment mapping expressions to their evaluation results
+// Environment that maps expressions to their evaluation results
 using Environment = std::map<Expression::ExprPtr, EvalResult>;
 
-// Main evaluation function
 EvalResult evaluate(const Expression::ExprPtr& expr, Environment& env);
 
 // Functions for modifying EvalResults
