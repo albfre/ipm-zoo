@@ -269,7 +269,7 @@ function updateProblem() {
       outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(normalEquations.lhs) + "\\end{array} \\ right) "
       if (numNormalEquationVariables > 1) {
         outputText += "\\left( \\begin{array}{c}\n " + normalEquations.variables + "\\end{array} \\right) \\]";
-        outputText += "\\[ = \\left( \\begin{array}{l}\n " + normalEquations.rhs + "\\end{array} \\ right) \\]"
+        outputText += "\\[ = \\left( \\begin{array}{l}\n " + normalEquations.rhs + "\\end{array} \\right) \\]"
       }
       else {
         outputText += normalEquations.variables + " \\]";
