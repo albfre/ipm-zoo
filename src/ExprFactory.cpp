@@ -15,8 +15,7 @@ ExprPtr ExprFactory::get_expr_(Expr::ExprVariant&& variant) {
   std::scoped_lock<std::mutex> lock(*mutex_);
 
   const auto key = std::visit(ToExpressionStringVisitor{}, variant);
-  auto it = cache_.find(key);
-  if (it != cache_.end()) {
+  if (const auto it = cache_.find(key); it != cache_.end()) {
     if (auto expr = it->second.lock()) {
       return expr;
     }
@@ -26,14 +25,9 @@ ExprPtr ExprFactory::get_expr_(Expr::ExprVariant&& variant) {
   cache_[key] = expr;
 
   // Clean cache
-  if (++cleanup_counter_ % 1000 == 0) {
-    for (auto it = cache_.begin(); it != cache_.end();) {
-      if (it->second.expired()) {
-        it = cache_.erase(it);
-      } else {
-        ++it;
-      }
-    }
+  if (++cleanup_counter_ >= 1000) {
+    std::erase_if(cache_, [](const auto& it) { return it.second.expired(); });
+    cleanup_counter_ = 0;
   }
   return expr;
 }
