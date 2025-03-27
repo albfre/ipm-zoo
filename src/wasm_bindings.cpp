@@ -168,7 +168,7 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .property("x", &SymbolicOptimization::VariableNames::x)
       .property("A_eq", &SymbolicOptimization::VariableNames::A_eq)
       .property("A_ineq", &SymbolicOptimization::VariableNames::A_ineq)
-      .property("s_A", &SymbolicOptimization::VariableNames::s_A)
+      .property("s_A_ineq", &SymbolicOptimization::VariableNames::s_A_ineq)
       .property("s_A_ineq_l", &SymbolicOptimization::VariableNames::s_A_ineq_l)
       .property("s_A_ineq_u", &SymbolicOptimization::VariableNames::s_A_ineq_u)
       .property("s_x_l", &SymbolicOptimization::VariableNames::s_x_l)
