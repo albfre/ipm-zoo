@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <map>
 #include <numeric>
-#include <ranges>
 
 #include "Utils/Assert.h"
 

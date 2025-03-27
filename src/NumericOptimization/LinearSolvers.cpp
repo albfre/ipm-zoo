@@ -1,15 +1,20 @@
 #include "NumericOptimization/LinearSolvers.h"
 
+#include <algorithm>
 #include <cmath>
 #include <numeric>
 #include <tuple>
 #include <vector>
+
+#include "Utils/Assert.h"
 
 namespace LinearSolvers {
 using Matrix = std::vector<std::vector<double>>;
 
 std::pair<Matrix, std::vector<double>> ldlt_decomposition(const Matrix& A) {
   const auto n = A.size();
+  ASSERT(
+      std::ranges::all_of(A, [n](const auto& Ai) { return Ai.size() == n; }));
   Matrix L(n, std::vector<double>(n, 0.0));
   std::vector<double> D(n, 0.0);
 
@@ -42,6 +47,10 @@ void overwriting_solve_ldlt(const Matrix& L, const std::vector<double>& D,
     return;
   }
   const auto n = b.size();
+  ASSERT(D.size() == n);
+  ASSERT(L.size() == n);
+  ASSERT(
+      std::ranges::all_of(L, [n](const auto& Li) { return Li.size() == n; }));
 
   // Forward substitution (Ly = b)
   for (size_t i = 0; i < n; ++i) {
@@ -68,6 +77,8 @@ std::pair<Matrix, std::vector<int>> symmetric_indefinite_factorization(
     const Matrix& matrix) {
   auto A = matrix;
   const auto n = A.size();
+  ASSERT(
+      std::ranges::all_of(A, [n](const auto& Ai) { return Ai.size() == n; }));
   const auto alpha = (1.0 + std::sqrt(17.0)) / 8.0;
   std::vector<int> ipiv(n, 0);
 
@@ -111,7 +122,7 @@ std::pair<Matrix, std::vector<int>> symmetric_indefinite_factorization(
         const auto [_, row_max1] = max_in_row_or_column(k, i_max, i_max, false);
         const auto [__, row_max2] =
             max_in_row_or_column(i_max + 1, n, i_max, true);
-        double row_max = std::max(row_max1, row_max2);
+        const auto row_max = std::max(row_max1, row_max2);
         if (absakk * row_max >= alpha * col_max * col_max) {
           kp = k;  // No interchange, use 1-by-1 pivot block
         } else if (std::abs(A[i_max][i_max]) >= alpha * row_max) {
@@ -201,6 +212,10 @@ void overwriting_solve_indefinite(const Matrix& L, const std::vector<int>& ipiv,
     return;
   }
   const auto n = b.size();
+  ASSERT(ipiv.size() == n);
+  ASSERT(L.size() == n);
+  ASSERT(
+      std::ranges::all_of(L, [n](const auto& Li) { return Li.size() == n; }));
 
   auto apply_row_transformation = [&](size_t i_start, size_t j_index) {
     auto multiplier = -b[j_index];

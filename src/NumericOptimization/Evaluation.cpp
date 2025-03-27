@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <numeric>
-#include <ranges>
 
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"

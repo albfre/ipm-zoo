@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <ranges>
 #include <sstream>
 
 #include "Utils/Helpers.h"
