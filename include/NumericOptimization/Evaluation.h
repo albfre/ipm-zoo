@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Expr.h"
+#include "ExprFactory.h"
 
 namespace NumericOptimization::Evaluation {
 // Types of evaluation results
@@ -18,8 +19,12 @@ struct ValDiagMatrix : std::vector<double> {
 using ValMatrix = std::vector<ValVector>;
 using EvalResult = std::variant<ValScalar, ValVector, ValDiagMatrix, ValMatrix>;
 
-// Environment that maps expressions to their evaluation results
-using Environment = std::map<Expression::ExprPtr, EvalResult>;
+using Environment = std::map<Expression::ExprPtr, Evaluation::EvalResult>;
+
+std::vector<std::vector<double>> evaluate_matrix(
+    const Expression::ExprPtr& expr, const Environment& env);
+std::vector<double> evaluate_vector(const Expression::ExprPtr& expr,
+                                    const Environment& env);
 
 EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env);
 
@@ -43,4 +48,5 @@ EvalResult elementwise_divide(const EvalResult& x, const EvalResult& y);
 EvalResult val_scalar(double x);
 EvalResult val_vector(const std::vector<double>& v);
 EvalResult val_diag_matrix(const std::vector<double>& v);
-}  // namespace NumericOptimization
+EvalResult val_matrix(const std::vector<std::vector<double>>& m);
+}  // namespace NumericOptimization::Evaluation

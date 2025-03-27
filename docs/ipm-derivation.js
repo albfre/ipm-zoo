@@ -23,20 +23,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 const x = "x"; // Primary variable
 const A_ineq = "A"; // Inequality constraint matrix
-const l_A = "l_{A}"; // Inequality constraint lower bound
-const u_A = "u_{A}"; // Inequality constraint upper bound
+const l_A_ineq = "l_{A}"; // Inequality constraint lower bound
+const u_A_ineq = "u_{A}"; // Inequality constraint upper bound
 const A_eq = "C"; // Equality constraint matrix
 const b_eq = "d"; // Equality constraint right-hand side
 const p_eq = "p"; // Equality constraint regularization
 const delta_eq = "\\delta"; // Equality constraint regularization factor
 const l_x = "l_x"; // Primary variable lower bound
 const u_x = "u_x"; // Primary variable upper bound
-const s_A = "s"; // Slack variable for inequality constraint
+const s_A_ineq = "s"; // Slack variable for inequality constraint
 const s_lA = "g"; // Slack variable for inequality constraint lower bound
 const s_uA = "h"; // Slack variable for inequality constraint upper bound
 const s_lx = "y"; // Slack variable for x lower bound
 const s_ux = "z"; // Slack variable for x upper bound
-const s_C = "t"; // Slack variable for equality constraints
+const s_A_eq = "t"; // Slack variable for equality constraints
 const s_lC = "v"; // Slack variable for equality constraint lower bound
 const s_uC = "w"; // Slack variable for equality constraint upper bound
 
@@ -76,9 +76,9 @@ function getOriginalProblem(inequalities, equalities, variableBounds) {
   }
 
   if (hasInequalities) {
-    if (inequalities === "lower") outputText += "& " + A_ineq + x + " \\geq " + l_A + " \\\\\n";
-    if (inequalities === "upper") outputText += "& " + A_ineq + x + " \\leq " + u_A + " \\\\\n";
-    if (inequalities === "both") outputText += "& " + l_A + " \\leq " + A_ineq + x + " \\leq " + u_A + " \\\\\n";
+    if (inequalities === "lower") outputText += "& " + A_ineq + x + " \\geq " + l_A_ineq + " \\\\\n";
+    if (inequalities === "upper") outputText += "& " + A_ineq + x + " \\leq " + u_A_ineq + " \\\\\n";
+    if (inequalities === "both") outputText += "& " + l_A_ineq + " \\leq " + A_ineq + x + " \\leq " + u_A_ineq + " \\\\\n";
   }
 
   if (hasEqualities) {
@@ -136,21 +136,21 @@ function getSlackProblem(inequalities, equalities, variableBounds, inequalityHan
     const addLower = inequalities === "lower" || inequalities === "both"
     const addUpper = inequalities === "upepr" || inequalities === "both"
     if (inequalityHandling === "slacks") {
-      outputText += "& " + A_ineq + x + " - " + s_A + " = 0 \\\\\n";
-      if (addLower) outputText += "& " + s_A + " - " + s_lA + " = " + l_A + " \\\\\n";
-      if (addUpper) outputText += "& " + s_A + " + " + s_uA + " = " + u_A + " \\\\\n";
+      outputText += "& " + A_ineq + x + " - " + s_A_ineq + " = 0 \\\\\n";
+      if (addLower) outputText += "& " + s_A_ineq + " - " + s_lA + " = " + l_A_ineq + " \\\\\n";
+      if (addUpper) outputText += "& " + s_A_ineq + " + " + s_uA + " = " + u_A_ineq + " \\\\\n";
     }
     else {
-      if (addLower) outputText += "& " + A_ineq + x + " - " + s_lA + " = " + l_A + " \\\\\n";
-      if (addUpper) outputText += "& " + A_ineq + x + " + " + s_uA + " = " + u_A + " \\\\\n";
+      if (addLower) outputText += "& " + A_ineq + x + " - " + s_lA + " = " + l_A_ineq + " \\\\\n";
+      if (addUpper) outputText += "& " + A_ineq + x + " + " + s_uA + " = " + u_A_ineq + " \\\\\n";
     }
   }
 
   if (hasEqualities && equalityHandling !== "penalty") {
     if (equalityHandling === "slacks") {
-      outputText += "& " + A_eq + x + " - " + s_C + " = 0 \\\\\n";
-      outputText += "& " + s_C + " - " + s_lC + " = " + b_eq + " \\\\\n";
-      outputText += "& " + s_C + " + " + s_uC + " = " + b_eq + " \\\\\n";
+      outputText += "& " + A_eq + x + " - " + s_A_eq + " = 0 \\\\\n";
+      outputText += "& " + s_A_eq + " - " + s_lC + " = " + b_eq + " \\\\\n";
+      outputText += "& " + s_A_eq + " + " + s_uC + " = " + b_eq + " \\\\\n";
     }
     else if (equalityHandling == "simple_slacks") {
       outputText += "& " + A_eq + x + " - " + s_lC + " = " + b_eq + " \\\\\n";

@@ -336,8 +336,8 @@ TEST_F(ExpressionTest, Lagrangian) {
   auto lambda_t = EF::variable("\\lambda_t");
   auto lambda_y = EF::variable("\\lambda_y");
   auto lambda_z = EF::variable("\\lambda_z");
-  auto l_A = EF::named_vector("l_A");
-  auto u_A = EF::named_vector("u_A");
+  auto l_A_ineq = EF::named_vector("l_A_ineq");
+  auto u_A_ineq = EF::named_vector("u_A_ineq");
   auto l_x = EF::named_vector("l_x");
   auto u_x = EF::named_vector("u_x");
 
@@ -349,10 +349,10 @@ TEST_F(ExpressionTest, Lagrangian) {
   auto minusMuLogY = EF::negate(EF::product({mu, e, EF::log({y})}));
   auto minusMuLogZ = EF::negate(EF::product({mu, e, EF::log({z})}));
   auto lambda_A_term = EF::product({lambda_A, EF::sum({Ax, EF::negate(s)})});
-  auto lambda_g_term = EF::negate(
-      EF::product({lambda_g, EF::sum({s, EF::negate(g), EF::negate(l_A)})}));
+  auto lambda_g_term = EF::negate(EF::product(
+      {lambda_g, EF::sum({s, EF::negate(g), EF::negate(l_A_ineq)})}));
   auto lambda_t_term =
-      EF::product({lambda_t, EF::sum({s, t, EF::negate(u_A)})});
+      EF::product({lambda_t, EF::sum({s, t, EF::negate(u_A_ineq)})});
   auto lambda_y_term = EF::negate(
       EF::product({lambda_y, EF::sum({x, EF::negate(y), EF::negate(l_x)})}));
   auto lambda_z_term =

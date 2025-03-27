@@ -48,6 +48,44 @@ EvalResult multiply_(const EvalResult& x, const EvalResult& y,
 }
 }  // namespace
 
+std::vector<std::vector<double>> evaluate_matrix(
+    const Expression::ExprPtr& expr, const Environment& env) {
+  auto val = evaluate(expr, env);
+  return Expression::match(val).with(
+      [](const auto&) {
+        ASSERT(false);
+        return std::vector<std::vector<double>>();
+      },
+      [](const ValDiagMatrix& diag) {
+        auto result = std::vector<std::vector<double>>(
+            diag.size(), std::vector<double>(diag.size()));
+        for (size_t i = 0; i < diag.size(); ++i) {
+          result[i][i] = diag[i];
+        }
+        return result;
+      },
+      [](const ValMatrix& mat) {
+        auto result = std::vector<std::vector<double>>();
+        result.reserve(mat.size());
+        for (const auto& row : mat) {
+          result.emplace_back(row.begin(), row.end());
+        }
+        return result;
+      });
+}
+
+std::vector<double> evaluate_vector(const Expression::ExprPtr& expr,
+                                    const Environment& env) {
+  auto val = evaluate(expr, env);
+  return Expression::match(val).with(
+      [](const auto&) {
+        ASSERT(false);
+        return std::vector<double>();
+      },
+      [](const ValVector& x) { return std::vector<double>(x); },
+      [](const ValDiagMatrix& x) { return std::vector<double>(x); });
+}
+
 EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env) {
   using namespace Expression;
 
@@ -242,6 +280,17 @@ EvalResult val_vector(const std::vector<double>& v) {
 
 EvalResult val_diag_matrix(const std::vector<double>& v) {
   return ValDiagMatrix(v.begin(), v.end());
+}
+
+EvalResult val_matrix(const std::vector<std::vector<double>>& m) {
+  ValMatrix result;
+  result.reserve(m.size());
+
+  for (const auto& row : m) {
+    result.emplace_back(row.begin(), row.end());
+  }
+
+  return result;
 }
 
 }  // namespace NumericOptimization::Evaluation

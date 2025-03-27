@@ -16,11 +16,11 @@ TEST_F(OptimizationTest, GetLagrangian) {
   auto names = VariableNames();
   auto [lagrangian, variables] = get_lagrangian(settings, names);
   const auto str = lagrangian->to_string();
-  EXPECT_NE(str.find(names.s_A), std::string::npos);
-  EXPECT_NE(str.find(names.s_Al), std::string::npos);
-  EXPECT_NE(str.find(names.s_Au), std::string::npos);
-  EXPECT_NE(str.find(names.s_xl), std::string::npos);
-  EXPECT_NE(str.find(names.s_xu), std::string::npos);
+  EXPECT_NE(str.find(names.s_A_ineq), std::string::npos);
+  EXPECT_NE(str.find(names.s_A_ineq_l), std::string::npos);
+  EXPECT_NE(str.find(names.s_A_ineq_u), std::string::npos);
+  EXPECT_NE(str.find(names.s_x_l), std::string::npos);
+  EXPECT_NE(str.find(names.s_x_u), std::string::npos);
 }
 
 TEST_F(OptimizationTest, GetLagrangianLower) {
@@ -28,14 +28,14 @@ TEST_F(OptimizationTest, GetLagrangianLower) {
   settings.inequalities = Bounds::Lower;
   settings.variable_bounds = Bounds::Lower;
   auto names = VariableNames();
-  names.s_Au = "t123";
+  names.s_A_ineq_u = "t123";
   auto [lagrangian, variables] = get_lagrangian(settings, names);
   const auto str = lagrangian->to_string();
-  EXPECT_NE(str.find(names.s_A), std::string::npos);
-  EXPECT_NE(str.find(names.s_Al), std::string::npos);
-  EXPECT_EQ(str.find(names.s_Au), std::string::npos);
-  EXPECT_NE(str.find(names.s_xl), std::string::npos);
-  EXPECT_EQ(str.find(names.s_xu), std::string::npos);
+  EXPECT_NE(str.find(names.s_A_ineq), std::string::npos);
+  EXPECT_NE(str.find(names.s_A_ineq_l), std::string::npos);
+  EXPECT_EQ(str.find(names.s_A_ineq_u), std::string::npos);
+  EXPECT_NE(str.find(names.s_x_l), std::string::npos);
+  EXPECT_EQ(str.find(names.s_x_u), std::string::npos);
 }
 
 TEST_F(OptimizationTest, GetLagrangianUpper) {
@@ -43,14 +43,14 @@ TEST_F(OptimizationTest, GetLagrangianUpper) {
   settings.inequalities = Bounds::Upper;
   settings.variable_bounds = Bounds::Upper;
   auto names = VariableNames();
-  names.s_Al = "g123";
+  names.s_A_ineq_l = "g123";
   auto [lagrangian, variables] = get_lagrangian(settings, names);
   const auto str = lagrangian->to_string();
-  EXPECT_NE(str.find(names.s_A), std::string::npos);
-  EXPECT_EQ(str.find(names.s_Al), std::string::npos);
-  EXPECT_NE(str.find(names.s_Au), std::string::npos);
-  EXPECT_EQ(str.find(names.s_xl), std::string::npos);
-  EXPECT_NE(str.find(names.s_xu), std::string::npos);
+  EXPECT_NE(str.find(names.s_A_ineq), std::string::npos);
+  EXPECT_EQ(str.find(names.s_A_ineq_l), std::string::npos);
+  EXPECT_NE(str.find(names.s_A_ineq_u), std::string::npos);
+  EXPECT_EQ(str.find(names.s_x_l), std::string::npos);
+  EXPECT_NE(str.find(names.s_x_u), std::string::npos);
 }
 
 TEST_F(OptimizationTest, GetLagrangianNoBounds) {
@@ -58,17 +58,17 @@ TEST_F(OptimizationTest, GetLagrangianNoBounds) {
   settings.inequalities = Bounds::None;
   settings.variable_bounds = Bounds::None;
   auto names = VariableNames();
-  names.s_Al = "g123";
-  names.s_Au = "t123";
-  names.s_xl = "y123";
-  names.s_xu = "z123";
+  names.s_A_ineq_l = "g123";
+  names.s_A_ineq_u = "t123";
+  names.s_x_l = "y123";
+  names.s_x_u = "z123";
   auto [lagrangian, variables] = get_lagrangian(settings, names);
   const auto str = lagrangian->to_string();
-  EXPECT_EQ(str.find(names.s_A), std::string::npos);
-  EXPECT_EQ(str.find(names.s_Al), std::string::npos);
-  EXPECT_EQ(str.find(names.s_Au), std::string::npos);
-  EXPECT_EQ(str.find(names.s_xl), std::string::npos);
-  EXPECT_EQ(str.find(names.s_xu), std::string::npos);
+  EXPECT_EQ(str.find(names.s_A_ineq), std::string::npos);
+  EXPECT_EQ(str.find(names.s_A_ineq_l), std::string::npos);
+  EXPECT_EQ(str.find(names.s_A_ineq_u), std::string::npos);
+  EXPECT_EQ(str.find(names.s_x_l), std::string::npos);
+  EXPECT_EQ(str.find(names.s_x_u), std::string::npos);
 }
 
 TEST_F(OptimizationTest, GetFirstOrderOptimalityConditions) {

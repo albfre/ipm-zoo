@@ -169,12 +169,12 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .property("A_eq", &SymbolicOptimization::VariableNames::A_eq)
       .property("A_ineq", &SymbolicOptimization::VariableNames::A_ineq)
       .property("s_A", &SymbolicOptimization::VariableNames::s_A)
-      .property("s_Al", &SymbolicOptimization::VariableNames::s_Al)
-      .property("s_Au", &SymbolicOptimization::VariableNames::s_Au)
-      .property("s_xl", &SymbolicOptimization::VariableNames::s_xl)
-      .property("s_xu", &SymbolicOptimization::VariableNames::s_xu)
-      .property("l_A", &SymbolicOptimization::VariableNames::l_A)
-      .property("u_A", &SymbolicOptimization::VariableNames::u_A)
+      .property("s_A_ineq_l", &SymbolicOptimization::VariableNames::s_A_ineq_l)
+      .property("s_A_ineq_u", &SymbolicOptimization::VariableNames::s_A_ineq_u)
+      .property("s_x_l", &SymbolicOptimization::VariableNames::s_x_l)
+      .property("s_x_u", &SymbolicOptimization::VariableNames::s_x_u)
+      .property("l_A_ineq", &SymbolicOptimization::VariableNames::l_A_ineq)
+      .property("u_A_ineq", &SymbolicOptimization::VariableNames::u_A_ineq)
       .property("l_x", &SymbolicOptimization::VariableNames::l_x)
       .property("u_x", &SymbolicOptimization::VariableNames::u_x);
 
