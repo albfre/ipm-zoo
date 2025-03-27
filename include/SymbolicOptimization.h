@@ -62,6 +62,44 @@ struct NewtonSystem {
       delta_definitions;
 };
 
+struct OptimizationExpressions {
+  Expression::ExprPtr Q;
+  Expression::ExprPtr c;
+  Expression::ExprPtr A_ineq;
+  Expression::ExprPtr A_eq;
+  Expression::ExprPtr b_eq;
+  Expression::ExprPtr p_eq;
+  Expression::ExprPtr delta_eq;
+  Expression::ExprPtr mu;
+  Expression::ExprPtr e_var;
+  Expression::ExprPtr e_ineq;
+  Expression::ExprPtr e_eq;
+  Expression::ExprPtr x;
+  Expression::ExprPtr s_A_ineq;
+  Expression::ExprPtr s_A_ineq_l;
+  Expression::ExprPtr s_A_ineq_u;
+  Expression::ExprPtr s_x_l;
+  Expression::ExprPtr s_x_u;
+  Expression::ExprPtr s_A_eq;
+  Expression::ExprPtr s_A_eq_l;
+  Expression::ExprPtr s_A_eq_u;
+  Expression::ExprPtr lambda_A_eq;
+  Expression::ExprPtr lambda_sAeql;
+  Expression::ExprPtr lambda_sAequ;
+  Expression::ExprPtr lambda_A_ineq;
+  Expression::ExprPtr lambda_sAineql;
+  Expression::ExprPtr lambda_sAinequ;
+  Expression::ExprPtr lambda_sxl;
+  Expression::ExprPtr lambda_sxu;
+  Expression::ExprPtr l_A_ineq;
+  Expression::ExprPtr u_A_ineq;
+  Expression::ExprPtr l_x;
+  Expression::ExprPtr u_x;
+};
+
+OptimizationExpressions get_optimization_expressions(
+    const VariableNames& names);
+
 std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> get_lagrangian(
     const Settings& settings, const VariableNames& names);
 

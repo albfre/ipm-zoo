@@ -12,6 +12,7 @@ namespace NumericOptimization {
 using Matrix = std::vector<std::vector<double>>;
 using Vector = std::vector<double>;
 class NumericOptimization {
+ public:
   NumericOptimization(Evaluation::Environment& env,
                       SymbolicOptimization::NewtonSystem newton_system)
       : env_(env),
@@ -42,9 +43,26 @@ class NumericOptimization {
     auto kkt = concatenate_matrices_(val_lhs);
     auto b = concatenate_vectors_(val_rhs);
 
+    const auto print_mat = [](std::string name, const auto& M) {
+      std::cout << name << std::endl;
+      for (auto& row : M) {
+        for (auto& col : row) {
+          std::cout << col << ", ";
+        }
+        std::cout << std::endl;
+      }
+    };
+    print_mat("kkt:", kkt);
+
     const auto [L, D] = LinearSolvers::ldlt_decomposition(kkt);
+    print_mat("L:", L);
 
     LinearSolvers::overwriting_solve_ldlt(L, D, b);
+
+    for (auto& bi : b) {
+      std::cout << bi << ", ";
+    }
+    std::cout << std::endl;
   }
 
   template <typename T>
@@ -53,7 +71,7 @@ class NumericOptimization {
     result.reserve(v.size());
     std::ranges::transform(v, std::back_inserter(result),
                            [this](const auto& expr) {
-                             if constexpr (std::is_same_t<T, Matrix>) {
+                             if constexpr (std::is_same_v<T, Matrix>) {
                                return Evaluation::evaluate_matrix(expr, env_);
                              } else {
                                return Evaluation::evaluate_vector(expr, env_);
@@ -67,9 +85,9 @@ class NumericOptimization {
       const std::vector<std::vector<Expression::ExprPtr>>& v) {
     std::vector<std::vector<T>> result;
     result.reserve(v.size());
-    std::ranges::transform(v, std::back_inserter(result), [](const auto& vec) {
-      return eval_expr_vector_<T>(vec);
-    });
+    std::ranges::transform(
+        v, std::back_inserter(result),
+        [this](const auto& vec) { return eval_expr_vector_<T>(vec); });
     return result;
   }
 

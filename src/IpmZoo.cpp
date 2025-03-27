@@ -6,7 +6,9 @@
 
 #include "Expr.h"
 #include "ExprFactory.h"
+#include "NumericOptimization/EnvironmentBuilder.h"
 #include "NumericOptimization/Evaluation.h"
+#include "NumericOptimization/NumericOptimization.h"
 #include "SymbolicOptimization.h"
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
@@ -343,12 +345,37 @@ void run_evaluation_example() {
             << std::endl;
 }
 
+void run_numeric_optimization_example() {
+  using namespace Expression;
+  using namespace NumericOptimization;
+
+  print_header("Numeric Optimization Example");
+  auto settings = SymbolicOptimization::Settings();
+  auto names = SymbolicOptimization::VariableNames();
+
+  auto data = Data();
+  data.Q = {{1.0, 0.0}, {0.0, 1.0}};
+  data.c = {1.0, 2.0};
+  data.A_ineq = {{1.0, 1.0}};
+  data.l_A_ineq = {1.0};
+  data.u_A_ineq = {2.0};
+  data.l_x = {0.0, 0.5};
+  data.u_x = {10.0, 10.5};
+  auto env = build_environment(names, data);
+  auto newton_system = SymbolicOptimization::get_newton_system(settings, names);
+
+  NumericOptimization::NumericOptimization no(env, newton_system);
+  no.solve();
+}
+
 void print_usage() {
   std::cout << "Usage: IpmZoo [option]" << std::endl;
   std::cout << "Options:" << std::endl;
   std::cout << "  -h, --help     : Show this help message" << std::endl;
   std::cout << "  -b, --basic    : Run basic expression examples" << std::endl;
   std::cout << "  -o, --optimize : Run symbolic optimization example"
+            << std::endl;
+  std::cout << "  -n, --numeric : Run numeric optimization example"
             << std::endl;
   std::cout << "  -e, --evaluate : Run evaluation example" << std::endl;
   std::cout << "  (no options)   : Run all examples" << std::endl;
@@ -365,6 +392,9 @@ int main(int argc, char* argv[]) {
       return 0;
     } else if (arg == "-o" || arg == "--optimize") {
       run_optimization_example();
+      return 0;
+    } else if (arg == "-n" || arg == "--numeric") {
+      run_numeric_optimization_example();
       return 0;
     } else if (arg == "-e" || arg == "--evaluate") {
       run_evaluation_example();
@@ -392,6 +422,7 @@ int main(int argc, char* argv[]) {
   run_basic_examples();
   run_optimization_example();
   run_evaluation_example();
+  run_numeric_optimization_example();
 
   std::cout << "\nDone!" << std::endl;
 
