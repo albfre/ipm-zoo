@@ -130,7 +130,7 @@ std::string get_first_order_optimality_conditions(
 NewtonSystemTriplet get_newton_systems(
     const SymbolicOptimization::Settings& settings) {
   const auto variable_names = SymbolicOptimization::VariableNames();
-  Util::Timer timer;
+  Utils::Timer timer;
   timer.start("get_newton_systems");
 
   // Full Newton system

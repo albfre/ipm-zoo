@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <iostream>
 
-namespace Util {
+namespace Utils {
 
 void Timer::start(const std::string& operation) {
   start_times[operation] = std::chrono::high_resolution_clock::now();
@@ -52,4 +52,4 @@ void Timer::report() const {
     std::cout << std::endl;
   }
 }
-}  // namespace Util
+}  // namespace Utils

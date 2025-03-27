@@ -209,7 +209,7 @@ void run_optimization_example() {
 
 void run_evaluation_example() {
   using namespace Expression;
-  using namespace Evaluation;
+  using namespace NumericOptimization::Evaluation;
 
   print_header("Numerical Evaluation Example");
 

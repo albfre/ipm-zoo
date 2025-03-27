@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-namespace LinearSolvers {
+namespace NumericOptimization::LinearSolvers {
 using Matrix = std::vector<std::vector<double>>;
 
 /**
@@ -12,7 +12,6 @@ std::pair<Matrix, std::vector<double>> ldlt_decomposition(const Matrix& A);
 
 /**
  * Solves the system Ax = b using LDL^T decomposition.
- * Returns the solution vector x.
  */
 void overwriting_solve_ldlt(const Matrix& L, const std::vector<double>& D,
                             std::vector<double>& b);
@@ -27,6 +26,7 @@ std::pair<Matrix, std::vector<int>> symmetric_indefinite_factorization(
 /**
  * Solves the system Ax = b using Bunch-Kaufman factorization.
  */
-void overwriting_solve_indefinite(const Matrix& L, const std::vector<int>& ipiv,
-                                  std::vector<double>& b);
-}  // namespace LinearSolvers
+void overwriting_solve_bunch_kaufman(const Matrix& L,
+                                     const std::vector<int>& ipiv,
+                                     std::vector<double>& b);
+}  // namespace NumericOptimization::LinearSolvers

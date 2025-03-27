@@ -8,7 +8,7 @@
 
 #include "Utils/Assert.h"
 
-namespace LinearSolvers {
+namespace NumericOptimization::LinearSolvers {
 using Matrix = std::vector<std::vector<double>>;
 
 std::pair<Matrix, std::vector<double>> ldlt_decomposition(const Matrix& A) {
@@ -316,4 +316,4 @@ void overwriting_solve_indefinite(const Matrix& L, const std::vector<int>& ipiv,
   }
 }
 
-}  // namespace LinearSolvers
+}  // namespace NumericOptimization::LinearSolvers

@@ -9,7 +9,7 @@
 #include "Utils/Helpers.h"
 
 using namespace Expression;
-using namespace Evaluation;
+using namespace NumericOptimization::Evaluation;
 
 class EvaluationTest : public ::testing::Test {
  protected:
@@ -183,7 +183,7 @@ TEST_F(EvaluationTest, EvaluationErrorHandling) {
   env[inconsistent] = val_vector({1.0, 2.0});  // Different size than x
 
   auto badDot = ExprFactory::product({ExprFactory::transpose(x), inconsistent});
-  EXPECT_THROW(evaluate(badDot, env), AssertionError);
+  EXPECT_THROW(evaluate(badDot, env), Utils::AssertionError);
 }
 
 TEST_F(EvaluationTest, ElementwiseOperations) {

@@ -6,7 +6,7 @@
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
 
-namespace Evaluation {
+namespace NumericOptimization::Evaluation {
 
 namespace {
 template <typename T>
@@ -48,7 +48,7 @@ EvalResult multiply_(const EvalResult& x, const EvalResult& y,
 }
 }  // namespace
 
-EvalResult evaluate(const Expression::ExprPtr& expr, Environment& env) {
+EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env) {
   using namespace Expression;
 
   // Return cached result if available
@@ -119,8 +119,6 @@ EvalResult evaluate(const Expression::ExprPtr& expr, Environment& env) {
         return res;
       });
 
-  // Cache and return the result
-  env[expr] = res;
   return res;
 }
 
@@ -246,4 +244,4 @@ EvalResult val_diag_matrix(const std::vector<double>& v) {
   return ValDiagMatrix(v.begin(), v.end());
 }
 
-}  // namespace Evaluation
+}  // namespace NumericOptimization::Evaluation

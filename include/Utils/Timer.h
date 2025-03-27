@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Util {
+namespace Utils {
 class Timer {
  public:
   Timer() = default;
