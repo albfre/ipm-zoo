@@ -1,12 +1,13 @@
-#include "NumericOptimization/Evaluation.h"
+#include "NumericalOptimization/Evaluation.h"
 
 #include <algorithm>
+#include <iostream>
 #include <numeric>
 
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
 
-namespace NumericOptimization::Evaluation {
+namespace NumericalOptimization::Evaluation {
 
 namespace {
 template <typename T>
@@ -293,4 +294,4 @@ EvalResult val_matrix(const std::vector<std::vector<double>>& m) {
   return result;
 }
 
-}  // namespace NumericOptimization::Evaluation
+}  // namespace NumericalOptimization::Evaluation

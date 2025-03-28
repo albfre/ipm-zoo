@@ -1,4 +1,4 @@
-#include "NumericOptimization/LinearSolvers.h"
+#include "NumericalOptimization/LinearSolvers.h"
 
 #include <algorithm>
 #include <cmath>
@@ -8,7 +8,7 @@
 
 #include "Utils/Assert.h"
 
-namespace NumericOptimization::LinearSolvers {
+namespace NumericalOptimization::LinearSolvers {
 using Matrix = std::vector<std::vector<double>>;
 
 std::pair<Matrix, std::vector<double>> ldlt_decomposition(const Matrix& A) {
@@ -316,4 +316,4 @@ void overwriting_solve_indefinite(const Matrix& L, const std::vector<int>& ipiv,
   }
 }
 
-}  // namespace NumericOptimization::LinearSolvers
+}  // namespace NumericalOptimization::LinearSolvers

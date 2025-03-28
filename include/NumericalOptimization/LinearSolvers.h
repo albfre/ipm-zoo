@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-namespace NumericOptimization::LinearSolvers {
+namespace NumericalOptimization::LinearSolvers {
 using Matrix = std::vector<std::vector<double>>;
 
 /**
@@ -29,4 +29,4 @@ std::pair<Matrix, std::vector<int>> symmetric_indefinite_factorization(
 void overwriting_solve_bunch_kaufman(const Matrix& L,
                                      const std::vector<int>& ipiv,
                                      std::vector<double>& b);
-}  // namespace NumericOptimization::LinearSolvers
+}  // namespace NumericalOptimization::LinearSolvers

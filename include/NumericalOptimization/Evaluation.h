@@ -7,7 +7,7 @@
 #include "Expr.h"
 #include "ExprFactory.h"
 
-namespace NumericOptimization::Evaluation {
+namespace NumericalOptimization::Evaluation {
 // Types of evaluation results
 using ValScalar = double;
 struct ValVector : std::vector<double> {
@@ -49,4 +49,4 @@ EvalResult val_scalar(double x);
 EvalResult val_vector(const std::vector<double>& v);
 EvalResult val_diag_matrix(const std::vector<double>& v);
 EvalResult val_matrix(const std::vector<std::vector<double>>& m);
-}  // namespace NumericOptimization::Evaluation
+}  // namespace NumericalOptimization::Evaluation

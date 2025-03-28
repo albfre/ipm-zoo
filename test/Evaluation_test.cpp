@@ -1,4 +1,4 @@
-#include "NumericOptimization/Evaluation.h"
+#include "NumericalOptimization/Evaluation.h"
 
 #include <gtest/gtest.h>
 
@@ -9,7 +9,7 @@
 #include "Utils/Helpers.h"
 
 using namespace Expression;
-using namespace NumericOptimization::Evaluation;
+using namespace NumericalOptimization::Evaluation;
 
 class EvaluationTest : public ::testing::Test {
  protected:

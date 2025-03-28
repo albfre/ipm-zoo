@@ -1,9 +1,9 @@
 #pragma once
 #include "Expr.h"
-#include "NumericOptimization/Evaluation.h"
+#include "NumericalOptimization/Evaluation.h"
 #include "SymbolicOptimization.h"
 
-namespace NumericOptimization {
+namespace NumericalOptimization {
 struct Data {
   std::vector<std::vector<double>> Q;
   std::vector<double> c;
@@ -17,8 +17,7 @@ struct Data {
 };
 
 Evaluation::Environment build_environment(
-    const SymbolicOptimization::VariableNames& names,
-    const NumericOptimization::Data& data) {
+    const SymbolicOptimization::VariableNames& names, const Data& data) {
   using namespace Expression;
 
   const auto o = SymbolicOptimization::get_optimization_expressions(names);
@@ -34,6 +33,7 @@ Evaluation::Environment build_environment(
   env[o.A_eq] = Evaluation::val_matrix(data.A_eq);
   env[o.b_eq] = Evaluation::val_vector(data.b_eq);
   env[o.l_x] = Evaluation::val_vector(data.l_x);
+  env[o.u_x] = Evaluation::val_vector(data.u_x);
 
   const auto vars = std::vector(data.Q.size(), 1.0);
   const auto ineqs = std::vector(data.A_ineq.size(), 1.0);
@@ -70,4 +70,4 @@ Evaluation::Environment build_environment(
   return env;
 }
 
-}  // namespace NumericOptimization
+}  // namespace NumericalOptimization

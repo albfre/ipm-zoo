@@ -6,8 +6,8 @@ set(LIBRARY_SOURCES
     Visitors/DifferentiationVisitor.cpp
     Visitors/SimplificationVisitor.cpp
     Visitors/ToStringVisitor.cpp
-    NumericOptimization/Evaluation.cpp
-    NumericOptimization/LinearSolvers.cpp
+    NumericalOptimization/Evaluation.cpp
+    NumericalOptimization/LinearSolvers.cpp
     Utils/Timer.cpp
 )
 

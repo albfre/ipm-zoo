@@ -1,20 +1,21 @@
 #pragma once
+#include <iostream>
 #include <numeric>
 
 #include "Evaluation.h"
 #include "Expr.h"
-#include "NumericOptimization/LinearSolvers.h"
+#include "NumericalOptimization/LinearSolvers.h"
 #include "SymbolicOptimization.h"
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
 
-namespace NumericOptimization {
+namespace NumericalOptimization {
 using Matrix = std::vector<std::vector<double>>;
 using Vector = std::vector<double>;
-class NumericOptimization {
+class Optimizer {
  public:
-  NumericOptimization(Evaluation::Environment& env,
-                      SymbolicOptimization::NewtonSystem newton_system)
+  Optimizer(Evaluation::Environment& env,
+            SymbolicOptimization::NewtonSystem newton_system)
       : env_(env),
         newton_system_(std::move(newton_system)),
         augmented_system_(
@@ -51,6 +52,7 @@ class NumericOptimization {
         }
         std::cout << std::endl;
       }
+      std::cout << std::endl;
     };
     print_mat("kkt:", kkt);
 
@@ -133,29 +135,37 @@ class NumericOptimization {
       }
     }
 
-    const auto rows = std::accumulate(
-        matrices.begin(), matrices.end(), 0,
-        [](const auto s, const auto& m) { return s + m.size(); });
-    const auto cols = std::accumulate(matrices.begin(), matrices.end(), 0,
-                                      [](const auto s, const auto& m) {
-                                        return s + m.empty() ? 0 : m[0].size();
-                                      });
-    Matrix result(rows, Vector(cols, 0.0));
+    // Compute total number of rows and columns
+    std::vector<size_t> max_height_per_row(matrices.size());
+    std::vector<size_t> max_width_per_col(matrices.at(0).size());
+    for (size_t i = 0; i < matrices.size(); ++i) {
+      for (size_t j = 0; j < matrices.at(0).size(); ++j) {
+        const auto& m = matrices.at(i).at(j);
+        const auto height = m.size();
+        const auto width = m.empty() ? 0 : m.at(0).size();
+        max_height_per_row.at(i) = std::max(max_height_per_row.at(i), height);
+        max_width_per_col.at(j) = std::max(max_width_per_col.at(j), width);
+      }
+    }
+    const auto total_rows = std::accumulate(
+        max_height_per_row.begin(), max_height_per_row.end(), 0, std::plus<>());
+    const auto total_cols = std::accumulate(
+        max_width_per_col.begin(), max_width_per_col.end(), 0, std::plus<>());
+
+    Matrix result(total_rows, Vector(total_cols, 0.0));
 
     size_t row_offset = 0;
-    for (const auto& row_of_matrices : matrices) {
+    for (size_t i = 0; i < matrices.size(); ++i) {
       size_t col_offset = 0;
-      for (const auto& mat : row_of_matrices) {
-        for (size_t i = 0; i < mat.size(); ++i) {
-          // All rows of the inner matrices have the same size
-          ASSERT(mat[i].size() == mat[(i + 1) % mat.size()].size());
-          std::ranges::copy(mat[i],
-                            result[row_offset + i].begin() + col_offset);
+      for (size_t j = 0; j < matrices.at(0).size(); ++j) {
+        const auto& mat = matrices.at(i).at(j);
+        for (size_t k = 0; k < mat.size(); ++k) {
+          std::ranges::copy(mat[k],
+                            result[row_offset + k].begin() + col_offset);
         }
-
-        col_offset += mat.empty() ? 0 : mat[0].size();
+        col_offset += max_width_per_col.at(j);
       }
-      row_offset += row_of_matrices.empty() ? 0 : row_of_matrices.at(0).size();
+      row_offset += max_height_per_row.at(i);
     }
 
     return result;
@@ -168,4 +178,4 @@ class NumericOptimization {
   SymbolicOptimization::NewtonSystem normal_equations_;
 };
 
-}  // namespace NumericOptimization
+}  // namespace NumericalOptimization

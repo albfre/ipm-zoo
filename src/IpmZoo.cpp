@@ -6,9 +6,9 @@
 
 #include "Expr.h"
 #include "ExprFactory.h"
-#include "NumericOptimization/EnvironmentBuilder.h"
-#include "NumericOptimization/Evaluation.h"
-#include "NumericOptimization/NumericOptimization.h"
+#include "NumericalOptimization/EnvironmentBuilder.h"
+#include "NumericalOptimization/Evaluation.h"
+#include "NumericalOptimization/Optimizer.h"
 #include "SymbolicOptimization.h"
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
@@ -211,7 +211,7 @@ void run_optimization_example() {
 
 void run_evaluation_example() {
   using namespace Expression;
-  using namespace NumericOptimization::Evaluation;
+  using namespace NumericalOptimization::Evaluation;
 
   print_header("Numerical Evaluation Example");
 
@@ -347,25 +347,26 @@ void run_evaluation_example() {
 
 void run_numeric_optimization_example() {
   using namespace Expression;
-  using namespace NumericOptimization;
+  using namespace NumericalOptimization;
 
   print_header("Numeric Optimization Example");
   auto settings = SymbolicOptimization::Settings();
   auto names = SymbolicOptimization::VariableNames();
 
   auto data = Data();
-  data.Q = {{1.0, 0.0}, {0.0, 1.0}};
+  data.Q = {{1.0, 0.0}, {0.0, 0.5}};
   data.c = {1.0, 2.0};
-  data.A_ineq = {{1.0, 1.0}};
-  data.l_A_ineq = {1.0};
-  data.u_A_ineq = {2.0};
+  data.A_ineq = {{1.0, 1.0}, {-0.7, 1.0}};
+  data.l_A_ineq = {1.0, 1.0};
+  data.u_A_ineq = {2.0, 2.0};
   data.l_x = {0.0, 0.5};
   data.u_x = {10.0, 10.5};
   auto env = build_environment(names, data);
+
   auto newton_system = SymbolicOptimization::get_newton_system(settings, names);
 
-  NumericOptimization::NumericOptimization no(env, newton_system);
-  no.solve();
+  NumericalOptimization::Optimizer optimizer(env, newton_system);
+  optimizer.solve();
 }
 
 void print_usage() {
