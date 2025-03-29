@@ -115,6 +115,8 @@ NewtonSystem get_normal_equations(NewtonSystem newton_system);
 std::vector<Expression::ExprPtr> get_shorthand_rhs(
     const std::vector<Expression::ExprPtr>& variables);
 
+Expression::ExprPtr get_delta_variable(const Expression::ExprPtr& expr);
+
 Expression::ExprPtr delta_definition(
     const std::vector<std::vector<Expression::ExprPtr>>& lhs,
     const std::vector<Expression::ExprPtr>& rhs,

@@ -297,8 +297,7 @@ NewtonSystem get_augmented_system(NewtonSystem newton_system) {
   auto& [lhs, rhs, variables, delta_definitions] = newton_system;
   const auto augmented_system_size = get_augmented_system_size(lhs);
   while (lhs.size() > augmented_system_size) {
-    auto delta_variable = Expression::ExprFactory::variable(
-        "\\Delta " + variables.at(lhs.size() - 1)->to_string());
+    auto delta_variable = get_delta_variable(variables.at(lhs.size() - 1));
     auto delta_def = SymbolicOptimization::delta_definition(lhs, rhs, variables,
                                                             lhs.size() - 1);
     delta_definitions.push_back({delta_variable, delta_def});
@@ -332,14 +331,17 @@ std::vector<Expression::ExprPtr> get_shorthand_rhs(
   return rhs;
 }
 
+Expression::ExprPtr get_delta_variable(const Expression::ExprPtr& expr) {
+  ASSERT(Expression::is<Expression::Variable>(expr));
+  return Expression::ExprFactory::variable("\\Delta " + expr->to_string());
+}
+
 Expression::ExprPtr delta_definition(
     const std::vector<std::vector<Expression::ExprPtr>>& lhs,
     const std::vector<Expression::ExprPtr>& rhs,
     const std::vector<Expression::ExprPtr>& variables,
     const size_t source_row) {
   using EF = Expression::ExprFactory;
-  using Expression::is;
-  using Expression::Variable;
 
   ASSERT(lhs.size() == rhs.size());
   ASSERT(lhs.size() <= variables.size());
@@ -351,9 +353,7 @@ Expression::ExprPtr delta_definition(
   terms.reserve(lhs_source_row.size());
   ASSERT(lhs_source_row.size() <= variables.size());
   for (size_t i = 0; i < lhs_source_row.size(); ++i) {
-    ASSERT(is<Variable>(variables.at(i)));
-    auto delta_variable =
-        EF::variable("\\Delta " + variables.at(i)->to_string());
+    auto delta_variable = get_delta_variable(variables.at(i));
     terms.emplace_back(
         EF::product({lhs_source_row[i], std::move(delta_variable)}));
   }

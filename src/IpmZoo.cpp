@@ -352,6 +352,8 @@ void run_numeric_optimization_example() {
   print_header("Numeric Optimization Example");
   auto settings = SymbolicOptimization::Settings();
   auto names = SymbolicOptimization::VariableNames();
+  auto optimization_expressions =
+      SymbolicOptimization::get_optimization_expressions(names);
 
   auto data = Data();
   data.Q = {{1.0, 0.0}, {0.0, 0.5}};
@@ -365,7 +367,8 @@ void run_numeric_optimization_example() {
 
   auto newton_system = SymbolicOptimization::get_newton_system(settings, names);
 
-  NumericalOptimization::Optimizer optimizer(env, newton_system);
+  NumericalOptimization::Optimizer optimizer(env, optimization_expressions,
+                                             newton_system);
   optimizer.solve();
 }
 

@@ -25,6 +25,7 @@ std::vector<std::vector<double>> evaluate_matrix(
     const Expression::ExprPtr& expr, const Environment& env);
 std::vector<double> evaluate_vector(const Expression::ExprPtr& expr,
                                     const Environment& env);
+double evaluate_scalar(const Expression::ExprPtr& expr, const Environment& env);
 
 EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env);
 

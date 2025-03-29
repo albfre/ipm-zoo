@@ -87,6 +87,17 @@ std::vector<double> evaluate_vector(const Expression::ExprPtr& expr,
       [](const ValDiagMatrix& x) { return std::vector<double>(x); });
 }
 
+double evaluate_scalar(const Expression::ExprPtr& expr,
+                       const Environment& env) {
+  auto val = evaluate(expr, env);
+  return Expression::match(val).with(
+      [](const auto&) {
+        ASSERT(false);
+        return 0.0;
+      },
+      [](const ValScalar& x) { return x; });
+}
+
 EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env) {
   using namespace Expression;
 

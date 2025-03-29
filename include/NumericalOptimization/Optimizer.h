@@ -1,10 +1,13 @@
 #pragma once
+#include <cmath>
 #include <iostream>
 #include <numeric>
 
 #include "Evaluation.h"
 #include "Expr.h"
+#include "ExprFactory.h"
 #include "NumericalOptimization/LinearSolvers.h"
+#include "SymbolicOperators.h"
 #include "SymbolicOptimization.h"
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
@@ -15,13 +18,34 @@ using Vector = std::vector<double>;
 class Optimizer {
  public:
   Optimizer(Evaluation::Environment& env,
+            const SymbolicOptimization::OptimizationExpressions&
+                optimization_expressions,
             SymbolicOptimization::NewtonSystem newton_system)
       : env_(env),
+        optimization_expressions_(optimization_expressions),
         newton_system_(std::move(newton_system)),
         augmented_system_(
             SymbolicOptimization::get_augmented_system(newton_system_)),
         normal_equations_(
-            SymbolicOptimization::get_normal_equations(augmented_system_)) {}
+            SymbolicOptimization::get_normal_equations(augmented_system_)) {
+    using namespace Expression;
+    const auto Q = optimization_expressions.Q;
+    const auto x = optimization_expressions.x;
+    const auto cT = ExprFactory::transpose(optimization_expressions.c);
+    objective_ = ExprFactory::sum(
+        {ExprFactory::product(
+             {ExprFactory::number(0.5), ExprFactory::transpose(x), Q, x}),
+         ExprFactory::product({cT, x})});
+    const auto var_vec = eval_expr_vector_<Vector>(newton_system_.variables);
+    for (size_t i = 0; i < var_vec.size(); ++i) {
+      const auto& variable = newton_system_.variables.at(i);
+      variable_index_[variable] = i;
+      vector_sizes_[variable] = var_vec.at(i).size();
+      const auto delta_variable =
+          SymbolicOptimization::get_delta_variable(variable);
+      delta_variable_index_[delta_variable] = i;
+    }
+  }
 
   void solve() {
     const auto& lhs = augmented_system_.lhs;
@@ -38,12 +62,6 @@ class Optimizer {
  private:
   void solve_indefinite_() { ASSERT(false); }
   void solve_quasi_definite_() {
-    const auto& [lhs, rhs, variables, delta_definitions] = augmented_system_;
-    auto val_lhs = eval_expr_matrix_<Matrix>(lhs);
-    auto val_rhs = eval_expr_vector_<Vector>(rhs);
-    auto kkt = concatenate_matrices_(val_lhs);
-    auto b = concatenate_vectors_(val_rhs);
-
     const auto print_mat = [](std::string name, const auto& M) {
       std::cout << name << std::endl;
       for (auto& row : M) {
@@ -54,17 +72,143 @@ class Optimizer {
       }
       std::cout << std::endl;
     };
-    print_mat("kkt:", kkt);
 
-    const auto [L, D] = LinearSolvers::ldlt_decomposition(kkt);
-    print_mat("L:", L);
+    const auto& [lhs, rhs, variables, delta_definitions] = augmented_system_;
 
-    LinearSolvers::overwriting_solve_ldlt(L, D, b);
+    const auto tolerance = 1e-8;
+    const size_t max_iter = 10;
+    size_t iter = 0;
+    for (; iter < max_iter; ++iter) {
+      const auto f = Evaluation::evaluate_scalar(objective_, env_);
+      const auto residual_norm = get_residual_norm_(rhs);
+      const auto mu = get_mu_(rhs);
+      std::cout << "iter: " << iter << ", f: " << f
+                << ", res: " << residual_norm << ", gap: " << mu << std::endl;
+      if (residual_norm < tolerance && mu < tolerance) {
+        break;
+      }
 
-    for (auto& bi : b) {
-      std::cout << bi << ", ";
+      const auto kkt = get_as_matrix_(lhs);
+      auto b = get_as_vector_(rhs);
+      print_mat("kkt:", kkt);
+      const auto [L, D] = LinearSolvers::ldlt_decomposition(kkt);
+
+      auto variables = eval_expr_vector_<Vector>(newton_system_.variables);
+      const auto delta = compute_search_direction_(augmented_system_, L, D, b);
+      print_mat("var", variables);
+      print_mat("delta", delta);
+      const auto alpha = get_max_step_(variables, delta);
+      std::cout << " alpha: " << alpha << std::endl;
+      const auto fraction_to_boundary = 0.995;
+      update_variables_(fraction_to_boundary * alpha, variables, delta);
     }
-    std::cout << std::endl;
+  }
+
+  void update_variables_(double alpha, Matrix& variables, const Matrix& delta) {
+    ASSERT(variables.size() == delta.size());
+    ASSERT(variables.size() == newton_system_.variables.size());
+    for (size_t i = 0; i < variables.size(); ++i) {
+      vector_plus_eq_scalar_times_vector_(variables[i], alpha, delta[i]);
+      env_.at(newton_system_.variables.at(i)) =
+          Evaluation::val_vector(variables[i]);
+    }
+  }
+
+  void vector_plus_eq_scalar_times_vector_(std::vector<double>& x,
+                                           const double s,
+                                           const std::vector<double>& y) {
+    ASSERT(x.size() == y.size());
+    std::ranges::transform(x, y, x.begin(),
+                           [s](double xi, double yi) { return xi + s * yi; });
+  }
+
+  double get_residual_norm_(const std::vector<Expression::ExprPtr>& rhs) {
+    const auto& mu = optimization_expressions_.mu;
+    const auto mu_val = env_.at(mu);
+    env_.at(mu) = Evaluation::val_scalar(0.0);
+    const auto rhs_vec = get_as_vector_(rhs);
+    const auto residual = std::sqrt(dot_(rhs_vec, rhs_vec));
+    env_.at(mu) = mu_val;
+    return residual;
+  }
+
+  double get_mu_(const std::vector<Expression::ExprPtr>& rhs) {
+    const auto& mu = optimization_expressions_.mu;
+    const auto& e_var = optimization_expressions_.e_var;
+    const auto& e_ineq = optimization_expressions_.e_ineq;
+    const auto& e_eq = optimization_expressions_.e_eq;
+    auto filtered = rhs | std::views::filter([&](const auto& expr) {
+                      return (expr->contains_subexpression(e_var) ||
+                              expr->contains_subexpression(e_ineq) ||
+                              expr->contains_subexpression(e_eq)) &&
+                             expr->contains_subexpression(mu);
+                    });
+    const auto mu_terms =
+        std::vector<Expression::ExprPtr>{filtered.begin(), filtered.end()};
+    const auto mu_val = env_.at(mu);
+    env_.at(mu) = Evaluation::val_scalar(0.0);
+    const auto mu_vec = get_as_vector_(mu_terms);
+    const auto sum =
+        std::accumulate(mu_vec.begin(), mu_vec.end(), 0.0, std::plus<>());
+    env_.at(mu) = mu_val;
+    return sum / mu_vec.size();
+  }
+
+  double get_max_step_(Matrix variables, Matrix delta) {
+    ASSERT(variables.size() == delta.size());
+    double max_step = 1.0;
+    for (size_t i = 0; i < variables.size(); ++i) {
+      ASSERT(variables.at(i).size() == delta.at(i).size());
+      for (size_t j = 0; j < variables.at(i).size(); ++j) {
+        const auto dij = delta.at(i).at(j);
+        const auto vij = variables.at(i).at(j);
+        if (dij < 0.0) {
+          max_step = std::min(max_step, -vij / dij);
+        }
+      }
+    }
+    return max_step;
+  }
+
+  std::vector<std::vector<double>> compute_search_direction_(
+      const SymbolicOptimization::NewtonSystem& newton_system, const Matrix& L,
+      const Vector& D, Vector b) {
+    LinearSolvers::overwriting_solve_ldlt(L, D, b);
+    auto result = std::vector<std::vector<double>>(variable_index_.size());
+    size_t offset = 0;
+    for (const auto& var : newton_system.variables) {
+      const auto index = variable_index_.at(var);
+      const auto next_offset = offset + vector_sizes_.at(var);
+      ASSERT(b.size() >= next_offset);
+      result.at(index) =
+          std::vector(b.begin() + offset, b.begin() + next_offset);
+      const auto delta_variable = SymbolicOptimization::get_delta_variable(var);
+      env_[delta_variable] = Evaluation::val_vector(result.at(index));
+      offset = next_offset;
+    }
+    for (const auto& [delta_variable, definition] :
+         newton_system.delta_definitions) {
+      const auto index = delta_variable_index_.at(delta_variable);
+      result.at(index) = Evaluation::evaluate_vector(definition, env_);
+      auto val = Evaluation::evaluate(definition, env_);
+      env_[delta_variable] = Evaluation::val_vector(result.at(index));
+    }
+    return result;
+  }
+
+  double dot_(const std::vector<double>& x, const std::vector<double>& y) {
+    return std::inner_product(x.begin(), x.end(), y.begin(), 0.0);
+  }
+
+  Matrix get_as_matrix_(
+      const std::vector<std::vector<Expression::ExprPtr>>& v) {
+    const auto val = eval_expr_matrix_<Matrix>(v);
+    return concatenate_matrices_(val);
+  }
+
+  Vector get_as_vector_(const std::vector<Expression::ExprPtr>& v) {
+    const auto val = eval_expr_vector_<Vector>(v);
+    return concatenate_vectors_(val);
   }
 
   template <typename T>
@@ -172,10 +316,14 @@ class Optimizer {
   }
 
   Evaluation::Environment& env_;
-  Expression::ExprPtr objective_;
+  SymbolicOptimization::OptimizationExpressions optimization_expressions_;
   SymbolicOptimization::NewtonSystem newton_system_;
   SymbolicOptimization::NewtonSystem augmented_system_;
   SymbolicOptimization::NewtonSystem normal_equations_;
+  Expression::ExprPtr objective_;
+  std::map<Expression::ExprPtr, size_t> vector_sizes_;
+  std::map<Expression::ExprPtr, size_t> variable_index_;
+  std::map<Expression::ExprPtr, size_t> delta_variable_index_;
 };
 
 }  // namespace NumericalOptimization
