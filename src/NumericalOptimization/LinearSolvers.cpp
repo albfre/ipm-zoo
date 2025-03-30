@@ -206,8 +206,9 @@ std::pair<Matrix, std::vector<int>> symmetric_indefinite_factorization(
   return {std::move(A), std::move(ipiv)};
 }
 
-void overwriting_solve_indefinite(const Matrix& L, const std::vector<int>& ipiv,
-                                  std::vector<double>& b) {
+void overwriting_solve_bunch_kaufman(const Matrix& L,
+                                     const std::vector<int>& ipiv,
+                                     std::vector<double>& b) {
   if (b.empty()) {
     return;
   }

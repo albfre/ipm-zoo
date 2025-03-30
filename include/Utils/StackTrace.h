@@ -6,10 +6,10 @@
 namespace Utils {
 
 struct StackFrame {
-  void* address;         // Memory address
-  std::string file;      // Source file
-  std::string function;  // Function name
-  int line;              // Line number
+  void* address;
+  std::string file;
+  std::string function;
+  int line;
 
   StackFrame()
       : address(nullptr), file("unknown"), function("unknown"), line(0) {}

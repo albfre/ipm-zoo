@@ -353,25 +353,21 @@ void run_numeric_optimization_example() {
   print_header("Numeric Optimization Example");
   auto settings = SymbolicOptimization::Settings();
   auto names = SymbolicOptimization::VariableNames();
-  std::cout << "get expr" << std::endl;
   auto optimization_expressions =
       SymbolicOptimization::get_optimization_expressions(names);
 
   auto data = Data();
   data.Q = {{1.0, 0.0}, {0.0, 0.5}};
-  data.c = {1.0, 2.0};
-  // data.A_ineq = {{1.0, 1.0}, {1.0, -1.0}};
-  // data.l_A_ineq = {1.0, 1.0};
-  // data.u_A_ineq = {2.0, 2.0};
-  data.l_x = {0.0, 0.5};
-  data.u_x = {10.0, 10.5};
-  std::cout << "build env" << std::endl;
+  data.c = {-10.0, 2.0};
+  data.A_ineq = {{1.0, 1.0}};
+  data.l_A_ineq = {1.0};
+  data.u_A_ineq = {1.0};
+  data.l_x = {0.0, 0.0};
+  data.u_x = {10.0, 10.0};
   auto env = build_environment(names, data);
 
-  std::cout << "get newton" << std::endl;
   auto newton_system = SymbolicOptimization::get_newton_system(settings, names);
 
-  std::cout << "opt" << std::endl;
   NumericalOptimization::Optimizer optimizer(env, optimization_expressions,
                                              newton_system);
   optimizer.solve();

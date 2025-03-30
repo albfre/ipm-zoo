@@ -1,9 +1,5 @@
 #include "Utils/StackTrace.h"
 
-#include <cxxabi.h>    // For demangling C++ symbols
-#include <dlfcn.h>     // For dladdr
-#include <execinfo.h>  // For backtrace functions
-
 #include <cstdlib>
 #include <iomanip>
 #include <memory>
@@ -11,9 +7,27 @@
 
 #include "Utils/Assert.h"
 
+#ifndef __EMSCRIPTEN__
+#include <cxxabi.h>    // For demangling C++ symbols
+#include <dlfcn.h>     // For dladdr
+#include <execinfo.h>  // For backtrace functions
+#endif
+
 namespace Utils {
 
 std::vector<StackFrame> get_stack_trace(int skip_frames) {
+#ifdef __EMSCRIPTEN__
+  // WASM implementation
+  std::vector<StackFrame> stack_frames;
+  StackFrame frame;
+  frame.address = nullptr;
+  frame.function = "Stack traces not available in WebAssembly";
+  frame.file = "unknown";
+  frame.line = 0;
+  stack_frames.push_back(frame);
+  return stack_frames;
+#else
+  // Native implementation
   constexpr int kMaxFrames = 128;
   void* callstack[kMaxFrames];
 
@@ -85,6 +99,7 @@ std::vector<StackFrame> get_stack_trace(int skip_frames) {
 
   free(symbols);
   return stack_frames;
+#endif
 }
 
 void print_stack_trace(std::ostream& os) {

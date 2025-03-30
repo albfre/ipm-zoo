@@ -59,11 +59,13 @@ else()
   enable_testing()
 endif()
 
-# Add debugging flags for better stack traces
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -rdynamic -fno-inline -fno-omit-frame-pointer")
+if(NOT EMSCRIPTEN)
+  # Add debugging flags for better stack traces
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -rdynamic -fno-inline -fno-omit-frame-pointer")
 
-# Force debug symbols even in Release build if you need both optimization and stack traces
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -rdynamic")
+  # Force debug symbols even in Release build if you need both optimization and stack traces
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -rdynamic")
+endif()
 
 # Add source directory
 add_subdirectory(src)

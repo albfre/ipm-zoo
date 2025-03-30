@@ -32,7 +32,7 @@ class Optimizer {
   double get_max_step_(Matrix variables, Matrix delta);
   std::vector<std::vector<double>> compute_search_direction_(
       const SymbolicOptimization::NewtonSystem& newton_system, const Matrix& L,
-      const Vector& D, Vector b);
+      const std::vector<int>& D, double sigma);
   double dot_(const std::vector<double>& x, const std::vector<double>& y);
   Matrix get_as_matrix_(const std::vector<std::vector<Expression::ExprPtr>>& v);
   Vector get_as_vector_(const std::vector<Expression::ExprPtr>& v);

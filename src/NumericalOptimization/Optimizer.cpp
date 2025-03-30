@@ -6,6 +6,7 @@
 #include <numeric>
 
 #include "ExprFactory.h"
+#include "NumericalOptimization/EnvironmentBuilder.h"
 #include "NumericalOptimization/LinearSolvers.h"
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
@@ -60,42 +61,56 @@ void Optimizer::solve_quasi_definite_() {
   const auto print_mat = [](std::string name, const auto& M) {
     std::cout << name << std::endl;
     for (auto& row : M) {
-      for (auto& col : row) {
-        std::cout << col << ", ";
+      if (!row.empty()) {
+        for (auto& col : row) {
+          std::cout << col << ", ";
+        }
+        std::cout << std::endl;
       }
-      std::cout << std::endl;
     }
     std::cout << std::endl;
   };
-
+  const auto print_var = [&](std::string name,
+                             const std::vector<Expression::ExprPtr>& M) {
+    std::cout << name << std::endl;
+    for (auto& row : M) {
+      auto row_val = Evaluation::evaluate_vector(row, env_);
+      if (!row_val.empty()) {
+        std::cout << row->to_string() << ": ";
+        for (auto& col : row_val) {
+          std::cout << col << ", ";
+        }
+        std::cout << std::endl;
+      }
+    }
+    std::cout << std::endl;
+  };
   const auto& [lhs, rhs, variables, delta_definitions] = augmented_system_;
+  const auto& full_rhs = newton_system_.rhs;
 
+  const auto sigma = 1.0;
   const auto tolerance = 1e-8;
-  const size_t max_iter = 6;
+  const size_t max_iter = 30;
   size_t iter = 0;
   for (; iter < max_iter; ++iter) {
-    const auto f = Evaluation::evaluate(objective_, env_);
-    ASSERT(std::holds_alternative<Evaluation::ValScalar>(f));
-    const auto f_val = std::get<Evaluation::ValScalar>(f);
-
-    const auto residual_norm = get_residual_norm_(rhs);
-    const auto mu = get_mu_(rhs);
-    std::cout << "iter: " << iter << ", f: " << f_val
-              << ", res: " << residual_norm << ", gap: " << mu << std::endl;
+    const auto f = Evaluation::evaluate_scalar(objective_, env_);
+    const auto residual_norm = get_residual_norm_(full_rhs);
+    const auto mu = get_mu_(full_rhs);
+    // env_.at(optimization_expressions_.mu) = Evaluation::val_scalar(mu);
+    std::cout << "iter: " << iter << ", f: " << f << ", res: " << residual_norm
+              << ", gap: " << mu << std::endl;
     if (residual_norm < tolerance && mu < tolerance) {
       break;
     }
 
     const auto kkt = get_as_matrix_(lhs);
-    auto b = get_as_vector_(rhs);
     print_mat("kkt:", kkt);
-    const auto [L, D] = LinearSolvers::ldlt_decomposition(kkt);
+    const auto [L, D] = LinearSolvers::symmetric_indefinite_factorization(kkt);
 
-    std::cout << "get var" << std::endl;
     auto variables = eval_expr_vector_<Vector>(newton_system_.variables);
-    std::cout << "compute search " << std::endl;
-    const auto delta = compute_search_direction_(augmented_system_, L, D, b);
-    print_mat("var", variables);
+    const auto delta =
+        compute_search_direction_(augmented_system_, L, D, sigma);
+    print_var("var", newton_system_.variables);
     print_mat("delta", delta);
     const auto alpha = get_max_step_(variables, delta);
     std::cout << " alpha: " << alpha << std::endl;
@@ -110,7 +125,8 @@ void Optimizer::update_variables_(double alpha, Matrix& variables,
   ASSERT(variables.size() == newton_system_.variables.size());
   for (size_t i = 0; i < variables.size(); ++i) {
     vector_plus_eq_scalar_times_vector_(variables[i], alpha, delta[i]);
-    env_[newton_system_.variables.at(i)] = Evaluation::val_vector(variables[i]);
+    env_.at(newton_system_.variables.at(i)) =
+        Evaluation::val_vector(variables[i]);
   }
 }
 
@@ -124,11 +140,18 @@ void Optimizer::vector_plus_eq_scalar_times_vector_(
 double Optimizer::get_residual_norm_(
     const std::vector<Expression::ExprPtr>& rhs) {
   const auto& mu = optimization_expressions_.mu;
-  const auto mu_val = env_[mu];
-  env_[mu] = Evaluation::val_scalar(0.0);
+  ScopedEnvironmentOverride temp(env_, mu, Evaluation::val_scalar(0.0));
+  for (auto& r : rhs) {
+    std::cout << r->to_string() << std::endl;
+    auto rv = Evaluation::evaluate_vector(r, env_);
+    for (auto& rr : rv) {
+      std::cout << rr << ", ";
+    }
+    std::cout << std::endl;
+  }
+
   const auto rhs_vec = get_as_vector_(rhs);
   const auto residual = std::sqrt(dot_(rhs_vec, rhs_vec));
-  env_[mu] = mu_val;
   return residual;
 }
 
@@ -145,19 +168,27 @@ double Optimizer::get_mu_(const std::vector<Expression::ExprPtr>& rhs) {
                   });
   const auto mu_terms =
       std::vector<Expression::ExprPtr>{filtered.begin(), filtered.end()};
-  const auto mu_val = env_[mu];
-  env_[mu] = Evaluation::val_scalar(0.0);
+  ScopedEnvironmentOverride temp(env_, mu, Evaluation::val_scalar(0.0));
   const auto mu_vec = get_as_vector_(mu_terms);
   const auto sum =
       std::accumulate(mu_vec.begin(), mu_vec.end(), 0.0, std::plus<>());
-  env_[mu] = mu_val;
-  return -sum / mu_vec.size();
+  return mu_vec.empty() ? 0.0 : -sum / mu_vec.size();
 }
 
 double Optimizer::get_max_step_(Matrix variables, Matrix delta) {
   ASSERT(variables.size() == delta.size());
   double max_step = 1.0;
+  const auto& oe = optimization_expressions_;
+  static const auto non_negative = std::set{
+      oe.s_A_ineq_l,     oe.s_A_ineq_u,     oe.s_x_l,        oe.s_x_u,
+      oe.s_A_eq_l,       oe.s_A_eq_u,       oe.lambda_sAeql, oe.lambda_sAequ,
+      oe.lambda_sAineql, oe.lambda_sAinequ, oe.lambda_sxl,   oe.lambda_sxu,
+  };
+  ASSERT(variables.size() == newton_system_.variables.size());
   for (size_t i = 0; i < variables.size(); ++i) {
+    if (!non_negative.contains(newton_system_.variables.at(i))) {
+      continue;
+    }
     ASSERT(variables.at(i).size() == delta.at(i).size());
     for (size_t j = 0; j < variables.at(i).size(); ++j) {
       const auto dij = delta.at(i).at(j);
@@ -172,8 +203,13 @@ double Optimizer::get_max_step_(Matrix variables, Matrix delta) {
 
 std::vector<std::vector<double>> Optimizer::compute_search_direction_(
     const SymbolicOptimization::NewtonSystem& newton_system, const Matrix& L,
-    const Vector& D, Vector b) {
-  LinearSolvers::overwriting_solve_ldlt(L, D, b);
+    const std::vector<int>& D, const double sigma) {
+  const auto& [lhs, rhs, variables, delta_definitions] = newton_system;
+  const auto& mu = optimization_expressions_.mu;
+  ScopedEnvironmentOverride temp(env_, mu,
+                                 Evaluation::scale(env_.at(mu), sigma));
+  auto b = get_as_vector_(rhs);
+  LinearSolvers::overwriting_solve_bunch_kaufman(L, D, b);
   auto result = std::vector<std::vector<double>>(variable_index_.size());
   size_t offset = 0;
   for (const auto& var : newton_system.variables) {
@@ -267,13 +303,14 @@ Matrix Optimizer::concatenate_matrices_(
     for (size_t i = 0; i < matrices.size(); ++i) {
       for (size_t j = 0; j < matrices.at(i).size(); ++j) {
         const auto& current = matrices.at(i).at(j);
-        const auto& nextCol = matrices.at(i).at((j + 1) % matrix_cols);
+        const auto& next_col = matrices.at(i).at((j + 1) % matrix_cols);
         // All matrices in the same row has the same height
-        ASSERT(current.size() == nextCol.size());
-        const auto& nextRow = matrices.at((i + 1) % matrix_rows).at(j);
-        // All matrices in the same col has the same width
-        ASSERT((current.empty() ? 0 : current.at(0).size()) ==
-               (nextRow.empty() ? 0 : nextRow.at(0).size()));
+        /*
+                const auto& next_row = matrices.at((i + 1) % matrix_rows).at(j);
+                // All matrices in the same col has the same width
+                ASSERT((current.empty() ? 0 : current.at(0).size()) ==
+                       (next_row.empty() ? 0 : next_row.at(0).size()));
+                       */
       }
     }
   }

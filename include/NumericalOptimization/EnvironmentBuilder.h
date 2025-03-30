@@ -16,7 +16,7 @@ struct Data {
   std::vector<double> u_x;
 };
 
-Evaluation::Environment build_environment(
+inline Evaluation::Environment build_environment(
     const SymbolicOptimization::VariableNames& names, const Data& data) {
   using namespace Expression;
 
@@ -69,5 +69,20 @@ Evaluation::Environment build_environment(
 
   return env;
 }
+
+struct ScopedEnvironmentOverride {
+  ScopedEnvironmentOverride(Evaluation::Environment& env,
+                            Expression::ExprPtr var,
+                            Evaluation::EvalResult temp_val)
+      : env_(env), var_(std::move(var)), orig_val_(env_.at(var_)) {
+    env_.at(var_) = std::move(temp_val);
+  }
+  ~ScopedEnvironmentOverride() { env_.at(var_) = orig_val_; }
+
+ private:
+  Evaluation::Environment& env_;
+  Expression::ExprPtr var_;
+  Evaluation::EvalResult orig_val_;
+};
 
 }  // namespace NumericalOptimization

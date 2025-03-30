@@ -44,6 +44,7 @@ EvalResult subtract(const EvalResult& x, const EvalResult& y);
 EvalResult multiply(const EvalResult& x, const EvalResult& y);
 EvalResult elementwise_multiply(const EvalResult& x, const EvalResult& y);
 EvalResult elementwise_divide(const EvalResult& x, const EvalResult& y);
+EvalResult scale(const EvalResult& x, double factor);
 
 // Constructor functions
 EvalResult val_scalar(double x);

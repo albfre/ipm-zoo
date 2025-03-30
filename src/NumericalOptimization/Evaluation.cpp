@@ -109,7 +109,6 @@ EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env) {
   // Evaluate the expression based on its type
   auto res = match(expr).with(
       [&](const auto&) {
-        std::cout << expr->to_string() << std::endl;
         ASSERT(env.contains(expr));
         return env.at(expr);
       },
@@ -158,8 +157,7 @@ EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env) {
         // vector and H x is computed first.
         std::vector<EvalResult> unhandled;
         for (const auto& term : x.terms | std::views::drop(1)) {
-          const auto next = evaluate(term, env);
-          res = multiply_(res, next, unhandled);
+          res = multiply_(res, evaluate(term, env), unhandled);
         }
         std::ranges::reverse(unhandled);
 
@@ -204,9 +202,9 @@ EvalResult elementwise_op(const EvalResult& x, const EvalResult& y,
                           const std::function<double(double, double)>& lambda) {
   constexpr auto elementwise_vec_op = [](auto& v, const auto& a, const auto& b,
                                          const auto& lambda) {
-    ASSERT(a.size() == b.size());
+    ASSERT(a.size() == b.size() || a.empty() || b.empty());
     for (size_t i = 0; i < v.size(); ++i) {
-      v[i] = lambda(a[i], b[i]);
+      v[i] = lambda(a.empty() ? 0.0 : a[i], b.empty() ? 0.0 : b[i]);
     }
     return v;
   };
@@ -225,13 +223,13 @@ EvalResult elementwise_op(const EvalResult& x, const EvalResult& y,
         return lambda(a, b);
       },
       [&](const ValDiagMatrix& a, const ValDiagMatrix& b) -> EvalResult {
-        auto v = ValDiagMatrix(b.size());
+        auto v = ValDiagMatrix(std::max(a.size(), b.size()));
         return elementwise_vec_op(v, a, b, lambda);
       },
       [&](const auto& a, const auto& b) -> EvalResult
         requires VectorOrDiagonal<decltype(a)> && VectorOrDiagonal<decltype(b)>
       {
-        auto v = ValVector(b.size());
+        auto v = ValVector(std::max(a.size(), b.size()));
         return elementwise_vec_op(v, a, b, lambda);
       },
       [&](const ValMatrix& a, const ValDiagMatrix& b) -> EvalResult {
@@ -257,6 +255,10 @@ EvalResult elementwise_op(const EvalResult& x, const EvalResult& y,
       });
 }
 
+EvalResult scale(const EvalResult& x, const double factor) {
+  return unary_op(x, [factor](const auto& xi) { return factor * xi; });
+}
+
 EvalResult negate(const EvalResult& x) {
   return unary_op(x, [](const auto& xi) { return -xi; });
 }
@@ -273,19 +275,8 @@ EvalResult subtract(const EvalResult& x, const EvalResult& y) {
   return elementwise_op(x, y, [](const auto a, const auto b) { return a - b; });
 }
 
-EvalResult multiply(const EvalResult& x, const EvalResult& y) {
-  std::vector<EvalResult> unhandled;
-  auto res = multiply_(x, y, unhandled);
-  ASSERT(unhandled.empty());
-  return res;
-}
-
 EvalResult elementwise_multiply(const EvalResult& x, const EvalResult& y) {
   return elementwise_op(x, y, [](const auto a, const auto b) { return a * b; });
-}
-
-EvalResult elementwise_divide(const EvalResult& x, const EvalResult& y) {
-  return elementwise_op(x, y, [](const auto a, const auto b) { return a / b; });
 }
 
 EvalResult val_scalar(double x) { return ValScalar(x); }
