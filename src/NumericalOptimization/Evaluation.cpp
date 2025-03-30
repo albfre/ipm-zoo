@@ -108,7 +108,11 @@ EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env) {
 
   // Evaluate the expression based on its type
   auto res = match(expr).with(
-      [&](const auto&) { return env.at(expr); },
+      [&](const auto&) {
+        std::cout << expr->to_string() << std::endl;
+        ASSERT(env.contains(expr));
+        return env.at(expr);
+      },
       [&](const Number& x) { return val_scalar(x.value); },
       [&](const DiagonalMatrix& x) {
         const auto vec = evaluate(x.child, env);

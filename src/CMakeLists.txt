@@ -8,6 +8,7 @@ set(LIBRARY_SOURCES
     Visitors/ToStringVisitor.cpp
     NumericalOptimization/Evaluation.cpp
     NumericalOptimization/LinearSolvers.cpp
+    NumericalOptimization/Optimizer.cpp
     Utils/Timer.cpp
 )
 
@@ -22,6 +23,13 @@ target_include_directories(SymbolicOptimization
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+if(NOT EMSCRIPTEN)
+    # Find dl library
+    find_library(DL_LIBRARY dl REQUIRED)
+    # Link against dl library
+    target_link_libraries(SymbolicOptimization PUBLIC ${DL_LIBRARY})
+endif()
 
 # Create main executable for native builds
 if(NOT EMSCRIPTEN)
