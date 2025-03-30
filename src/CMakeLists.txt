@@ -9,6 +9,8 @@ set(LIBRARY_SOURCES
     NumericalOptimization/Evaluation.cpp
     NumericalOptimization/LinearSolvers.cpp
     NumericalOptimization/Optimizer.cpp
+    Utils/Assert.cpp
+    Utils/StackTrace.cpp
     Utils/Timer.cpp
 )
 

@@ -12,6 +12,7 @@
 #include "SymbolicOptimization.h"
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
+#include "Utils/StackTrace.h"
 
 void print_header(const std::string& title) {
   std::cout << "\n" << std::string(80, '=') << std::endl;
@@ -359,9 +360,9 @@ void run_numeric_optimization_example() {
   auto data = Data();
   data.Q = {{1.0, 0.0}, {0.0, 0.5}};
   data.c = {1.0, 2.0};
-  data.A_ineq = {{1.0, 1.0}, {1.0, -1.0}};
-  data.l_A_ineq = {1.0, 1.0};
-  data.u_A_ineq = {2.0, 2.0};
+  // data.A_ineq = {{1.0, 1.0}, {1.0, -1.0}};
+  // data.l_A_ineq = {1.0, 1.0};
+  // data.u_A_ineq = {2.0, 2.0};
   data.l_x = {0.0, 0.5};
   data.u_x = {10.0, 10.5};
   std::cout << "build env" << std::endl;
@@ -390,6 +391,7 @@ void print_usage() {
 }
 
 int main(int argc, char* argv[]) {
+  Utils::initialize_termination_handler();
   if (argc > 1) {
     std::string arg = argv[1];
     if (arg == "-h" || arg == "--help") {
