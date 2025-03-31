@@ -19,12 +19,14 @@ Optimizer::Optimizer(Evaluation::Environment& env,
                      SymbolicOptimization::NewtonSystem newton_system)
     : env_(env),
       optimization_expressions_(optimization_expressions),
-      newton_system_(std::move(newton_system)),
-      augmented_system_(
-          SymbolicOptimization::get_augmented_system(newton_system_)),
-      normal_equations_(
-          SymbolicOptimization::get_normal_equations(augmented_system_)) {
+      newton_system_(newton_system),
+      shorthand_rhs_(SymbolicOptimization::get_shorthand_rhs(newton_system_)) {
   using namespace Expression;
+  newton_system.rhs = shorthand_rhs_.shorthand_rhs;
+  augmented_system_ = SymbolicOptimization::get_augmented_system(newton_system);
+  normal_equations_ =
+      SymbolicOptimization::get_normal_equations(augmented_system_);
+
   const auto Q = optimization_expressions.Q;
   const auto x = optimization_expressions.x;
   const auto cT = ExprFactory::transpose(optimization_expressions.c);
@@ -32,7 +34,8 @@ Optimizer::Optimizer(Evaluation::Environment& env,
       ExprFactory::sum({ExprFactory::product({ExprFactory::number(0.5),
                                               ExprFactory::transpose(x), Q, x}),
                         ExprFactory::product({cT, x})});
-  const auto var_vec = eval_expr_vector_<Vector>(newton_system_.variables);
+  const auto var_vec =
+      eval_vector_of_expressions_<Vector>(newton_system_.variables);
   for (size_t i = 0; i < var_vec.size(); ++i) {
     const auto& variable = newton_system_.variables.at(i);
     variable_index_[variable] = i;
@@ -85,41 +88,103 @@ void Optimizer::solve_quasi_definite_() {
     }
     std::cout << std::endl;
   };
-  const auto& [lhs, rhs, variables, delta_definitions] = augmented_system_;
   const auto& full_rhs = newton_system_.rhs;
+  const auto& augmented_lhs = augmented_system_.lhs;
 
-  const auto sigma = 1.0;
+  std::vector<Expression::ExprPtr> delta_aff_variables;
+  std::ranges::transform(
+      newton_system_.variables, std::back_inserter(delta_aff_variables),
+      [](const auto& v) {
+        const auto dv = SymbolicOptimization::get_delta_variable(v);
+        ASSERT(Expression::is<Expression::Variable>(dv));
+        const auto& var = std::get<Expression::Variable>(dv->get_impl());
+        return Expression::ExprFactory::variable(var.name + "_affine");
+      });
+
   const auto tolerance = 1e-8;
-  const size_t max_iter = 30;
+  const size_t max_iter = 10;
   size_t iter = 0;
   for (; iter < max_iter; ++iter) {
     const auto f = Evaluation::evaluate_scalar(objective_, env_);
     const auto residual_norm = get_residual_norm_(full_rhs);
     const auto mu = get_mu_(full_rhs);
-    // env_.at(optimization_expressions_.mu) = Evaluation::val_scalar(mu);
+    env_.at(optimization_expressions_.mu) = Evaluation::val_scalar(mu);
     std::cout << "iter: " << iter << ", f: " << f << ", res: " << residual_norm
               << ", gap: " << mu << std::endl;
     if (residual_norm < tolerance && mu < tolerance) {
       break;
     }
 
-    const auto kkt = get_as_matrix_(lhs);
-    print_mat("kkt:", kkt);
+    const auto kkt = get_as_matrix_(augmented_lhs);
+    // print_mat("kkt:", kkt);
     const auto [L, D] = LinearSolvers::symmetric_indefinite_factorization(kkt);
 
-    auto variables = eval_expr_vector_<Vector>(newton_system_.variables);
-    const auto delta =
-        compute_search_direction_(augmented_system_, L, D, sigma);
+    for (const auto& [vec, def] : shorthand_rhs_.vector_definitions) {
+      env_[vec] = Evaluation::evaluate(def, env_);
+    }
+
+    // Compute affine scaling step
+    const auto variable_values =
+        eval_vector_of_expressions_<Vector>(newton_system_.variables);
+    const auto delta_aff_values =
+        compute_search_direction_(augmented_system_, L, D, 0.0);
     print_var("var", newton_system_.variables);
-    print_mat("delta", delta);
-    const auto alpha = get_max_step_(variables, delta);
-    std::cout << " alpha: " << alpha << std::endl;
-    const auto fraction_to_boundary = 0.995;
-    update_variables_(fraction_to_boundary * alpha, variables, delta);
+    print_mat("delta affine", delta_aff_values);
+    auto sigma = 0.0;
+    {
+      // Temporarily update the variables to compute mu_affine
+      const auto alpha_affine =
+          get_max_step_(variable_values, delta_aff_values);
+      std::cout << " alpha affine: " << alpha_affine << std::endl;
+      std::vector<ScopedEnvironmentOverride> temps;
+      temps.reserve(newton_system_.variables.size());
+      for (const auto& var : newton_system_.variables) {
+        auto val = Evaluation::evaluate(var, env_);
+        temps.push_back(ScopedEnvironmentOverride(env_, var, val));
+      }
+      update_variables_(alpha_affine, variable_values, delta_aff_values);
+      const auto mu_affine = get_mu_(full_rhs);
+      sigma = mu > 0.0 ? std::pow(mu_affine / mu, 3) : 0.0;
+    }
+    {
+      // Update complementarity rhs to include the affine scaling direction
+      const auto& mu = optimization_expressions_.mu;
+      const auto& e_var = optimization_expressions_.e_var;
+      const auto& e_ineq = optimization_expressions_.e_ineq;
+      const auto& e_eq = optimization_expressions_.e_eq;
+      for (const auto& [shorthand, expr] : shorthand_rhs_.vector_definitions) {
+        if ((expr->contains_subexpression(e_var) ||
+             expr->contains_subexpression(e_ineq) ||
+             expr->contains_subexpression(e_eq)) &&
+            expr->contains_subexpression(mu)) {
+          auto delta_expr = expr->replace_subexpression(mu, Expression::zero);
+          const auto expr_variables = expr->get_variables();
+          for (auto& var : expr_variables) {
+            const auto index = variable_index_.at(var);
+            const auto& delta_aff_variable = delta_aff_variables.at(index);
+            const auto& delta_aff_value = delta_aff_values.at(index);
+            env_[delta_aff_variable] = Evaluation::val_vector(delta_aff_value);
+            delta_expr =
+                delta_expr->replace_subexpression(var, delta_aff_variable);
+          }
+          const auto delta_expr_val = Evaluation::evaluate(delta_expr, env_);
+          env_[shorthand] = Evaluation::add(env_[shorthand], delta_expr_val);
+        }
+      }
+
+      // Compute aggregated centering-corrector step
+      const auto delta =
+          compute_search_direction_(augmented_system_, L, D, sigma);
+      const auto alpha = get_max_step_(variable_values, delta);
+      std::cout << " alpha: " << alpha << std::endl;
+
+      constexpr auto fraction_to_boundary = 0.995;
+      update_variables_(fraction_to_boundary * alpha, variable_values, delta);
+    }
   }
 }
 
-void Optimizer::update_variables_(double alpha, Matrix& variables,
+void Optimizer::update_variables_(double alpha, Matrix variables,
                                   const Matrix& delta) {
   ASSERT(variables.size() == delta.size());
   ASSERT(variables.size() == newton_system_.variables.size());
@@ -142,7 +207,7 @@ double Optimizer::get_residual_norm_(
   const auto& mu = optimization_expressions_.mu;
   ScopedEnvironmentOverride temp(env_, mu, Evaluation::val_scalar(0.0));
   for (auto& r : rhs) {
-    std::cout << r->to_string() << std::endl;
+    std::cout << r->to_string() << " ";
     auto rv = Evaluation::evaluate_vector(r, env_);
     for (auto& rr : rv) {
       std::cout << rr << ", ";
@@ -237,17 +302,17 @@ double Optimizer::dot_(const std::vector<double>& x,
 
 Matrix Optimizer::get_as_matrix_(
     const std::vector<std::vector<Expression::ExprPtr>>& v) {
-  const auto val = eval_expr_matrix_<Matrix>(v);
+  const auto val = eval_matrix_of_expressions_<Matrix>(v);
   return concatenate_matrices_(val);
 }
 
 Vector Optimizer::get_as_vector_(const std::vector<Expression::ExprPtr>& v) {
-  const auto val = eval_expr_vector_<Vector>(v);
+  const auto val = eval_vector_of_expressions_<Vector>(v);
   return concatenate_vectors_(val);
 }
 
 template <typename T>
-std::vector<T> Optimizer::eval_expr_vector_(
+std::vector<T> Optimizer::eval_vector_of_expressions_(
     const std::vector<Expression::ExprPtr>& v) {
   std::vector<T> result;
   result.reserve(v.size());
@@ -263,13 +328,13 @@ std::vector<T> Optimizer::eval_expr_vector_(
 }
 
 template <typename T>
-std::vector<std::vector<T>> Optimizer::eval_expr_matrix_(
+std::vector<std::vector<T>> Optimizer::eval_matrix_of_expressions_(
     const std::vector<std::vector<Expression::ExprPtr>>& v) {
   std::vector<std::vector<T>> result;
   result.reserve(v.size());
   std::ranges::transform(
       v, std::back_inserter(result),
-      [this](const auto& vec) { return eval_expr_vector_<T>(vec); });
+      [this](const auto& vec) { return eval_vector_of_expressions_<T>(vec); });
   return result;
 }
 
@@ -306,7 +371,8 @@ Matrix Optimizer::concatenate_matrices_(
         const auto& next_col = matrices.at(i).at((j + 1) % matrix_cols);
         // All matrices in the same row has the same height
         /*
-                const auto& next_row = matrices.at((i + 1) % matrix_rows).at(j);
+                const auto& next_row = matrices.at((i + 1) %
+           matrix_rows).at(j);
                 // All matrices in the same col has the same width
                 ASSERT((current.empty() ? 0 : current.at(0).size()) ==
                        (next_row.empty() ? 0 : next_row.at(0).size()));

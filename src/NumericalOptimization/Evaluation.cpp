@@ -109,7 +109,7 @@ EvalResult evaluate(const Expression::ExprPtr& expr, const Environment& env) {
   // Evaluate the expression based on its type
   auto res = match(expr).with(
       [&](const auto&) {
-        ASSERT(env.contains(expr));
+        ASSERT(env.contains(expr), expr->to_string());
         return env.at(expr);
       },
       [&](const Number& x) { return val_scalar(x.value); },

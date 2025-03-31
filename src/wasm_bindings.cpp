@@ -63,7 +63,8 @@ NewtonSystemStr format_newton_system_strings_(const auto& newton_system,
     rhs_str += row_str + " \\\\\n ";
   }
 
-  const auto rhs_shorthand = SymbolicOptimization::get_shorthand_rhs(variables);
+  const auto rhs_shorthand =
+      SymbolicOptimization::get_shorthand_rhs(variables).shorthand_rhs;
   std::string rhs_shorthand_str = "";
   for (const auto& row : rhs_shorthand) {
     rhs_shorthand_str += row->to_string(condensed) + " \\\\\n ";
@@ -141,7 +142,8 @@ NewtonSystemTriplet get_newton_systems(
 
   // Use shorthand for right-hand side
   newton_system.rhs =
-      SymbolicOptimization::get_shorthand_rhs(newton_system.variables);
+      SymbolicOptimization::get_shorthand_rhs(newton_system.variables)
+          .shorthand_rhs;
 
   // Augmented system
   auto augmented_system =

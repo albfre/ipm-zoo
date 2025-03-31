@@ -320,13 +320,16 @@ NewtonSystem get_normal_equations(NewtonSystem newton_system) {
   return std::move(newton_system);
 }
 
-std::vector<Expression::ExprPtr> get_shorthand_rhs(
-    const std::vector<Expression::ExprPtr>& variables) {
+ShorthandRhs get_shorthand_rhs(const NewtonSystem& newton_system) {
   using EF = Expression::ExprFactory;
-
-  std::vector<Expression::ExprPtr> rhs;
-  for (const auto& var : variables) {
-    rhs.push_back(EF::negate(EF::named_vector("r_{" + var->to_string() + "}")));
+  ShorthandRhs rhs;
+  ASSERT(newton_system.variables.size() == newton_system.rhs.size());
+  for (size_t i = 0; i < newton_system.variables.size(); ++i) {
+    const auto& var = newton_system.variables.at(i);
+    const auto vec = EF::named_vector("r_{" + var->to_string() + "}");
+    rhs.shorthand_rhs.push_back(EF::negate(vec));
+    rhs.vector_definitions.push_back(
+        {vec, EF::negate(newton_system.rhs.at(i))->simplify()});
   }
   return rhs;
 }

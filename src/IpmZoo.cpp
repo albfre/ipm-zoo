@@ -160,10 +160,11 @@ void run_optimization_example() {
   print_sub_header("Computing Newton System");
   std::cout << "Building the Newton system ..." << std::endl;
 
-  auto start = std::chrono::high_resolution_clock::now();
-  auto [lhs, rhs, newton_variables, _] =
+  const auto start = std::chrono::high_resolution_clock::now();
+  const auto newton_system =
       SymbolicOptimization::get_newton_system(settings, names);
-  auto end = std::chrono::high_resolution_clock::now();
+  auto [lhs, _, newton_variables, __] = newton_system;
+  const auto end = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double, std::milli> duration = end - start;
   std::cout << "Newton system computation took " << duration.count() << " ms\n";
@@ -172,7 +173,8 @@ void run_optimization_example() {
   std::cout << "Left-hand side (Hessian matrix):" << std::endl;
   print_lhs(lhs);
 
-  rhs = SymbolicOptimization::get_shorthand_rhs(variables);
+  auto rhs =
+      SymbolicOptimization::get_shorthand_rhs(newton_system).shorthand_rhs;
   std::cout << "Right-hand side (gradient vector):" << std::endl;
   print_rhs(rhs);
 
@@ -350,7 +352,7 @@ void run_numeric_optimization_example() {
   using namespace Expression;
   using namespace NumericalOptimization;
 
-  print_header("Numeric Optimization Example");
+  print_header("Numerical Optimization Example");
   auto settings = SymbolicOptimization::Settings();
   auto names = SymbolicOptimization::VariableNames();
   auto optimization_expressions =

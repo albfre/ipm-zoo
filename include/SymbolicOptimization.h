@@ -62,6 +62,12 @@ struct NewtonSystem {
       delta_definitions;
 };
 
+struct ShorthandRhs {
+  std::vector<Expression::ExprPtr> shorthand_rhs;
+  std::vector<std::pair<Expression::ExprPtr, Expression::ExprPtr>>
+      vector_definitions;
+};
+
 struct OptimizationExpressions {
   Expression::ExprPtr Q;
   Expression::ExprPtr c;
@@ -112,8 +118,7 @@ NewtonSystem get_newton_system(const Settings& settings,
 NewtonSystem get_augmented_system(NewtonSystem newton_system);
 NewtonSystem get_normal_equations(NewtonSystem newton_system);
 
-std::vector<Expression::ExprPtr> get_shorthand_rhs(
-    const std::vector<Expression::ExprPtr>& variables);
+ShorthandRhs get_shorthand_rhs(const NewtonSystem& newton_system);
 
 Expression::ExprPtr get_delta_variable(const Expression::ExprPtr& expr);
 

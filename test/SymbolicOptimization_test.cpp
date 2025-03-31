@@ -91,10 +91,11 @@ TEST_F(OptimizationTest, GetNewtonSystem) {
 }
 
 TEST_F(OptimizationTest, GetShorthandRhs) {
-  auto settings = Settings();
-  auto names = VariableNames();
-  auto [_, variables] = get_lagrangian(settings, names);
-  auto rhs = get_shorthand_rhs(variables);
+  const auto settings = Settings();
+  const auto names = VariableNames();
+  const auto newton_system = get_newton_system(settings, names);
+  const auto rhs = get_shorthand_rhs(newton_system).shorthand_rhs;
+  const auto& variables = newton_system.variables;
   EXPECT_EQ(variables.size(), rhs.size());
   for (size_t i = 0; i < variables.size(); ++i) {
     EXPECT_EQ("-r_{" + variables[i]->to_string() + "}", rhs[i]->to_string());

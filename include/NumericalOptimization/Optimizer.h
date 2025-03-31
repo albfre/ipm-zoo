@@ -23,7 +23,7 @@ class Optimizer {
   void solve_indefinite_();
   void solve_quasi_definite_();
 
-  void update_variables_(double alpha, Matrix& variables, const Matrix& delta);
+  void update_variables_(double alpha, Matrix variables, const Matrix& delta);
   void vector_plus_eq_scalar_times_vector_(std::vector<double>& x,
                                            const double s,
                                            const std::vector<double>& y);
@@ -38,10 +38,11 @@ class Optimizer {
   Vector get_as_vector_(const std::vector<Expression::ExprPtr>& v);
 
   template <typename T>
-  std::vector<T> eval_expr_vector_(const std::vector<Expression::ExprPtr>& v);
+  std::vector<T> eval_vector_of_expressions_(
+      const std::vector<Expression::ExprPtr>& v);
 
   template <typename T>
-  std::vector<std::vector<T>> eval_expr_matrix_(
+  std::vector<std::vector<T>> eval_matrix_of_expressions_(
       const std::vector<std::vector<Expression::ExprPtr>>& v);
 
   std::vector<double> concatenate_vectors_(
@@ -53,6 +54,7 @@ class Optimizer {
   Evaluation::Environment& env_;
   SymbolicOptimization::OptimizationExpressions optimization_expressions_;
   SymbolicOptimization::NewtonSystem newton_system_;
+  SymbolicOptimization::ShorthandRhs shorthand_rhs_;
   SymbolicOptimization::NewtonSystem augmented_system_;
   SymbolicOptimization::NewtonSystem normal_equations_;
   Expression::ExprPtr objective_;
