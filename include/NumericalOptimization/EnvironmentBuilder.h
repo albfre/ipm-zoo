@@ -78,6 +78,7 @@ struct ScopedEnvironmentOverride {
     env_.at(var_) = std::move(temp_val);
   }
   ~ScopedEnvironmentOverride() { env_.at(var_) = orig_val_; }
+  ScopedEnvironmentOverride(ScopedEnvironmentOverride&) = delete;
 
  private:
   Evaluation::Environment& env_;
