@@ -121,16 +121,7 @@ void Optimizer::solve_quasi_definite_() {
     }
 
     const auto kkt = get_as_matrix_(augmented_lhs);
-    // print_mat("kkt:", kkt, false);
     const auto [L, D] = LinearSolvers::ldlt_decomposition(kkt);
-    // print_mat("L:", L, false);
-    /*
-    std::cout << "D: ";
-    for (auto& di : D) {
-      std::cout << di << ", ";
-    }
-    std::cout << std::endl;
-    */
 
     // Compute affine scaling step
     env_.at(optimization_expressions_.mu) = Evaluation::val_scalar(0.0);
@@ -138,26 +129,16 @@ void Optimizer::solve_quasi_definite_() {
       env_[vec] = Evaluation::evaluate(def, env_);
     }
 
-    /*
-    auto b = get_as_vector_(augmented_system_.rhs);
-    std::cout << "b: ";
-    for (auto& bi : b) {
-      std::cout << bi << ", ";
-    }
-    std::cout << std::endl;
-    */
-
     const auto variable_values =
         eval_vector_of_expressions_<Vector>(newton_system_.variables);
     const auto delta_aff_values =
         compute_search_direction_(augmented_system_, L, D);
-    print_var("var", newton_system_.variables);
-    print_mat("delta affine", delta_aff_values);
+    // print_var("var", newton_system_.variables);
+    // print_mat("delta affine", delta_aff_values);
     {
       // Temporarily update the variables to compute mu_affine
       const auto alpha_affine =
           get_max_step_(variable_values, delta_aff_values);
-      std::cout << " alpha affine: " << alpha_affine << std::endl;
       std::vector<std::unique_ptr<ScopedEnvironmentOverride>> temps;
       temps.reserve(newton_system_.variables.size());
       for (const auto& var : newton_system_.variables) {
@@ -170,8 +151,6 @@ void Optimizer::solve_quasi_definite_() {
       const auto sigma = mu_val > 0.0 ? std::pow(mu_affine / mu_val, 3) : 0.0;
       env_.at(optimization_expressions_.mu) =
           Evaluation::val_scalar(mu_val * sigma);
-      std::cout << "sigma " << sigma << ", new mu: " << mu_val * sigma
-                << std::endl;
     }
     {
       // Update complementarity rhs to include the affine scaling direction
@@ -179,7 +158,6 @@ void Optimizer::solve_quasi_definite_() {
       const auto& e_var = optimization_expressions_.e_var;
       const auto& e_ineq = optimization_expressions_.e_ineq;
       const auto& e_eq = optimization_expressions_.e_eq;
-      std::cout << "residuals2" << std::endl;
       for (const auto& [shorthand, expr] : shorthand_rhs_.vector_definitions) {
         auto shorthand_val = Evaluation::evaluate(expr, env_);
         if ((expr->contains_subexpression(e_var) ||
@@ -201,19 +179,12 @@ void Optimizer::solve_quasi_definite_() {
           shorthand_val = Evaluation::add(shorthand_val, delta_expr_val);
         }
         env_[shorthand] = shorthand_val;
-        std::cout << shorthand->to_string() << ": ";
-        const auto vv = std::get<Evaluation::ValVector>(shorthand_val);
-        for (const auto& v : vv) {
-          std::cout << v << ", ";
-        }
-        std::cout << std::endl;
       }
 
       // Compute aggregated centering-corrector step
       const auto delta = compute_search_direction_(augmented_system_, L, D);
-      print_mat("delta ", delta);
+      // print_mat("delta ", delta);
       const auto alpha = get_max_step_(variable_values, delta);
-      std::cout << " alpha: " << alpha << std::endl;
 
       constexpr auto fraction_to_boundary = 0.995;
       update_variables_(fraction_to_boundary * alpha, variable_values, delta);
@@ -243,18 +214,6 @@ double Optimizer::get_residual_norm_(
     const std::vector<Expression::ExprPtr>& rhs) {
   const auto& mu = optimization_expressions_.mu;
   ScopedEnvironmentOverride temp(env_, mu, Evaluation::val_scalar(0.0));
-  std::cout << "residuals" << std::endl;
-  size_t i = 0;
-  for (auto& r : rhs) {
-    std::cout << newton_system_.variables.at(i++)->to_string() << ": ";
-    std::cout << "(" << r->to_string() << "):  ";
-    auto rv = Evaluation::evaluate_vector(r, env_);
-    for (auto& rr : rv) {
-      std::cout << rr << ", ";
-    }
-    std::cout << std::endl;
-  }
-
   const auto rhs_vec = get_as_vector_(rhs);
   const auto residual = std::sqrt(dot_(rhs_vec, rhs_vec));
   return residual;
@@ -312,13 +271,7 @@ std::vector<std::vector<double>> Optimizer::compute_search_direction_(
     const std::vector<double>& D) {
   const auto& [lhs, rhs, variables, delta_definitions] = newton_system;
   auto b = get_as_vector_(rhs);
-
   LinearSolvers::overwriting_solve_ldlt(L, D, b);
-  std::cout << "sol: ";
-  for (auto& bi : b) {
-    std::cout << bi << ", ";
-  }
-  std::cout << std::endl;
 
   auto result = std::vector<std::vector<double>>(variable_index_.size());
   size_t offset = 0;
@@ -331,26 +284,11 @@ std::vector<std::vector<double>> Optimizer::compute_search_direction_(
     env_[delta_variable] = Evaluation::val_vector(result.at(index));
     offset = next_offset;
   }
-  for (auto& [rh, _] : shorthand_rhs_.vector_definitions) {
-    std::cout << rh->to_string() << ": ";
-    auto v = Evaluation::evaluate_vector(rh, env_);
-    for (auto& vv : v) {
-      std::cout << vv << ", ";
-    }
-    std::cout << std::endl;
-  }
 
   for (const auto& [delta_variable, delta_definition] :
        std::views::reverse(newton_system.delta_definitions)) {
     const auto index = delta_variable_index_.at(delta_variable);
-    std::cout << "computing " << delta_variable->to_string() << " as "
-              << delta_definition->to_string() << std::endl;
     result.at(index) = Evaluation::evaluate_vector(delta_definition, env_);
-    for (auto& r : result.at(index)) {
-      std::cout << r << ", ";
-    }
-    std::cout << std::endl;
-
     env_[delta_variable] = Evaluation::val_vector(result.at(index));
   }
   return result;
