@@ -245,6 +245,7 @@ get_first_order_optimality_conditions(Settings settings,
   }
 
   auto [lagrangian, variables] = get_lagrangian(settings, names);
+  auto opt = get_optimization_expressions(names);
 
   std::vector<Expression::ExprPtr> first_order;
   first_order.reserve(variables.size());

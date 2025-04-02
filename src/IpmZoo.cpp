@@ -1,4 +1,3 @@
-#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -13,6 +12,7 @@
 #include "Utils/Assert.h"
 #include "Utils/Helpers.h"
 #include "Utils/StackTrace.h"
+#include "Utils/Timer.h"
 
 void print_header(const std::string& title) {
   std::cout << "\n" << std::string(80, '=') << std::endl;
@@ -160,14 +160,14 @@ void run_optimization_example() {
   print_sub_header("Computing Newton System");
   std::cout << "Building the Newton system ..." << std::endl;
 
+  Utils::Timer timer;
+  timer.start("Newton system computation");
   const auto start = std::chrono::high_resolution_clock::now();
   const auto newton_system =
       SymbolicOptimization::get_newton_system(settings, names);
   auto [lhs, _, newton_variables, __] = newton_system;
-  const auto end = std::chrono::high_resolution_clock::now();
-
-  std::chrono::duration<double, std::milli> duration = end - start;
-  std::cout << "Newton system computation took " << duration.count() << " ms\n";
+  timer.stop("Newton system computation");
+  timer.report();
 
   std::cout << "\nInitial Newton system:" << std::endl;
   std::cout << "Left-hand side (Hessian matrix):" << std::endl;
@@ -358,21 +358,67 @@ void run_numeric_optimization_example() {
   auto optimization_expressions =
       SymbolicOptimization::get_optimization_expressions(names);
 
-  auto data = Data();
-  data.Q = {{1.0, 0.0}, {0.0, 0.5}};
-  data.c = {-10.0, 2.0};
-  data.A_ineq = {{1.0, 1.0}};
-  data.l_A_ineq = {1.0};
-  data.u_A_ineq = {1.0};
-  data.l_x = {0.0, 0.0};
-  data.u_x = {10.0, 10.0};
-  auto env = build_environment(names, data);
+  if (false) {
+    auto data = Data();
+    data.Q = {{1.0, 0.0}, {0.0, 0.5}};
+    data.c = {-10.0, 2.0};
+    data.A_ineq = {{1.0, 1.0}};
+    data.l_A_ineq = {1.0};
+    data.u_A_ineq = {1.0};
+    data.l_x = {0.0, 0.0};
+    data.u_x = {10.0, 10.0};
+    auto env = build_environment(names, data);
 
-  auto newton_system = SymbolicOptimization::get_newton_system(settings, names);
+    auto newton_system =
+        SymbolicOptimization::get_newton_system(settings, names);
 
-  NumericalOptimization::Optimizer optimizer(env, optimization_expressions,
-                                             newton_system);
-  optimizer.solve();
+    Utils::Timer timer;
+    timer.start("Optimization");
+    NumericalOptimization::Optimizer optimizer(env, optimization_expressions,
+                                               newton_system);
+    optimizer.solve();
+    timer.stop("Optimization");
+    timer.report();
+  }
+  {
+    auto data = Data();
+    size_t n = 100;
+    size_t m = 2;
+    data.Q = std::vector<std::vector<double>>(n, std::vector<double>(n));
+    data.c = std::vector<double>(n);
+    data.A_ineq = std::vector<std::vector<double>>(m, std::vector<double>(n));
+    data.l_A_ineq = std::vector<double>(m);
+    data.u_A_ineq = std::vector<double>(m);
+    data.l_x = std::vector<double>(n);
+    data.u_x = std::vector<double>(n, 100);
+    for (size_t i = 0; i < n; ++i) {
+      data.Q[i][n - i - 1] = 1.2 + 0.1;
+      data.Q[n - i - 1][i] = 1.2 + 0.1;
+      data.Q[i][i] = i + 3;
+      data.c[i] = -0.5 * i;
+      data.l_x[i] = i;
+      data.u_x[i] = 2000;
+    }
+    data.A_ineq[0][1] = 1;
+    data.A_ineq[0][2] = 1;
+    data.l_A_ineq[0] = -10;
+    data.u_A_ineq[0] = 5;
+    data.A_ineq[1][0] = 1;
+    data.l_A_ineq[1] = -10;
+    data.u_A_ineq[1] = 7;
+    auto env = build_environment(names, data);
+
+    auto newton_system =
+        SymbolicOptimization::get_newton_system(settings, names);
+
+    Utils::Timer timer;
+    timer.start("Optimization");
+    NumericalOptimization::Optimizer optimizer(env, optimization_expressions,
+                                               newton_system);
+    optimizer.solve();
+    timer.stop("Optimization");
+    timer.report();
+  }
 }
 
 void print_usage() {

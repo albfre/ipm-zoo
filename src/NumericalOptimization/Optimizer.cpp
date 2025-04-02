@@ -108,14 +108,14 @@ void Optimizer::solve_quasi_definite_() {
       });
 
   const auto tolerance = 1e-8;
-  const size_t max_iter = 20;
+  const size_t max_iter = 100;
   size_t iter = 0;
   for (; iter < max_iter; ++iter) {
     const auto f = Evaluation::evaluate_scalar(objective_, env_);
     const auto residual_norm = get_residual_norm_(full_rhs);
     const auto mu_val = get_mu_(full_rhs);
-    std::cout << "iter: " << iter << ", f: " << f << ", res: " << residual_norm
-              << ", gap: " << mu_val << std::endl;
+    std::cout << "iter: " << iter << std::scientific << ", f: " << f
+              << ", res: " << residual_norm << ", gap: " << mu_val << std::endl;
     if (residual_norm < tolerance && mu_val < tolerance) {
       break;
     }
@@ -271,6 +271,7 @@ std::vector<std::vector<double>> Optimizer::compute_search_direction_(
     const std::vector<double>& D) {
   const auto& [lhs, rhs, variables, delta_definitions] = newton_system;
   auto b = get_as_vector_(rhs);
+
   LinearSolvers::overwriting_solve_ldlt(L, D, b);
 
   auto result = std::vector<std::vector<double>>(variable_index_.size());
