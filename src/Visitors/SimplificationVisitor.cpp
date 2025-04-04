@@ -51,7 +51,19 @@ ExprPtr SimplificationVisitor::operator()(const DiagonalMatrix& x) {
   if (child == zero || child == unity) {
     return child;
   }
-  return ExprFactory::diagonal_matrix(std::move(child));
+  return match(child).with(
+      [](const Sum& x) {
+        auto terms = transform(x.terms, [](const auto& t) {
+          return ExprFactory::diagonal_matrix(t);
+        });
+        return ExprFactory::sum(std::move(terms));
+      },
+      [](const Negate& x) {
+        return ExprFactory::negate(ExprFactory::diagonal_matrix(x.child));
+      },
+      [&](const auto& x) {
+        return ExprFactory::diagonal_matrix(std::move(child));
+      });
 }
 
 ExprPtr SimplificationVisitor::operator()(const Transpose& x) const {
