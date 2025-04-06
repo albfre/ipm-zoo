@@ -21,162 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-const x = "x"; // Primary variable
-const A_ineq = "A"; // Inequality constraint matrix
-const l_A_ineq = "l_{A}"; // Inequality constraint lower bound
-const u_A_ineq = "u_{A}"; // Inequality constraint upper bound
-const A_eq = "C"; // Equality constraint matrix
-const b_eq = "d"; // Equality constraint right-hand side
-const p_eq = "p"; // Equality constraint regularization
-const delta_eq = "\\delta"; // Equality constraint regularization factor
-const l_x = "l_x"; // Primary variable lower bound
-const u_x = "u_x"; // Primary variable upper bound
-const s_A_ineq = "s"; // Slack variable for inequality constraint
-const s_lA = "g"; // Slack variable for inequality constraint lower bound
-const s_uA = "h"; // Slack variable for inequality constraint upper bound
-const s_lx = "y"; // Slack variable for x lower bound
-const s_ux = "z"; // Slack variable for x upper bound
-const s_A_eq = "t"; // Slack variable for equality constraints
-const s_lC = "v"; // Slack variable for equality constraint lower bound
-const s_uC = "w"; // Slack variable for equality constraint upper bound
-
-const getObjective = (equalityPenalties = false, equalityRegularization = false, logBarrierVariables = []) => {
-  let output = "\\text{minimize} \\quad & 0.5 " + x + "^T Q " + x + " + c^T" + x;
-  if (equalityPenalties) {
-    output += "+ 0.5 \\mu^{-1}(" + A_eq + x + " - " + b_eq + ")^T(" + A_eq + x + " - " + b_eq + ")";
-  }
-  if (equalityRegularization) {
-    output += "+ 0.5 " + p_eq + "^T" + p_eq;
-
-  }
-  if (logBarrierVariables.length > 0)
-  {
-    output +=  " \\\\\n & ";
-    for (let i = 0; i < logBarrierVariables.length; ++i) {
-      if (logBarrierVariables.length > 4 && i === logBarrierVariables.length / 2) {
-        output += " \\\\\n & "
-      }
-      output += "- \\mu e^T \\log(" + logBarrierVariables[i] + ")";
-    }
-  }
-  output += " \\\\";
-  return output;
-}
-
-function getOriginalProblem(inequalities, equalities, variableBounds) {
-  const hasInequalities = inequalities !== "none";
-  const hasEqualities = equalities;
-  const hasVariableBounds = variableBounds !== "none";
-  let outputText = "";
-  outputText += "\\[ \\begin{align*}\n";
-  outputText += getObjective();
-
-  if (hasInequalities || hasEqualities || hasVariableBounds) {
-    outputText += "\\text{subject to} \\quad";
-  }
-
-  if (hasInequalities) {
-    if (inequalities === "lower") outputText += "& " + A_ineq + x + " \\geq " + l_A_ineq + " \\\\\n";
-    if (inequalities === "upper") outputText += "& " + A_ineq + x + " \\leq " + u_A_ineq + " \\\\\n";
-    if (inequalities === "both") outputText += "& " + l_A_ineq + " \\leq " + A_ineq + x + " \\leq " + u_A_ineq + " \\\\\n";
-  }
-
-  if (hasEqualities) {
-    outputText += "& " + A_eq + x + " = " + b_eq + "\\\\\n"
-  }
-
-  if (variableBounds !== "none") {
-    if (variableBounds === "lower") outputText += "& " + x + " \\geq " + l_x + " \\\\\n";
-    if (variableBounds === "upper") outputText += "& " + x + " \\leq " + u_x + " \\\\\n";
-    if (variableBounds === "both") outputText += "& " + l_x + " \\leq " + x + " \\leq " + u_x + " \\\\\n";
-  }
-
-  outputText += "\\end{align*} \\]\n"
-  return outputText;
-}
-
-function getNonnegativeSlacks(inequalities, equalities, variableBounds) {
-  let nonnegativeSlacks = [];
-  if (inequalities === "lower" || inequalities === "both") {
-    nonnegativeSlacks.push(s_lA);
-  }
-  if (inequalities === "upper" || inequalities === "both") {
-    nonnegativeSlacks.push(s_uA);
-  }
-  if (equalities) {
-    nonnegativeSlacks.push(s_lC);
-    nonnegativeSlacks.push(s_uC);
-  }
-  if (variableBounds === "lower" || variableBounds === "both") {
-    nonnegativeSlacks.push(s_lx);
-  }
-  if (variableBounds === "upper" || variableBounds === "both") {
-    nonnegativeSlacks.push(s_ux);
-  }
-  return nonnegativeSlacks;
-}
-
-function getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, equalityHandling, logBarriers) {
-  const hasInequalities = inequalities !== "none";
-  const hasEqualities = equalities;
-  const hasVariableBounds = variableBounds !== "none";
-  let outputText = "";
-  outputText += "\\[ \\begin{align*}\n";
-  const hasSlackedEqualities = hasEqualities && (equalityHandling === "slacks" || equalityHandling === "simple_slacks");
-  const nonnegativeSlacks = getNonnegativeSlacks(inequalities, hasSlackedEqualities, variableBounds);
-  const equalityPenalties = equalities && equalityHandling === "penalty";
-  const equalityRegularization = equalities && equalityHandling === "regularization";
-  outputText += getObjective(equalityPenalties, equalityRegularization, logBarriers ? nonnegativeSlacks : []);
-
-  if (hasInequalities || hasEqualities || hasVariableBounds) {
-    outputText += "\\text{subject to} \\quad";
-  }
-
-  if (hasInequalities) {
-    const addLower = inequalities === "lower" || inequalities === "both"
-    const addUpper = inequalities === "upepr" || inequalities === "both"
-    if (inequalityHandling === "slacks") {
-      outputText += "& " + A_ineq + x + " - " + s_A_ineq + " = 0 \\\\\n";
-      if (addLower) outputText += "& " + s_A_ineq + " - " + s_lA + " = " + l_A_ineq + " \\\\\n";
-      if (addUpper) outputText += "& " + s_A_ineq + " + " + s_uA + " = " + u_A_ineq + " \\\\\n";
-    }
-    else {
-      if (addLower) outputText += "& " + A_ineq + x + " - " + s_lA + " = " + l_A_ineq + " \\\\\n";
-      if (addUpper) outputText += "& " + A_ineq + x + " + " + s_uA + " = " + u_A_ineq + " \\\\\n";
-    }
-  }
-
-  if (hasEqualities && equalityHandling !== "penalty") {
-    if (equalityHandling === "slacks") {
-      outputText += "& " + A_eq + x + " - " + s_A_eq + " = 0 \\\\\n";
-      outputText += "& " + s_A_eq + " - " + s_lC + " = " + b_eq + " \\\\\n";
-      outputText += "& " + s_A_eq + " + " + s_uC + " = " + b_eq + " \\\\\n";
-    }
-    else if (equalityHandling == "simple_slacks") {
-      outputText += "& " + A_eq + x + " - " + s_lC + " = " + b_eq + " \\\\\n";
-      outputText += "& " + A_eq + x + " + " + s_uC + " = " + b_eq + " \\\\\n";
-    }
-    else if (equalityHandling == "regularization") {
-      outputText += "& " + A_eq + x + " + " + delta_eq + " " + p_eq + " = " + b_eq + " \\\\\n";
-    }
-    else {
-      outputText += "& " + A_eq + x + " = " + b_eq + " \\\\\n";
-    }
-  }
-
-  if (variableBounds !== "none") {
-    if (variableBounds === "lower" || variableBounds === "both") outputText += "& " + x + " - " + s_lx + " = " + l_x + " \\\\\n";
-    if (variableBounds === "upper" || variableBounds === "both") outputText += "& " + x + " + " + s_ux + " = " + u_x + " \\\\\n";
-  }
-
-  if (!logBarriers && nonnegativeSlacks) {
-    outputText += "& " + nonnegativeSlacks.join(", ") + " \\geq 0 \\\\\n"
-  }
-
-  outputText += "\\end{align*} \\]\n"
-  return outputText;
-}
-
 function dimZeros(str) {
   const useDimmedZeros = document.getElementById("dim_zeros").checked;
   return useDimmedZeros ? str.replace(/(\D|^)0(\D|$)/g, '$1{\\color{lightgray}0}$2') : str;
@@ -197,20 +41,7 @@ function updateProblem() {
   const hasInequalities = inequalities !== "none";
   const hasEqualities = equalities;
   const hasVariableBounds = variableBounds !== "none";
-
   let outputText = "";
-  outputText += "<p><strong>Original optimization problem:</strong></p>";
-  outputText += getOriginalProblem(inequalities, equalities, variableBounds);
-
-  const hasSlackedEqualities = hasEqualities && (equalityHandling === "slacks" || equalityHandling === "simple_slacks");
-  if (hasInequalities || hasVariableBounds || hasSlackedEqualities) {
-    outputText += "<p><strong>Slacked optimization problem:</strong></p>";
-    outputText += getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, equalityHandling, false);
-
-    outputText += "<p><strong>Slacked optimization problem with log-barriers:</strong></p>";
-    outputText += getSlackProblem(inequalities, equalities, variableBounds, inequalityHandling, equalityHandling, true);
-  }
-
 
   if (wasmModule) {
     const boundsMap = {
@@ -219,10 +50,16 @@ function updateProblem() {
       upper: wasmModule.Bounds.Upper,
       none: wasmModule.Bounds.None,
     };
-    const equalityHandlingMap ={
+    const inequalityHandlingMap = {
+      slacks : wasmModule.InequalityHandling.Slacks,
+      slacked_slacks : wasmModule.InequalityHandling.SlackedSlacks,
+      naive_slacks: wasmModule.InequalityHandling.NaiveSlacks,
+    };
+    const equalityHandlingMap = {
       none: wasmModule.EqualityHandling.None,
       slacks : wasmModule.EqualityHandling.Slacks,
-      simple_slacks: wasmModule.EqualityHandling.SimpleSlacks,
+      slacked_slacks : wasmModule.EqualityHandling.SlackedSlacks,
+      naive_slacks: wasmModule.EqualityHandling.NaiveSlacks,
       penalty : wasmModule.EqualityHandling.PenaltyFunction,
       regularization : wasmModule.EqualityHandling.Regularization,
     };
@@ -231,8 +68,23 @@ function updateProblem() {
       settings.equalities = equalities;
       settings.inequalities = boundsMap[inequalities] ?? wasmModule.Bounds.None;
       settings.variableBounds = boundsMap[variableBounds] ?? wasmModule.Bounds.None;
-      settings.inequalityHandling = inequalityHandling === "slacks" ? wasmModule.InequalityHandling.Slacks : wasmModule.InequalityHandling.SimpleSlacks;
+      settings.inequalityHandling = inequalityHandlingMap[inequalityHandling];
       settings.equalityHandling = equalityHandlingMap[equalityHandling];
+
+      outputText += "<p><strong>Original optimization problem:</strong></p>";
+      const original = wasmModule.getOptimizationProblem(settings, wasmModule.OptimizationProblemType.Original);
+      outputText += "\\[ \\begin{align*}\n " + original + "\\end{align*} \\]";
+
+      const hasSlackedEqualities = hasEqualities && (equalityHandling === "slacks" || equalityHandling === "slacked_slacks" || equalityHandling === "naive_slacks");
+      if (hasInequalities || hasVariableBounds || hasSlackedEqualities) {
+        outputText += "<p><strong>Slacked optimization problem:</strong></p>";
+        const slacked = wasmModule.getOptimizationProblem(settings, wasmModule.OptimizationProblemType.Slacked);
+        outputText += "\\[ \\begin{align*}\n " + slacked + "\\end{align*} \\]";
+
+        outputText += "<p><strong>Slacked optimization problem with log-barriers:</strong></p>";
+        const barrier = wasmModule.getOptimizationProblem(settings, wasmModule.OptimizationProblemType.SlackedWithBarriers);
+        outputText += "\\[ \\begin{align*}\n " + barrier + "\\end{align*} \\]";
+      }
 
       const lagrangian = wasmModule.getLagrangian(settings);
       outputText += "<p><strong>Lagrangian function:</strong></p>";

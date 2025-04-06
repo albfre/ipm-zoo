@@ -34,16 +34,24 @@ enum class Bounds {
 
 enum class InequalityHandling {
   Slacks,
-  SimpleSlacks,
+  SlackedSlacks,
+  NaiveSlacks,
 };
 
 enum class EqualityHandling {
   None,
   Slacks,
-  SimpleSlacks,
+  SlackedSlacks,
+  NaiveSlacks,
   PenaltyFunction,
   PenaltyFunctionWithExtraVariable,
   Regularization,
+};
+
+enum class OptimizationProblemType {
+  Original,
+  Slacked,
+  SlackedWithBarriers,
 };
 
 struct Settings {
@@ -51,7 +59,35 @@ struct Settings {
   Bounds variable_bounds = Bounds::Both;
   bool equalities = false;
   EqualityHandling equality_handling = EqualityHandling::None;
-  InequalityHandling inequality_handling = InequalityHandling::Slacks;
+  InequalityHandling inequality_handling = InequalityHandling::SlackedSlacks;
+};
+
+struct InequalityConstraint {
+  Expression::ExprPtr expr;
+  Expression::ExprPtr lower_bound;
+  Expression::ExprPtr upper_bound;
+  Expression::ExprPtr lower_dual_variable;
+  Expression::ExprPtr upper_dual_variable;
+};
+
+struct EqualityConstraint {
+  Expression::ExprPtr expr;
+  Expression::ExprPtr rhs;
+  Expression::ExprPtr dual_variable;
+};
+
+using VariableBounds = InequalityConstraint;
+
+struct OptimizationProblem {
+  Expression::ExprPtr objective;
+  std::vector<InequalityConstraint> inequalities;
+  std::vector<EqualityConstraint> equalities;
+  std::vector<VariableBounds> variable_bounds;
+  std::vector<Expression::ExprPtr> variables;
+  std::vector<Expression::ExprPtr> variables2;
+  std::vector<Expression::ExprPtr> variables3;
+  std::vector<Expression::ExprPtr> variables4;
+  std::vector<Expression::ExprPtr> nonnegative_slacks;
 };
 
 struct NewtonSystem {
@@ -105,6 +141,10 @@ struct OptimizationExpressions {
 
 OptimizationExpressions get_optimization_expressions(
     const VariableNames& names);
+
+OptimizationProblem get_optimization_problem(
+    const Settings& settings, const VariableNames& names,
+    const OptimizationProblemType& optimization_problem_type);
 
 std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> get_lagrangian(
     const Settings& settings, const VariableNames& names);

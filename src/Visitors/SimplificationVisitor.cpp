@@ -52,15 +52,16 @@ ExprPtr SimplificationVisitor::operator()(const DiagonalMatrix& x) {
     return child;
   }
   return match(child).with(
-      [](const Sum& x) {
-        auto terms = transform(x.terms, [](const auto& t) {
-          return ExprFactory::diagonal_matrix(t);
-        });
-        return ExprFactory::sum(std::move(terms));
-      },
+      /*
+              auto terms = transform(x.terms, [](const auto& t) {
+                return ExprFactory::diagonal_matrix(t);
+              });
+              return ExprFactory::sum(std::move(terms));
+            },
       [](const Negate& x) {
         return ExprFactory::negate(ExprFactory::diagonal_matrix(x.child));
       },
+            */
       [&](const auto& x) {
         return ExprFactory::diagonal_matrix(std::move(child));
       });
@@ -72,27 +73,28 @@ ExprPtr SimplificationVisitor::operator()(const Transpose& x) const {
     return child;  // 0^T = 0, 1^T = 1
   }
   return match(child).with(
-      [](const Transpose& x) { return x.child; },  // (x^T)^T = x
-      [&](const NamedScalar& x) { return child; },
-      [&](const SymmetricMatrix& x) { return child; },
-      [&](const DiagonalMatrix& x) { return child; },
-      [&](const Invert& x) {
-        ASSERT(is<DiagonalMatrix>(x.child));
+      [&](const Number&) { return child; },
+      [](const Transpose& y) { return y.child; },  // (x^T)^T = x
+      [&](const NamedScalar&) { return child; },
+      [&](const SymmetricMatrix&) { return child; },
+      [&](const DiagonalMatrix&) { return child; },
+      [&](const Invert& y) {
+        ASSERT(is<DiagonalMatrix>(y.child));
         return child;
       },
-      [this](const Negate& x) {
+      [this](const Negate& y) {
         // (-x)^T  = -x^T
-        return ExprFactory::negate(ExprFactory::transpose(x.child));
+        return ExprFactory::negate(ExprFactory::transpose(y.child));
       },
-      [this](const Product& x) {
+      [this](const Product& y) {
         // (xyz)^T = z^T y^T x^T
-        auto terms = transform(x.terms, [this](const auto& t) {
+        auto terms = transform(y.terms, [this](const auto& t) {
           return ExprFactory::transpose(t);
         });
         std::ranges::reverse(terms);
         return ExprFactory::product(std::move(terms));
       },
-      [&](const auto& x) { return ExprFactory::transpose(std::move(child)); });
+      [&](const auto&) { return ExprFactory::transpose(std::move(child)); });
 }
 
 ExprPtr SimplificationVisitor::operator()(const Negate& x) {

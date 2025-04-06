@@ -143,7 +143,7 @@ void run_optimization_example() {
 
   auto settings = SymbolicOptimization::Settings();
   settings.inequality_handling =
-      SymbolicOptimization::InequalityHandling::SimpleSlacks;
+      SymbolicOptimization::InequalityHandling::SlackedSlacks;
   auto names = SymbolicOptimization::VariableNames();
 
   print_sub_header("Generating Lagrangian");

@@ -42,8 +42,9 @@
       <label><input type="radio" name="variable_bounds" value="both" checked> Lower and upper</label>
       <br>
       <h3>Handling of inequalities</h3>
-      <label><input type="radio" name="handling_inequalities" value="slacks" checked> Slacks</label>
-      <label><input type="radio" name="handling_inequalities" value="simple_slacks"> Simple slacks</label>
+      <label><input type="radio" name="handling_inequalities" value="slacks"> Slacks</label>
+      <label><input type="radio" name="handling_inequalities" value="slacked_slacks" checked> Slacked slacks</label>
+      <label><input type="radio" name="handling_inequalities" value="naive_slacks"> Naïve slacks</label>
       <br>
       <h3>Equalities</h3>
       <label><input type="checkbox" id="equalities"> Include equalities</label>
@@ -51,7 +52,8 @@
       <h3>Handling of equalities</h3>
       <label><input type="radio" name="handling_equalities" value="none" checked> None</label>
       <label><input type="radio" name="handling_equalities" value="slacks"> Slacks</label>
-      <label><input type="radio" name="handling_equalities" value="simple_slacks"> Simple slacks</label>
+      <label><input type="radio" name="handling_equalities" value="slacked_slacks"> Slacked slacks</label>
+      <label><input type="radio" name="handling_equalities" value="naive_slacks"> Naïve slacks</label>
       <label><input type="radio" name="handling_equalities" value="penalty"> Penalty function</label>
       <label><input type="radio" name="handling_equalities" value="regularization"> Regularization</label>
       <br>

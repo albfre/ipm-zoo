@@ -6,14 +6,19 @@
 
 using namespace SymbolicOptimization;
 
-class OptimizationTest : public ::testing::Test {
+class SymbolicOptimizationTest : public ::testing::Test {
  protected:
   void SetUp() override {}
 };
 
-TEST_F(OptimizationTest, GetLagrangian) {
+TEST_F(SymbolicOptimizationTest, GetLagrangian) {
   auto settings = Settings();
   auto names = VariableNames();
+  names.s_A_ineq = "s123";
+  names.s_A_ineq_u = "t123";
+  names.s_A_ineq_l = "g123";
+  names.s_x_l = "sxl123";
+  names.s_x_u = "sxu123";
   auto [lagrangian, variables] = get_lagrangian(settings, names);
   const auto str = lagrangian->to_string();
   EXPECT_NE(str.find(names.s_A_ineq), std::string::npos);
@@ -23,12 +28,13 @@ TEST_F(OptimizationTest, GetLagrangian) {
   EXPECT_NE(str.find(names.s_x_u), std::string::npos);
 }
 
-TEST_F(OptimizationTest, GetLagrangianLower) {
+TEST_F(SymbolicOptimizationTest, GetLagrangianLower) {
   auto settings = Settings();
   settings.inequalities = Bounds::Lower;
   settings.variable_bounds = Bounds::Lower;
   auto names = VariableNames();
   names.s_A_ineq_u = "t123";
+  names.s_A_ineq_l = "g123";
   auto [lagrangian, variables] = get_lagrangian(settings, names);
   const auto str = lagrangian->to_string();
   EXPECT_NE(str.find(names.s_A_ineq), std::string::npos);
@@ -38,11 +44,12 @@ TEST_F(OptimizationTest, GetLagrangianLower) {
   EXPECT_EQ(str.find(names.s_x_u), std::string::npos);
 }
 
-TEST_F(OptimizationTest, GetLagrangianUpper) {
+TEST_F(SymbolicOptimizationTest, GetLagrangianUpper) {
   auto settings = Settings();
   settings.inequalities = Bounds::Upper;
   settings.variable_bounds = Bounds::Upper;
   auto names = VariableNames();
+  names.s_A_ineq_u = "t123";
   names.s_A_ineq_l = "g123";
   auto [lagrangian, variables] = get_lagrangian(settings, names);
   const auto str = lagrangian->to_string();
@@ -53,7 +60,7 @@ TEST_F(OptimizationTest, GetLagrangianUpper) {
   EXPECT_NE(str.find(names.s_x_u), std::string::npos);
 }
 
-TEST_F(OptimizationTest, GetLagrangianNoBounds) {
+TEST_F(SymbolicOptimizationTest, GetLagrangianNoBounds) {
   auto settings = Settings();
   settings.inequalities = Bounds::None;
   settings.variable_bounds = Bounds::None;
@@ -71,7 +78,7 @@ TEST_F(OptimizationTest, GetLagrangianNoBounds) {
   EXPECT_EQ(str.find(names.s_x_u), std::string::npos);
 }
 
-TEST_F(OptimizationTest, GetFirstOrderOptimalityConditions) {
+TEST_F(SymbolicOptimizationTest, GetFirstOrderOptimalityConditions) {
   auto settings = Settings();
   auto names = VariableNames();
   auto [first_order, variables] =
@@ -79,7 +86,7 @@ TEST_F(OptimizationTest, GetFirstOrderOptimalityConditions) {
   EXPECT_EQ(first_order.size(), variables.size());
 }
 
-TEST_F(OptimizationTest, GetNewtonSystem) {
+TEST_F(SymbolicOptimizationTest, GetNewtonSystem) {
   auto settings = Settings();
   auto names = VariableNames();
   auto [lhs, rhs, variables, _] = get_newton_system(settings, names);
@@ -90,7 +97,7 @@ TEST_F(OptimizationTest, GetNewtonSystem) {
   }
 }
 
-TEST_F(OptimizationTest, GetShorthandRhs) {
+TEST_F(SymbolicOptimizationTest, GetShorthandRhs) {
   const auto settings = Settings();
   const auto names = VariableNames();
   const auto newton_system = get_newton_system(settings, names);
@@ -102,7 +109,7 @@ TEST_F(OptimizationTest, GetShorthandRhs) {
   }
 }
 
-TEST_F(OptimizationTest, GaussianElimination) {
+TEST_F(SymbolicOptimizationTest, GaussianElimination) {
   auto settings = Settings();
   auto names = VariableNames();
   auto [lhs, rhs, variables, _] = get_newton_system(settings, names);
@@ -121,7 +128,7 @@ TEST_F(OptimizationTest, GaussianElimination) {
   }
 }
 
-TEST_F(OptimizationTest, GetAugmentedSystem) {
+TEST_F(SymbolicOptimizationTest, GetAugmentedSystem) {
   auto settings = Settings();
   settings.inequalities = Bounds::Lower;
   auto names = VariableNames();
@@ -143,7 +150,7 @@ TEST_F(OptimizationTest, GetAugmentedSystem) {
   EXPECT_TRUE(delta_var->to_string().find("\\Delta") != std::string::npos);
 }
 
-TEST_F(OptimizationTest, GetNormalEquations) {
+TEST_F(SymbolicOptimizationTest, GetNormalEquations) {
   auto settings = Settings();
   settings.inequalities = Bounds::Lower;
   auto names = VariableNames();

@@ -19,16 +19,17 @@ std::string ToStringVisitor::operator()(const Number& x) const {
 std::string ToStringVisitor::operator()(const DiagonalMatrix& x) const {
   const auto& c = x.child;
   return match(c).with(
-      [](const Variable& x) {
-        auto name = x.name;
-        for (size_t i = 0; i < name.size(); ++i) {
-          if (std::isalpha(name[i])) {
-            name[i] = std::toupper(name[i]);
-            return name;
+      [](const auto& x)
+        requires NamedNullaryType<decltype(x)> {
+          auto name = x.name;
+          for (size_t i = 0; i < name.size(); ++i) {
+            if (std::isalpha(name[i])) {
+              name[i] = std::toupper(name[i]);
+              return name;
+            }
           }
-        }
-        return "\\diag(" + name + ")";
-      },
+          return "\\diag(" + name + ")";
+        },
       [&](const auto&) { return "\\diag(" + c->to_string(condensed_) + ")"; });
 }
 

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -64,7 +65,7 @@ NewtonSystemStr format_newton_system_strings_(const auto& newton_system,
   }
 
   const auto rhs_shorthand =
-      SymbolicOptimization::get_shorthand_rhs(variables).shorthand_rhs;
+      SymbolicOptimization::get_shorthand_rhs(newton_system).shorthand_rhs;
   std::string rhs_shorthand_str = "";
   for (const auto& row : rhs_shorthand) {
     rhs_shorthand_str += row->to_string(condensed) + " \\\\\n ";
@@ -87,6 +88,86 @@ NewtonSystemStr format_newton_system_strings_(const auto& newton_system,
   return {lhs_str, rhs_str, rhs_shorthand_str, variables_str, definitions_str};
 }
 }  // namespace
+
+std::string get_optimization_problem(
+    const SymbolicOptimization::Settings& settings,
+    const SymbolicOptimization::OptimizationProblemType&
+        optimization_problem_type) {
+  const auto variable_names = SymbolicOptimization::VariableNames();
+  const auto optimization_problem =
+      SymbolicOptimization::get_optimization_problem(settings, variable_names,
+                                                     optimization_problem_type);
+
+  const auto condensed = true;
+  auto str = std::string("\\text{minimize} \\quad & ");
+  str += optimization_problem.objective->to_string(condensed);
+  auto pos = 0;
+  const auto add_newlines = [&](const auto& term) {
+    pos = str.find(term);
+    while (pos != std::string::npos) {
+      str.insert(pos - 1, " \\\\\n & ");
+      for (size_t i = 0; i < 3; ++i) {
+        pos = pos == std::string::npos ? std::string::npos
+                                       : str.find(term, pos + 1);
+      }
+      if (pos != std::string::npos) {
+        pos = str.find(term, pos + 1);
+      }
+    }
+  };
+  add_newlines("\\lambda");
+  add_newlines("- \\mu");
+
+  str += " \\\\\n ";
+  str += "\\text{subject to} \\quad";
+  for (const auto& inequality : optimization_problem.inequalities) {
+    str += " & ";
+    if (inequality.lower_bound && inequality.upper_bound) {
+      str += inequality.lower_bound->to_string(condensed) + " \\leq " +
+             inequality.expr->to_string(condensed) + " \\leq " +
+             inequality.upper_bound->to_string(condensed) + " \\\\\n";
+    } else if (inequality.lower_bound) {
+      str += inequality.expr->to_string(condensed) + " \\geq " +
+             inequality.lower_bound->to_string(condensed) + " \\\\\n";
+    } else if (inequality.upper_bound) {
+      str += inequality.expr->to_string(condensed) + " \\leq " +
+             inequality.upper_bound->to_string(condensed) + " \\\\\n";
+    }
+  }
+
+  for (const auto& equality : optimization_problem.equalities) {
+    str += " & ";
+    str += equality.expr->to_string(condensed) + " = " +
+           equality.rhs->to_string(condensed) + " \\\\\n";
+  }
+
+  for (const auto& bound : optimization_problem.variable_bounds) {
+    str += " & ";
+    if (bound.lower_bound && bound.upper_bound) {
+      str += bound.lower_bound->to_string(condensed) + " \\leq " +
+             bound.expr->to_string(condensed) + " \\leq " +
+             bound.upper_bound->to_string(condensed) + " \\\\\n";
+    } else if (bound.lower_bound) {
+      str += bound.expr->to_string(condensed) + " \\geq " +
+             bound.lower_bound->to_string(condensed) + " \\\\\n";
+    } else if (bound.upper_bound) {
+      str += bound.expr->to_string(condensed) + " \\leq " +
+             bound.upper_bound->to_string(condensed) + " \\\\\n";
+    }
+  }
+
+  if (!optimization_problem.nonnegative_slacks.empty()) {
+    str += " & ";
+    str +=
+        optimization_problem.nonnegative_slacks.front()->to_string(condensed);
+    for (const auto& slack :
+         optimization_problem.nonnegative_slacks | std::views::drop(1)) {
+      str += ", " + slack->to_string(condensed);
+    }
+    str += " \\geq 0 \\\\\n";
+  }
+  return str;
+}
 
 std::string get_lagrangian(const SymbolicOptimization::Settings& settings) {
   const auto variable_names = SymbolicOptimization::VariableNames();
@@ -142,8 +223,7 @@ NewtonSystemTriplet get_newton_systems(
 
   // Use shorthand for right-hand side
   newton_system.rhs =
-      SymbolicOptimization::get_shorthand_rhs(newton_system.variables)
-          .shorthand_rhs;
+      SymbolicOptimization::get_shorthand_rhs(newton_system).shorthand_rhs;
 
   // Augmented system
   auto augmented_system =
@@ -188,14 +268,17 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
 
   enum_<SymbolicOptimization::InequalityHandling>("InequalityHandling")
       .value("Slacks", SymbolicOptimization::InequalityHandling::Slacks)
-      .value("SimpleSlacks",
-             SymbolicOptimization::InequalityHandling::SimpleSlacks);
+      .value("SlackedSlacks",
+             SymbolicOptimization::InequalityHandling::SlackedSlacks)
+      .value("NaiveSlacks",
+             SymbolicOptimization::InequalityHandling::NaiveSlacks);
 
   enum_<SymbolicOptimization::EqualityHandling>("EqualityHandling")
       .value("None", SymbolicOptimization::EqualityHandling::None)
       .value("Slacks", SymbolicOptimization::EqualityHandling::Slacks)
-      .value("SimpleSlacks",
-             SymbolicOptimization::EqualityHandling::SimpleSlacks)
+      .value("SlackedSlacks",
+             SymbolicOptimization::EqualityHandling::SlackedSlacks)
+      .value("NaiveSlacks", SymbolicOptimization::EqualityHandling::NaiveSlacks)
       .value("PenaltyFunction",
              SymbolicOptimization::EqualityHandling::PenaltyFunction)
       .value("Regularization",
@@ -212,6 +295,15 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .property("inequalityHandling",
                 &SymbolicOptimization::Settings::inequality_handling);
 
+  enum_<SymbolicOptimization::OptimizationProblemType>(
+      "OptimizationProblemType")
+      .value("Original",
+             SymbolicOptimization::OptimizationProblemType::Original)
+      .value("Slacked", SymbolicOptimization::OptimizationProblemType::Slacked)
+      .value(
+          "SlackedWithBarriers",
+          SymbolicOptimization::OptimizationProblemType::SlackedWithBarriers);
+
   value_object<NewtonSystemStr>("NewtonSystem")
       .field("lhs", &NewtonSystemStr::lhs)
       .field("rhs", &NewtonSystemStr::rhs)
@@ -225,6 +317,7 @@ EMSCRIPTEN_BINDINGS(symbolic_optimization_module) {
       .field("normal", &NewtonSystemTriplet::normal);
 
   // Register free functions
+  function("getOptimizationProblem", &get_optimization_problem);
   function("getLagrangian", &get_lagrangian);
   function("getFirstOrderOptimalityConditions",
            &get_first_order_optimality_conditions);
