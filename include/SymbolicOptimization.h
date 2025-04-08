@@ -44,7 +44,7 @@ enum class EqualityHandling {
   SlackedSlacks,
   NaiveSlacks,
   PenaltyFunction,
-  PenaltyFunctionWithExtraVariable,
+  PenaltyFunctionWithExtraDual,
   Regularization,
 };
 
@@ -146,8 +146,7 @@ OptimizationProblem get_optimization_problem(
     const Settings& settings, const VariableNames& names,
     const OptimizationProblemType& optimization_problem_type);
 
-std::pair<Expression::ExprPtr, std::vector<Expression::ExprPtr>> get_lagrangian(
-    const Settings& settings, const VariableNames& names);
+Expression::ExprPtr get_lagrangian(const OptimizationProblem& problem);
 
 std::pair<std::vector<Expression::ExprPtr>, std::vector<Expression::ExprPtr>>
 get_first_order_optimality_conditions(Settings settings,

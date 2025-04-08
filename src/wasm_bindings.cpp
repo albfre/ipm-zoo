@@ -171,8 +171,10 @@ std::string get_optimization_problem(
 
 std::string get_lagrangian(const SymbolicOptimization::Settings& settings) {
   const auto variable_names = SymbolicOptimization::VariableNames();
-  const auto [lagrangian, variables] =
-      SymbolicOptimization::get_lagrangian(settings, variable_names);
+  const auto problem = SymbolicOptimization::get_optimization_problem(
+      settings, variable_names,
+      SymbolicOptimization::OptimizationProblemType::SlackedWithBarriers);
+  const auto lagrangian = SymbolicOptimization::get_lagrangian(problem);
 
   const auto condensed = true;
   auto str = "& " + lagrangian->to_string(condensed);
@@ -198,7 +200,7 @@ std::string get_lagrangian(const SymbolicOptimization::Settings& settings) {
 std::string get_first_order_optimality_conditions(
     const SymbolicOptimization::Settings& settings) {
   const auto variable_names = SymbolicOptimization::VariableNames();
-  auto [first_order, variables] =
+  auto [first_order, _] =
       SymbolicOptimization::get_first_order_optimality_conditions(
           settings, variable_names);
   const auto condensed = true;
