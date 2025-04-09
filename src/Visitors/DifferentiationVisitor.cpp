@@ -1,7 +1,6 @@
 #include "Visitors/DifferentiationVisitor.h"
 
 #include <algorithm>
-#include <iostream>
 
 #include "Utils/Assert.h"
 

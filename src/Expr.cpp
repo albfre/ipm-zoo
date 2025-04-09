@@ -1,7 +1,6 @@
 ﻿#include "Expr.h"
 
 #include <algorithm>
-#include <iostream>
 #include <numeric>
 
 #include "ExprFactory.h"

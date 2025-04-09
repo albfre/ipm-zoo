@@ -21,6 +21,7 @@ ExprPtr ExprFactory::get_expr_(Expr::ExprVariant&& variant) {
     }
     cache_.erase(it);
   }
+  // new Expr since make_shared cannot access Expr's private constructor
   auto expr = ExprPtr(new Expr(std::move(variant), key));
   cache_[key] = expr;
 
