@@ -147,14 +147,12 @@ void run_optimization_example() {
   auto names = SymbolicOptimization::VariableNames();
 
   print_sub_header("Generating Lagrangian");
-  const auto [lagrangian, variables] =
-      SymbolicOptimization::get_lagrangian(settings, names);
+  const auto problem = SymbolicOptimization::get_optimization_problem(
+      settings, names,
+      SymbolicOptimization::OptimizationProblemType::SlackedWithBarriers);
+  const auto lagrangian = SymbolicOptimization::get_lagrangian(problem);
 
   std::cout << "Lagrangian function: " << lagrangian->to_string() << std::endl;
-  std::cout << "\nOptimization variables:" << std::endl;
-  for (const auto& var : variables) {
-    std::cout << "  - " << var->to_string() << std::endl;
-  }
 
   // Add timing around get_newton_system
   print_sub_header("Computing Newton System");

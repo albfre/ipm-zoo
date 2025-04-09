@@ -19,7 +19,9 @@ TEST_F(SymbolicOptimizationTest, GetLagrangian) {
   names.s_A_ineq_l = "g123";
   names.s_x_l = "sxl123";
   names.s_x_u = "sxu123";
-  auto [lagrangian, variables] = get_lagrangian(settings, names);
+  auto problem = get_optimization_problem(
+      settings, names, OptimizationProblemType::SlackedWithBarriers);
+  auto lagrangian = get_lagrangian(problem);
   const auto str = lagrangian->to_string();
   EXPECT_NE(str.find(names.s_A_ineq), std::string::npos);
   EXPECT_NE(str.find(names.s_A_ineq_l), std::string::npos);
@@ -35,7 +37,9 @@ TEST_F(SymbolicOptimizationTest, GetLagrangianLower) {
   auto names = VariableNames();
   names.s_A_ineq_u = "t123";
   names.s_A_ineq_l = "g123";
-  auto [lagrangian, variables] = get_lagrangian(settings, names);
+  auto problem = get_optimization_problem(
+      settings, names, OptimizationProblemType::SlackedWithBarriers);
+  auto lagrangian = get_lagrangian(problem);
   const auto str = lagrangian->to_string();
   EXPECT_NE(str.find(names.s_A_ineq), std::string::npos);
   EXPECT_NE(str.find(names.s_A_ineq_l), std::string::npos);
@@ -51,7 +55,9 @@ TEST_F(SymbolicOptimizationTest, GetLagrangianUpper) {
   auto names = VariableNames();
   names.s_A_ineq_u = "t123";
   names.s_A_ineq_l = "g123";
-  auto [lagrangian, variables] = get_lagrangian(settings, names);
+  auto problem = get_optimization_problem(
+      settings, names, OptimizationProblemType::SlackedWithBarriers);
+  auto lagrangian = get_lagrangian(problem);
   const auto str = lagrangian->to_string();
   EXPECT_NE(str.find(names.s_A_ineq), std::string::npos);
   EXPECT_EQ(str.find(names.s_A_ineq_l), std::string::npos);
@@ -69,7 +75,9 @@ TEST_F(SymbolicOptimizationTest, GetLagrangianNoBounds) {
   names.s_A_ineq_u = "t123";
   names.s_x_l = "y123";
   names.s_x_u = "z123";
-  auto [lagrangian, variables] = get_lagrangian(settings, names);
+  auto problem = get_optimization_problem(
+      settings, names, OptimizationProblemType::SlackedWithBarriers);
+  auto lagrangian = get_lagrangian(problem);
   const auto str = lagrangian->to_string();
   EXPECT_EQ(str.find(names.s_A_ineq), std::string::npos);
   EXPECT_EQ(str.find(names.s_A_ineq_l), std::string::npos);

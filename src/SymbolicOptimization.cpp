@@ -47,45 +47,25 @@ OptimizationExpressions get_optimization_expressions(
   return oe;
 }
 
-OptimizationProblem get_optimization_problem(
-    const Settings& settings, const VariableNames& names,
-    const OptimizationProblemType& optimization_problem_type) {
-  using EF = Expression::ExprFactory;
-  using namespace Expression;
-  const auto o = get_optimization_expressions(names);
-  const auto half = EF::number(0.5);
-  const auto zero = Expression::zero;
-  const auto xQx = (half * EF::transpose(o.x) * o.Q * o.x)->simplify();
-  const auto cx = EF::transpose(o.c) * o.x;
-  const auto exT = EF::transpose(o.e_var);
-  const auto eAT = EF::transpose(o.e_ineq);
-  const auto eCT = EF::transpose(o.e_eq);
-  const auto Ax = o.A_ineq * o.x;
-  const auto Cx = o.A_eq * o.x;
-  const auto CxMinusB = Cx - o.b_eq;
-  const auto X = EF::diagonal_matrix(o.x);
-  const auto S_ineq = EF::diagonal_matrix(o.s_A_ineq);
-  const auto S_eq = EF::diagonal_matrix(o.s_A_eq);
-  const auto L_x = EF::diagonal_matrix(o.l_x);
-  const auto U_x = EF::diagonal_matrix(o.u_x);
-  const auto L_A_ineq = EF::diagonal_matrix(o.l_A_ineq);
-  const auto U_A_ineq = EF::diagonal_matrix(o.u_A_ineq);
-
-  OptimizationProblem problem;
-
-  problem.objective = xQx + cx;
-  problem.variables = {o.x};
-
+namespace {
+void add_inequality_constraints_(
+    OptimizationProblem& problem, const OptimizationExpressions& o,
+    const Settings& settings,
+    const OptimizationProblemType optimization_problem_type) {
   const auto add_lower_inequalities =
       std::set{Bounds::Lower, Bounds::Both}.contains(settings.inequalities);
   const auto add_upper_inequalities =
       std::set{Bounds::Upper, Bounds::Both}.contains(settings.inequalities);
 
   if (add_lower_inequalities || add_upper_inequalities) {
-    const auto lower_expr = [&](const auto& expr) -> ExprPtr {
+    using EF = Expression::ExprFactory;
+    const auto zero = Expression::zero;
+    const auto Ax = o.A_ineq * o.x;
+
+    const auto lower_expr = [&](const auto& expr) -> Expression::ExprPtr {
       return add_lower_inequalities ? expr : nullptr;
     };
-    const auto upper_expr = [&](const auto& expr) -> ExprPtr {
+    const auto upper_expr = [&](const auto& expr) -> Expression::ExprPtr {
       return add_upper_inequalities ? expr : nullptr;
     };
     if (optimization_problem_type == OptimizationProblemType::Original) {
@@ -140,8 +120,20 @@ OptimizationProblem get_optimization_problem(
       }
     }
   }
+}
 
+void add_equality_constraints_(
+    OptimizationProblem& problem, const OptimizationExpressions& o,
+    const Settings& settings,
+    const OptimizationProblemType optimization_problem_type) {
   if (settings.equalities) {
+    using EF = Expression::ExprFactory;
+    const auto zero = Expression::zero;
+
+    const auto half = EF::number(0.5);
+    const auto Cx = o.A_eq * o.x;
+    const auto CxMinusB = Cx - o.b_eq;
+
     if (optimization_problem_type == OptimizationProblemType::Original ||
         settings.equality_handling == EqualityHandling::None) {
       problem.equalities.push_back({Cx, o.b_eq, o.lambda_A_eq});
@@ -204,17 +196,22 @@ OptimizationProblem get_optimization_problem(
       }
     }
   }
+}
 
+void add_variable_bounds_(
+    OptimizationProblem& problem, const OptimizationExpressions& o,
+    const Settings& settings,
+    const OptimizationProblemType optimization_problem_type) {
   const auto add_lower_bounds =
       std::set{Bounds::Lower, Bounds::Both}.contains(settings.variable_bounds);
   const auto add_upper_bounds =
       std::set{Bounds::Upper, Bounds::Both}.contains(settings.variable_bounds);
 
   if (add_lower_bounds || add_upper_bounds) {
-    const auto lower_expr = [&](const auto& expr) -> ExprPtr {
+    const auto lower_expr = [&](const auto& expr) -> Expression::ExprPtr {
       return add_lower_bounds ? expr : nullptr;
     };
-    const auto upper_expr = [&](const auto& expr) -> ExprPtr {
+    const auto upper_expr = [&](const auto& expr) -> Expression::ExprPtr {
       return add_upper_bounds ? expr : nullptr;
     };
     if (optimization_problem_type == OptimizationProblemType::Original ||
@@ -242,6 +239,13 @@ OptimizationProblem get_optimization_problem(
       }
     }
   }
+}
+
+void add_log_barriers_(
+    OptimizationProblem& problem, const OptimizationExpressions& o,
+    const Settings& settings,
+    const OptimizationProblemType optimization_problem_type) {
+  using EF = Expression::ExprFactory;
 
   const auto is_slacked_with_barriers =
       optimization_problem_type == OptimizationProblemType::SlackedWithBarriers;
@@ -253,10 +257,10 @@ OptimizationProblem get_optimization_problem(
     const auto ineq_set = std::set{o.s_A_ineq, o.s_A_ineq_l, o.s_A_ineq_u};
     const auto eq_set = std::set{o.s_A_eq, o.s_A_eq_l, o.s_A_eq_u};
     const auto var_set = std::set{o.x, o.s_x_l, o.s_x_u};
-    const auto get_eT = [&](const auto& expr) -> Expression::ExprPtr {
-      return var_set.contains(expr)    ? exT
-             : ineq_set.contains(expr) ? eAT
-             : eq_set.contains(expr)   ? eCT
+    const auto get_e = [&](const auto& expr) -> Expression::ExprPtr {
+      return var_set.contains(expr)    ? o.e_var
+             : ineq_set.contains(expr) ? o.e_ineq
+             : eq_set.contains(expr)   ? o.e_eq
                                        : nullptr;
     };
     // When creating the problem for optimality conditions and using the Slack
@@ -272,7 +276,7 @@ OptimizationProblem get_optimization_problem(
     for (const auto& bound : problem.variable_bounds) {
       if (replace_bound(bound)) {
         const auto& [expr, lower, upper, lower_dual, upper_dual] = bound;
-        const auto eT = get_eT(expr);
+        const auto eT = EF::transpose(get_e(expr));
         if (lower != nullptr) {
           problem.objective = problem.objective -
                               (o.mu * eT * EF::log(expr - lower))->simplify();
@@ -285,7 +289,7 @@ OptimizationProblem get_optimization_problem(
       }
     }
     for (const auto& slack : problem.nonnegative_slacks) {
-      const auto eT = get_eT(slack);
+      const auto eT = EF::transpose(get_e(slack));
       problem.objective =
           problem.objective - (o.mu * eT * EF::log(slack))->simplify();
     }
@@ -294,6 +298,29 @@ OptimizationProblem get_optimization_problem(
       problem.nonnegative_slacks.clear();
     }
   }
+}
+}  // namespace
+
+OptimizationProblem get_optimization_problem(
+    const Settings& settings, const VariableNames& names,
+    const OptimizationProblemType& optimization_problem_type) {
+  using EF = Expression::ExprFactory;
+  using namespace Expression;
+  const auto o = get_optimization_expressions(names);
+  const auto half = EF::number(0.5);
+  const auto xQx = (half * EF::transpose(o.x) * o.Q * o.x)->simplify();
+  const auto cx = EF::transpose(o.c) * o.x;
+
+  OptimizationProblem problem;
+
+  problem.objective = xQx + cx;
+  problem.variables = {o.x};
+
+  add_inequality_constraints_(problem, o, settings, optimization_problem_type);
+  add_equality_constraints_(problem, o, settings, optimization_problem_type);
+  add_variable_bounds_(problem, o, settings, optimization_problem_type);
+  add_log_barriers_(problem, o, settings, optimization_problem_type);
+
   return problem;
 }
 
