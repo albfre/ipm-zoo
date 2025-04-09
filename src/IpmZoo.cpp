@@ -356,7 +356,7 @@ void run_numeric_optimization_example() {
   auto optimization_expressions =
       SymbolicOptimization::get_optimization_expressions(names);
 
-  if (true) {
+  if (false) {
     auto data = Data();
     data.Q = {{1.0, 0.0}, {0.0, 0.5}};
     data.c = {-10.0, 2.0};
@@ -380,7 +380,7 @@ void run_numeric_optimization_example() {
     timer.stop("Optimization");
     timer.report();
   }
-  if (false) {
+  if (true) {
     auto data = Data();
     size_t n = 5;
     size_t m = 2;
@@ -408,7 +408,7 @@ void run_numeric_optimization_example() {
     data.u_A_ineq[1] = 7;
     auto env = build_environment(names, data);
     settings.inequality_handling =
-        SymbolicOptimization::InequalityHandling::Slacks;
+        SymbolicOptimization::InequalityHandling::SlackedSlacks;
 
     auto newton_system =
         SymbolicOptimization::get_newton_system(settings, names);

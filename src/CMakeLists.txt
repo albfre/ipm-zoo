@@ -6,6 +6,7 @@ set(LIBRARY_SOURCES
     Visitors/DifferentiationVisitor.cpp
     Visitors/SimplificationVisitor.cpp
     Visitors/ToStringVisitor.cpp
+    NumericalOptimization/EnvironmentBuilder.cpp
     NumericalOptimization/Evaluation.cpp
     NumericalOptimization/LinearSolvers.cpp
     NumericalOptimization/Optimizer.cpp
