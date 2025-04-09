@@ -71,10 +71,6 @@ OptimizationProblem get_optimization_problem(
   const auto L_A_ineq = EF::diagonal_matrix(o.l_A_ineq);
   const auto U_A_ineq = EF::diagonal_matrix(o.u_A_ineq);
 
-  const auto slacked = std::set{OptimizationProblemType::Slacked,
-                                OptimizationProblemType::SlackedWithBarriers}
-                           .contains(optimization_problem_type);
-
   OptimizationProblem problem;
 
   problem.objective = xQx + cx;
@@ -92,7 +88,7 @@ OptimizationProblem get_optimization_problem(
     const auto upper_expr = [&](const auto& expr) -> ExprPtr {
       return add_upper_inequalities ? expr : nullptr;
     };
-    if (!slacked) {
+    if (optimization_problem_type == OptimizationProblemType::Original) {
       problem.inequalities.push_back(
           {Ax, lower_expr(o.l_A_ineq), upper_expr(o.u_A_ineq),
            lower_expr(-o.lambda_sAineql), upper_expr(o.lambda_sAinequ)});
@@ -146,7 +142,8 @@ OptimizationProblem get_optimization_problem(
   }
 
   if (settings.equalities) {
-    if (!slacked || settings.equality_handling == EqualityHandling::None) {
+    if (optimization_problem_type == OptimizationProblemType::Original ||
+        settings.equality_handling == EqualityHandling::None) {
       problem.equalities.push_back({Cx, o.b_eq, o.lambda_A_eq});
       problem.variables2.push_back(o.lambda_A_eq);
     } else {
@@ -154,10 +151,9 @@ OptimizationProblem get_optimization_problem(
         case EqualityHandling::Slacks:
           problem.equalities.push_back({Cx - o.s_A_eq, zero, o.lambda_A_eq});
           problem.variable_bounds.push_back(
-              {o.s_A_eq, o.b_eq, o.b_eq, -o.lambda_sAeql, o.lambda_sAequ});
+              {o.s_A_eq, o.b_eq, o.b_eq, o.lambda_sAeql, o.lambda_sAequ});
+          problem.variables2.push_back(o.lambda_A_eq);
           problem.variables3.push_back(o.s_A_eq);
-          problem.variables2.push_back(o.lambda_sAeql);
-          problem.variables2.push_back(o.lambda_sAequ);
           break;
         case EqualityHandling::SlackedSlacks:
           problem.equalities.push_back({Cx - o.s_A_eq, zero, o.lambda_A_eq});
@@ -221,7 +217,7 @@ OptimizationProblem get_optimization_problem(
     const auto upper_expr = [&](const auto& expr) -> ExprPtr {
       return add_upper_bounds ? expr : nullptr;
     };
-    if (!slacked ||
+    if (optimization_problem_type == OptimizationProblemType::Original ||
         settings.inequality_handling == InequalityHandling::Slacks) {
       problem.variable_bounds.push_back(
           {o.x, lower_expr(o.l_x), upper_expr(o.u_x), lower_expr(o.lambda_sxl),
@@ -247,21 +243,32 @@ OptimizationProblem get_optimization_problem(
     }
   }
 
-  if (optimization_problem_type ==
-      OptimizationProblemType::SlackedWithBarriers) {
+  const auto is_slacked_with_barriers =
+      optimization_problem_type == OptimizationProblemType::SlackedWithBarriers;
+  if (is_slacked_with_barriers ||
+      optimization_problem_type ==
+          OptimizationProblemType::ForOptimalityConditions) {
     // Convert all inequalities to log barriers
-    ASSERT(problem.inequalities.size() <= 1);
-    const auto e_ineq_set = std::set{o.s_A_ineq, o.s_A_ineq_l, o.s_A_ineq_u};
-    const auto e_eq_set = std::set{o.s_A_eq, o.s_A_eq_l, o.s_A_eq_u};
-    const auto e_var_set = std::set{o.x, o.s_x_l, o.s_x_u};
+    ASSERT(problem.inequalities.empty());
+    const auto ineq_set = std::set{o.s_A_ineq, o.s_A_ineq_l, o.s_A_ineq_u};
+    const auto eq_set = std::set{o.s_A_eq, o.s_A_eq_l, o.s_A_eq_u};
+    const auto var_set = std::set{o.x, o.s_x_l, o.s_x_u};
     const auto get_eT = [&](const auto& expr) -> Expression::ExprPtr {
-      return e_var_set.contains(expr)    ? exT
-             : e_ineq_set.contains(expr) ? eAT
-             : e_eq_set.contains(expr)   ? eCT
-                                         : nullptr;
+      return var_set.contains(expr)    ? exT
+             : ineq_set.contains(expr) ? eAT
+             : eq_set.contains(expr)   ? eCT
+                                       : nullptr;
     };
-    for (const auto& bounds : {problem.inequalities, problem.variable_bounds}) {
-      for (const auto& bound : bounds) {
+    const auto replace_bound = [&](const auto& bound) {
+      const auto& [expr, lower, upper, lower_dual, upper_dual] = bound;
+      const auto is_eq = eq_set.contains(expr);
+      return is_slacked_with_barriers ||
+             (!is_eq &&
+              settings.inequality_handling != InequalityHandling::Slacks) ||
+             (is_eq && settings.equality_handling != EqualityHandling::Slacks);
+    };
+    for (const auto& bound : problem.variable_bounds) {
+      if (replace_bound(bound)) {
         const auto& [expr, lower, upper, lower_dual, upper_dual] = bound;
         const auto eT = get_eT(expr);
         if (lower != nullptr) {
@@ -280,8 +287,10 @@ OptimizationProblem get_optimization_problem(
       problem.objective =
           problem.objective - (o.mu * eT * EF::log(slack))->simplify();
     }
-    problem.inequalities.clear();
-    problem.variable_bounds.clear();
+    std::erase_if(problem.variable_bounds, replace_bound);
+    if (is_slacked_with_barriers) {
+      problem.nonnegative_slacks.clear();
+    }
   }
   return problem;
 }
@@ -290,7 +299,6 @@ Expression::ExprPtr get_lagrangian(const OptimizationProblem& problem) {
   using EF = Expression::ExprFactory;
   auto terms = std::vector{problem.objective};
 
-  std::vector<Expression::ExprPtr> lambda_definitions;
   for (const auto& bounds : {problem.inequalities, problem.variable_bounds}) {
     for (const auto& bound : bounds) {
       ASSERT(bound.lower_dual_variable != nullptr ||
@@ -327,48 +335,13 @@ get_first_order_optimality_conditions(Settings settings,
   if (settings.equality_handling == EqualityHandling::PenaltyFunction) {
     settings.equality_handling = EqualityHandling::PenaltyFunctionWithExtraDual;
   }
-  auto optimization_problem_type = OptimizationProblemType::SlackedWithBarriers;
-  if (settings.inequality_handling == InequalityHandling::Slacks) {
-    optimization_problem_type = OptimizationProblemType::Slacked;
-  }
-  auto problem =
-      get_optimization_problem(settings, names, optimization_problem_type);
+  auto problem = get_optimization_problem(
+      settings, names, OptimizationProblemType::ForOptimalityConditions);
   auto lagrangian = get_lagrangian(problem);
   auto variables = problem.variables;
   for (const auto& v : {problem.variables2, problem.variables3,
                         problem.variables4, problem.nonnegative_slacks}) {
     variables.insert(variables.end(), v.begin(), v.end());
-  }
-
-  std::vector<Expression::ExprPtr> lambda_definitions;
-  std::vector<Expression::ExprPtr> extra_variables;
-  if (optimization_problem_type !=
-      OptimizationProblemType::SlackedWithBarriers) {
-    const auto o = get_optimization_expressions(names);
-    for (const auto& bounds : {problem.inequalities, problem.variable_bounds}) {
-      for (const auto& bound : bounds) {
-        ASSERT(bound.lower_dual_variable != nullptr ||
-               bound.upper_dual_variable != nullptr);
-        const auto e = bound.expr == o.x ? o.e_var : o.e_ineq;
-        if (bound.lower_bound) {
-          ASSERT(bound.lower_dual_variable != nullptr);
-          lambda_definitions.push_back(
-              (EF::diagonal_matrix(bound.expr) -
-               EF::diagonal_matrix(bound.lower_bound)) *
-                  bound.lower_dual_variable -
-              o.mu * e);
-          extra_variables.push_back(bound.lower_dual_variable);
-        }
-        if (bound.upper_bound) {
-          ASSERT(bound.upper_dual_variable != nullptr);
-          lambda_definitions.push_back((EF::diagonal_matrix(bound.upper_bound) -
-                                        EF::diagonal_matrix(bound.expr)) *
-                                           bound.upper_dual_variable -
-                                       o.mu * e);
-          extra_variables.push_back(bound.upper_dual_variable);
-        }
-      }
-    }
   }
 
   std::vector<Expression::ExprPtr> first_order;
@@ -382,10 +355,33 @@ get_first_order_optimality_conditions(Settings settings,
     first_order.push_back(diff);
   }
 
-  first_order.insert(first_order.end(), lambda_definitions.begin(),
-                     lambda_definitions.end());
-  variables.insert(variables.end(), extra_variables.begin(),
-                   extra_variables.end());
+  const auto o = get_optimization_expressions(names);
+  for (const auto& bounds : {problem.inequalities, problem.variable_bounds}) {
+    for (const auto& bound : bounds) {
+      ASSERT(bound.lower_dual_variable != nullptr ||
+             bound.upper_dual_variable != nullptr);
+      const auto e = bound.expr == o.x          ? o.e_var
+                     : bound.expr == o.s_A_ineq ? o.e_ineq
+                                                : o.e_eq;
+      if (bound.lower_bound) {
+        ASSERT(bound.lower_dual_variable != nullptr);
+        first_order.push_back((EF::diagonal_matrix(bound.expr) -
+                               EF::diagonal_matrix(bound.lower_bound)) *
+                                  bound.lower_dual_variable -
+                              o.mu * e);
+        variables.push_back(bound.lower_dual_variable);
+      }
+      if (bound.upper_bound) {
+        ASSERT(bound.upper_dual_variable != nullptr);
+        first_order.push_back((EF::diagonal_matrix(bound.upper_bound) -
+                               EF::diagonal_matrix(bound.expr)) *
+                                  bound.upper_dual_variable -
+                              o.mu * e);
+        variables.push_back(bound.upper_dual_variable);
+      }
+    }
+  }
+
   return {first_order, variables};
 }
 

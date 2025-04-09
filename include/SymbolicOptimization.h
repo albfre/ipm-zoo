@@ -52,6 +52,7 @@ enum class OptimizationProblemType {
   Original,
   Slacked,
   SlackedWithBarriers,
+  ForOptimalityConditions,
 };
 
 struct Settings {
