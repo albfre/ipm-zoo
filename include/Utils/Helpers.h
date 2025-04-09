@@ -79,6 +79,12 @@ bool is(const ExprPtr& expr) {
   return is<T>(expr->get_impl());
 }
 
+template <typename T, typename U>
+  requires UnaryType<T> bool is(const ExprPtr& expr) {
+  const auto& var = expr->get_impl();
+  return is<T>(var) && is<U>(std::get<T>(var).child);
+}
+
 template <typename TLambda>
 std::vector<ExprPtr> transform(const std::vector<ExprPtr>& terms,
                                const TLambda& lambda) {

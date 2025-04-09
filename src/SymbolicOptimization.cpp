@@ -402,18 +402,6 @@ NewtonSystem get_newton_system(const Settings& settings,
     for (auto& v : variables) {
       row.push_back(c->differentiate(v)->simplify());
     }
-    for (auto& v : variables) {
-      for (auto& r : row) {
-        if (r == v) {
-          r = EF::diagonal_matrix(v);
-          break;
-        }
-        if (r == EF::negate(v)) {
-          r = -EF::diagonal_matrix(v);
-          break;
-        }
-      }
-    }
     rhs.push_back(EF::negate(c)->simplify());
   }
   return {lhs, rhs, variables, {}};

@@ -61,7 +61,21 @@ ExprPtr DifferentiationVisitor::operator()(const Product& x) const {
     {
       auto terms = x.terms;
       terms[i] = xi->differentiate(var_);  // Differentiate one term
-      if (i + 2 == terms.size() && is<DiagonalMatrix>(terms[i]) &&
+      constexpr auto is_diagonal = [](const auto& t) {
+        return match(t).with(
+            [](const DiagonalMatrix&) { return true; },
+            [](const Sum& y) {
+              constexpr auto is_diagonal_inner = [](const auto& yt) {
+                return is<DiagonalMatrix>(yt) || is<Negate, DiagonalMatrix>(yt);
+              };
+              return std::ranges::any_of(y.terms, is_diagonal_inner) &&
+                     std::ranges::all_of(y.terms, [&](const auto& yt) {
+                       return is_diagonal_inner(yt) || yt == zero;
+                     });
+            },
+            [](const auto&) { return false; });
+      };
+      if (i + 2 == terms.size() && is_diagonal(terms[i]) &&
           is<Variable>(terms[i + 1])) {
         terms[i + 1] = ExprFactory::diagonal_matrix(terms[i + 1]);
       }
