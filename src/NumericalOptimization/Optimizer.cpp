@@ -122,6 +122,7 @@ void Optimizer::solve_quasi_definite_() {
 
     const auto kkt = get_as_matrix_(augmented_lhs);
     const auto [L, D] = LinearSolvers::ldlt_decomposition(kkt);
+    // print_mat("kkt", kkt, false);
 
     // Compute affine scaling step
     env_.at(optimization_expressions_.mu) = Evaluation::val_scalar(0.0);

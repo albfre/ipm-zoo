@@ -2,6 +2,7 @@
 #include "Expr.h"
 #include "NumericalOptimization/Evaluation.h"
 #include "SymbolicOptimization.h"
+#include "Utils/Assert.h"
 
 namespace NumericalOptimization {
 struct Data {
@@ -19,6 +20,14 @@ struct Data {
 inline Evaluation::Environment build_environment(
     const SymbolicOptimization::VariableNames& names, const Data& data) {
   using namespace Expression;
+  ASSERT(data.l_x.size() == data.u_x.size());
+  ASSERT(data.l_A_ineq.size() == data.u_A_ineq.size());
+  for (size_t i = 0; i < data.l_x.size(); ++i) {
+    ASSERT(data.l_x.at(i) < data.u_x.at(i));
+  }
+  for (size_t i = 0; i < data.l_A_ineq.size(); ++i) {
+    ASSERT(data.l_A_ineq.at(i) <= data.u_A_ineq.at(i));
+  }
 
   const auto o = SymbolicOptimization::get_optimization_expressions(names);
 
@@ -38,6 +47,15 @@ inline Evaluation::Environment build_environment(
   const auto vars = std::vector(data.Q.size(), 1.0);
   const auto ineqs = std::vector(data.A_ineq.size(), 1.0);
   const auto eqs = std::vector(data.A_eq.size(), 1.0);
+  auto x = std::vector(data.Q.size(), 1.0);
+  for (size_t i = 0; i < x.size(); ++i) {
+    ASSERT(data.l_x.at(i) < data.u_x.at(i));
+    x.at(i) = 0.5 * (data.l_x.at(i) + data.u_x.at(i));
+  }
+  auto s = std::vector(data.l_A_ineq.size(), 1.0);
+  for (size_t i = 0; i < s.size(); ++i) {
+    s.at(i) = 0.5 * (data.l_A_ineq.at(i) + data.u_A_ineq.at(i));
+  }
 
   // Set other constants
   env[o.delta_eq] = Evaluation::val_scalar(1e-4);
@@ -47,9 +65,9 @@ inline Evaluation::Environment build_environment(
   env[o.e_eq] = Evaluation::val_vector(eqs);
 
   // Set initial values for variables and slacks
-  env[o.x] = Evaluation::val_vector(vars);
+  env[o.x] = Evaluation::val_vector(x);
   env[o.p_eq] = Evaluation::val_vector(eqs);
-  env[o.s_A_ineq] = Evaluation::val_vector(ineqs);
+  env[o.s_A_ineq] = Evaluation::val_vector(s);
   env[o.s_A_ineq_l] = Evaluation::val_vector(ineqs);
   env[o.s_A_ineq_u] = Evaluation::val_vector(ineqs);
   env[o.s_x_l] = Evaluation::val_vector(vars);
