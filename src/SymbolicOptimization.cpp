@@ -248,7 +248,7 @@ OptimizationProblem get_optimization_problem(
   if (is_slacked_with_barriers ||
       optimization_problem_type ==
           OptimizationProblemType::ForOptimalityConditions) {
-    // Convert all inequalities to log barriers
+    // Convert inequalities/variable bounds to log barriers
     ASSERT(problem.inequalities.empty());
     const auto ineq_set = std::set{o.s_A_ineq, o.s_A_ineq_l, o.s_A_ineq_u};
     const auto eq_set = std::set{o.s_A_eq, o.s_A_eq_l, o.s_A_eq_u};
@@ -259,6 +259,8 @@ OptimizationProblem get_optimization_problem(
              : eq_set.contains(expr)   ? eCT
                                        : nullptr;
     };
+    // When creating the problem for optimality conditions and using the Slack
+    // option, log barriers should not be added
     const auto replace_bound = [&](const auto& bound) {
       const auto& [expr, lower, upper, lower_dual, upper_dual] = bound;
       const auto is_eq = eq_set.contains(expr);
@@ -355,30 +357,30 @@ get_first_order_optimality_conditions(Settings settings,
     first_order.push_back(diff);
   }
 
+  // If there are variable bounds that have not been slacked, introduce the
+  // corresponding dual variables and their definitions
   const auto o = get_optimization_expressions(names);
-  for (const auto& bounds : {problem.inequalities, problem.variable_bounds}) {
-    for (const auto& bound : bounds) {
-      ASSERT(bound.lower_dual_variable != nullptr ||
-             bound.upper_dual_variable != nullptr);
-      const auto e = bound.expr == o.x          ? o.e_var
-                     : bound.expr == o.s_A_ineq ? o.e_ineq
-                                                : o.e_eq;
-      if (bound.lower_bound) {
-        ASSERT(bound.lower_dual_variable != nullptr);
-        first_order.push_back((EF::diagonal_matrix(bound.expr) -
-                               EF::diagonal_matrix(bound.lower_bound)) *
-                                  bound.lower_dual_variable -
-                              o.mu * e);
-        variables.push_back(bound.lower_dual_variable);
-      }
-      if (bound.upper_bound) {
-        ASSERT(bound.upper_dual_variable != nullptr);
-        first_order.push_back((EF::diagonal_matrix(bound.upper_bound) -
-                               EF::diagonal_matrix(bound.expr)) *
-                                  bound.upper_dual_variable -
-                              o.mu * e);
-        variables.push_back(bound.upper_dual_variable);
-      }
+  for (const auto& bound : problem.variable_bounds) {
+    ASSERT(bound.lower_dual_variable != nullptr ||
+           bound.upper_dual_variable != nullptr);
+    const auto e = bound.expr == o.x          ? o.e_var
+                   : bound.expr == o.s_A_ineq ? o.e_ineq
+                                              : o.e_eq;
+    if (bound.lower_bound) {
+      ASSERT(bound.lower_dual_variable != nullptr);
+      first_order.push_back((EF::diagonal_matrix(bound.expr) -
+                             EF::diagonal_matrix(bound.lower_bound)) *
+                                bound.lower_dual_variable -
+                            o.mu * e);
+      variables.push_back(bound.lower_dual_variable);
+    }
+    if (bound.upper_bound) {
+      ASSERT(bound.upper_dual_variable != nullptr);
+      first_order.push_back((EF::diagonal_matrix(bound.upper_bound) -
+                             EF::diagonal_matrix(bound.expr)) *
+                                bound.upper_dual_variable -
+                            o.mu * e);
+      variables.push_back(bound.upper_dual_variable);
     }
   }
 
