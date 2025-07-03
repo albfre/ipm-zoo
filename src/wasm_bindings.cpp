@@ -238,6 +238,9 @@ NewtonSystemTriplet get_newton_systems(
       SymbolicOptimization::get_normal_equations(augmented_system);
   auto normal_equations_str =
       format_newton_system_strings_(normal_equations, variable_names);
+  if (augmented_system.variables.size() == normal_equations.variables.size()) {
+    augmented_system_str.variables = "";
+  }
 
   timer.stop("get_newton_systems");
   timer.report();

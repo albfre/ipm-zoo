@@ -1,6 +1,7 @@
 #include "NumericalOptimization/Evaluation.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <numeric>
 
@@ -264,7 +265,9 @@ EvalResult negate(const EvalResult& x) {
 }
 
 EvalResult invert(const EvalResult& x) {
-  return unary_op(x, [](const auto& xi) { return 1.0 / xi; });
+  return unary_op(x, [](const auto& xi) {
+    return xi == 0.0 ? std::sqrt(std::numeric_limits<double>::max()) : 1.0 / xi;
+  });
 }
 
 EvalResult add(const EvalResult& x, const EvalResult& y) {

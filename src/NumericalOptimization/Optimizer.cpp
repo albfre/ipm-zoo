@@ -13,6 +13,17 @@
 
 namespace NumericalOptimization {
 
+namespace {
+void print_vec(std::string name, std::vector<double>& v) {
+  std::cout << name << ": ";
+  for (auto& vi : v) {
+    std::cout << vi << ", ";
+  }
+  std::cout << std::endl;
+}
+
+}  // namespace
+
 Optimizer::Optimizer(Evaluation::Environment& env,
                      const SymbolicOptimization::OptimizationExpressions&
                          optimization_expressions,
@@ -22,6 +33,7 @@ Optimizer::Optimizer(Evaluation::Environment& env,
       newton_system_(newton_system),
       shorthand_rhs_(SymbolicOptimization::get_shorthand_rhs(newton_system_)) {
   using namespace Expression;
+  using EF = ExprFactory;
   newton_system.rhs = shorthand_rhs_.shorthand_rhs;
   augmented_system_ = SymbolicOptimization::get_augmented_system(newton_system);
   normal_equations_ =
@@ -34,6 +46,8 @@ Optimizer::Optimizer(Evaluation::Environment& env,
       ExprFactory::sum({ExprFactory::product({ExprFactory::number(0.5),
                                               ExprFactory::transpose(x), Q, x}),
                         ExprFactory::product({cT, x})});
+
+  //(EF::number(0.5) * EF::transpose(x) * Q * x + cT * x)->simplify();
   const auto var_vec =
       eval_vector_of_expressions_<Vector>(newton_system_.variables);
   for (size_t i = 0; i < var_vec.size(); ++i) {
@@ -122,20 +136,32 @@ void Optimizer::solve_quasi_definite_() {
 
     const auto kkt = get_as_matrix_(augmented_lhs);
     const auto [L, D] = LinearSolvers::ldlt_decomposition(kkt);
-    // print_mat("kkt", kkt, false);
+    print_mat("kkt", kkt, false);
+    print_mat("L", L, false);
+    for (size_t i = 0; i < D.size(); ++i) {
+      std::cout << D[i] << ", ";
+    }
+    std::cout << std::endl;
 
     // Compute affine scaling step
     env_.at(optimization_expressions_.mu) = Evaluation::val_scalar(0.0);
     for (const auto& [vec, def] : shorthand_rhs_.vector_definitions) {
+      std::cout << vec->to_string() << ": " << def->to_string() << std::endl;
       env_[vec] = Evaluation::evaluate(def, env_);
+      auto v = Evaluation::evaluate_vector(def, env_);
+      std::cout << "vec: ";
+      for (auto& vi : v) {
+        std::cout << vi << ", ";
+      }
+      std::cout << std::endl;
     }
 
     const auto variable_values =
         eval_vector_of_expressions_<Vector>(newton_system_.variables);
     const auto delta_aff_values =
         compute_search_direction_(augmented_system_, L, D);
-    // print_var("var", newton_system_.variables);
-    // print_mat("delta affine", delta_aff_values);
+    print_var("var", newton_system_.variables);
+    print_mat("delta affine", delta_aff_values);
     {
       // Temporarily update the variables to compute mu_affine
       const auto alpha_affine =
@@ -264,6 +290,54 @@ double Optimizer::get_max_step_(Matrix variables, Matrix delta) {
       }
     }
   }
+  auto var_set = std::set(newton_system_.variables.begin(),
+                          newton_system_.variables.end());
+
+  if (!var_set.contains(oe.s_A_ineq_l) && !var_set.contains(oe.s_A_ineq_u)) {
+    for (size_t i = 0; i < variables.size(); ++i) {
+      if (newton_system_.variables.at(i) == oe.x) {
+        const auto has_lb = env_.contains(oe.l_x);
+        const auto has_ub = env_.contains(oe.u_x);
+        auto lb = has_lb ? Evaluation::evaluate_vector(oe.l_x, env_)
+                         : std::vector<double>();
+        auto ub = has_ub ? Evaluation::evaluate_vector(oe.u_x, env_)
+                         : std::vector<double>();
+        for (size_t j = 0; j < variables.at(i).size(); ++j) {
+          const auto dij = delta.at(i).at(j);
+          const auto vij = variables.at(i).at(j);
+          if (has_lb && dij < 0.0) {
+            // vij + max_step * dij = l_x
+            max_step = std::min(max_step, (lb.at(j) - vij) / dij);
+          }
+          if (has_ub && dij > 0.0) {
+            // vij + max_step * dij = u_x
+            max_step = std::min(max_step, (ub.at(j) - vij) / dij);
+          }
+        }
+      }
+      if (newton_system_.variables.at(i) == oe.s_A_ineq) {
+        const auto has_lb = env_.contains(oe.l_A_ineq);
+        const auto has_ub = env_.contains(oe.u_A_ineq);
+        auto lb = has_lb ? Evaluation::evaluate_vector(oe.l_A_ineq, env_)
+                         : std::vector<double>();
+        auto ub = has_ub ? Evaluation::evaluate_vector(oe.u_A_ineq, env_)
+                         : std::vector<double>();
+        for (size_t j = 0; j < variables.at(i).size(); ++j) {
+          const auto dij = delta.at(i).at(j);
+          const auto vij = variables.at(i).at(j);
+          if (has_lb && dij < 0.0) {
+            // vij + max_step * dij = l_x
+            max_step = std::min(max_step, (lb.at(j) - vij) / dij);
+          }
+          if (has_ub && dij > 0.0) {
+            // vij + max_step * dij = u_x
+            max_step = std::min(max_step, (ub.at(j) - vij) / dij);
+          }
+        }
+      }
+    }
+  }
+
   return max_step;
 }
 
@@ -272,8 +346,17 @@ std::vector<std::vector<double>> Optimizer::compute_search_direction_(
     const std::vector<double>& D) {
   const auto& [lhs, rhs, variables, delta_definitions] = newton_system;
   auto b = get_as_vector_(rhs);
+  std::cout << "rhs:" << std::endl;
+  for (auto& rhsi : rhs) {
+    std::cout << rhsi->to_string() << ": ";
+    auto v = Evaluation::evaluate_vector(rhsi, env_);
+    print_vec("v", v);
+  }
+
+  print_vec("b0", b);
 
   LinearSolvers::overwriting_solve_ldlt(L, D, b);
+  print_vec("b", b);
 
   auto result = std::vector<std::vector<double>>(variable_index_.size());
   size_t offset = 0;

@@ -465,13 +465,15 @@ NewtonSystem get_augmented_system(NewtonSystem newton_system) {
 NewtonSystem get_normal_equations(NewtonSystem newton_system) {
   newton_system = get_augmented_system(std::move(newton_system));
   auto& [lhs, rhs, variables, delta_definitions] = newton_system;
-  auto delta_variable = Expression::ExprFactory::variable(
-      "\\Delta " + variables.at(0)->to_string());
-  auto delta_def =
-      SymbolicOptimization::delta_definition(lhs, rhs, variables, 0);
-  delta_definitions.push_back({delta_variable, delta_def});
-  SymbolicOptimization::gaussian_elimination(lhs, rhs, 0);
-  variables.erase(variables.begin());
+  if (lhs.size() > 1) {
+    auto delta_variable = Expression::ExprFactory::variable(
+        "\\Delta " + variables.at(0)->to_string());
+    auto delta_def =
+        SymbolicOptimization::delta_definition(lhs, rhs, variables, 0);
+    delta_definitions.push_back({delta_variable, delta_def});
+    SymbolicOptimization::gaussian_elimination(lhs, rhs, 0);
+    variables.erase(variables.begin());
+  }
   return std::move(newton_system);
 }
 

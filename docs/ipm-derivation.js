@@ -106,13 +106,15 @@ function updateProblem() {
       outputText += "=: \\left( \\begin{array}{c}\n " + newtonSystem.rhsShorthand + "\\end{array} \\right) \\]";
 
       const augmentedSystem = newtonSystems.augmented;
-      outputText += "<p><strong>Augmented system:</strong></p>";
-      cs = "c".repeat(countAmpersandsBeforeNewlines(augmentedSystem.lhs) + 1);
-      outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
-      outputText += "\\left( \\begin{array}{c}\n " + augmentedSystem.variables + "\\end{array} \\right) \\]";
-      outputText += "\\[ = \\left( \\begin{array}{l}\n " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
-      outputText += "where"
-      outputText += "\\[ \\begin{align*}\n " + augmentedSystem.deltaDefinitions + "\\end{align*} \\]"
+      if (augmentedSystem.variables !== "") {
+        outputText += "<p><strong>Augmented system:</strong></p>";
+        cs = "c".repeat(countAmpersandsBeforeNewlines(augmentedSystem.lhs) + 1);
+        outputText += "\\[ \\left( \\begin{array}{" + cs + "}\n " + dimZeros(augmentedSystem.lhs) + "\\end{array} \\right) "
+        outputText += "\\left( \\begin{array}{c}\n " + augmentedSystem.variables + "\\end{array} \\right) \\]";
+        outputText += "\\[ = \\left( \\begin{array}{l}\n " + augmentedSystem.rhs + "\\end{array} \\right) \\]"
+        outputText += "where"
+        outputText += "\\[ \\begin{align*}\n " + augmentedSystem.deltaDefinitions + "\\end{align*} \\]"
+      }
 
       const normalEquations = newtonSystems.normal;
       outputText += "<p><strong>Normal equations:</strong></p>";
