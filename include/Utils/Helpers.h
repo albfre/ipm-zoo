@@ -15,7 +15,7 @@ inline const auto zero = ExprFactory::number(0.0);
 template <typename T>
 concept VariantType = requires {
   typename std::variant_size<std::remove_cvref_t<T>>::type;
-  requires std::variant_size_v<std::remove_cvref_t<T>> > 0;
+  requires std::variant_size_v<std::remove_cvref_t<T>>> 0;
 };
 
 // Helper templates for overloaded visitors
